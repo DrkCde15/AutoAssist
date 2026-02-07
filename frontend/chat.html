@@ -113,6 +113,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.08);
         }
 
         input#messageInput {
@@ -125,7 +126,11 @@
             outline: none;
         }
 
-        #send { background: var(--primary); color: white; padding: 10px 20px; }
+        #send {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+        }
         .btn-icon { background: transparent; color: var(--text-muted); font-size: 1.2rem; padding: 10px; }
 
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -143,7 +148,7 @@
         <button id="logout" class="btn-nav btn-logout-red"><i class="fas fa-sign-out-alt"></i></button>
     </div>
 </header>
-
+    <div id="messages"></div>
 <footer>
     <input type="file" id="fileInput" style="display: none;" accept="image/*">
     <button id="attach" class="btn-icon" title="Anexar foto"><i class="fas fa-camera"></i></button>
