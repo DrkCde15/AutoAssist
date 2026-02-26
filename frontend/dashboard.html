@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AutoAssist IA</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-dark: #0f172a;
+            --secondary-dark: #1e293b;
+            --accent-blue: #3b82f6;
+            --text-gray: #94a3b8;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-dark);
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px 50px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .nav-logo {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 20px;
+            letter-spacing: 2px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .nav-link:hover { opacity: 1; }
+
+        /* Dashboard Content */
+        .dashboard-content {
+            padding: 60px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dashboard-header {
+            margin-bottom: 40px;
+        }
+
+        .vehicle-info-card {
+            background: linear-gradient(135deg, #1e3a8a, #111827);
+            border-radius: 24px;
+            padding: 40px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            margin-bottom: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .vehicle-icon {
+            font-size: 60px;
+            color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .stat-card {
+            background: var(--secondary-dark);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .stat-card.fipe {
+            border-left: 6px solid var(--accent-blue);
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .alert-item:last-child { border-bottom: none; }
+
+        .alert-badge {
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .badge-atencao { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge-aviso { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .badge-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+        .btn-action {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: var(--accent-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        .btn-action:hover {
+            background: #2563eb;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .no-vehicle {
+            text-align: center;
+            padding: 100px 20px;
+        }
+
+        .no-vehicle i {
+            font-size: 80px;
+            color: var(--text-gray);
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 768px) {
+            .vehicle-info-card { flex-direction: column; text-align: center; }
+            .navbar { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">AUTOASSIST</a>
+            <div class="nav-links">
+                <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+                <a href="perfil.html" class="nav-link"><i class="fas fa-user-circle"></i> Perfil</a>
+                <button onclick="Auth.logout()" class="nav-link" style="background:none; border:none; cursor:pointer;">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-content" id="dashboardContent">
+        <div id="loadingDash" style="text-align: center; padding: 100px;">
+            <i class="fas fa-circle-notch fa-spin" style="font-size: 40px; color: var(--accent-blue);"></i>
+            <p style="margin-top: 20px; color: var(--text-gray);">Carregando dados do veículo...</p>
+        </div>
+
+        <!-- O conteúdo será injetado aqui pelo JS -->
+    </div>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!Auth.isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const content = document.getElementById('dashboardContent');
+
+            try {
+                const res = await Auth.authenticatedFetch('/api/dashboard');
+                
+                if (res.status === 404) {
+                    content.innerHTML = `
+                        <div class="no-vehicle">
+                            <i class="fas fa-car-crash"></i>
+                            <h2>Nenhum veículo cadastrado</h2>
+                            <p style="color: var(--text-gray); margin: 20px 0;">Você ainda não cadastrou seu carro ou moto para receber análises.</p>
+                            <a href="perfil.html" class="btn-action">Cadastrar Veículo Agora</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    const icons = {
+                        'moto': 'fa-motorcycle',
+                        'caminhao': 'fa-truck',
+                        'aviao': 'fa-plane',
+                        'navio': 'fa-ship',
+                        'geral': 'fa-car'
+                    };
+                    const iconClass = icons[data.veiculo.tipo] || 'fa-car';
+
+                    content.innerHTML = `
+                        <div class="dashboard-header">
+                            <h1 style="font-weight: 300; font-size: 36px;">Olá! Este é seu <span style="color: var(--accent-blue);">Dashboard</span></h1>
+                            <p style="color: var(--text-gray); margin-top: 10px;">Acompanhe a saúde e o valor do seu patrimônio em tempo real.</p>
+                        </div>
+
+                        <div class="vehicle-info-card">
+                            <div class="vehicle-icon">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div>
+                                <h2 style="font-size: 32px; margin-bottom: 5px;">${data.veiculo.marca} ${data.veiculo.modelo}</h2>
+                                <p style="color: var(--text-gray); letter-spacing: 3px; text-transform: uppercase; font-size: 14px;">Ano de Fabricação: ${data.veiculo.ano}</p>
+                            </div>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-card fipe">
+                                <h4 style="margin-bottom: 15px; font-size: 14px; color: var(--accent-blue); text-transform: uppercase;">Valor de Mercado (FIPE)</h4>
+                                <div style="font-size: 36px; font-weight: bold;">${data.fipe.preco}</div>
+                                <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">Referência: ${data.fipe.mes}</p>
+                                <p style="font-size: 11px; color: #64748b; margin-top: 20px; font-style: italic;">* Valor estimado baseado em algoritmos de depreciação.</p>
+                            </div>
+
+                            <div class="stat-card">
+                                <h4 style="margin-bottom: 20px; font-size: 14px; text-transform: uppercase;">Estado de Conservação e Alertas</h4>
+                                <div id="alertsList">
+                                    ${data.saude.map(alert => `
+                                        <div class="alert-item">
+                                            <div style="flex: 1;">
+                                                <div style="font-size: 15px; font-weight: 600;">${alert.item}</div>
+                                                <div style="font-size: 12px; color: var(--text-gray);">${alert.msg}</div>
+                                            </div>
+                                            <span class="alert-badge badge-${alert.status.toLowerCase()}">${alert.status}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <a href="chat.html" class="btn-action" style="width: 100%; text-align: center; margin-top: 30px;">
+                                    Consultar NOG sobre estes itens
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Erro ao buscar dados');
+                }
+            } catch (e) {
+                console.error(e);
+                content.innerHTML = `<div style="text-align:center; padding: 100px;">Erro ao carregar dashboard.</div>`;
+            }
+        });
+    </script>
+</body>
+</html>

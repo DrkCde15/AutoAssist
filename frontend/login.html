@@ -126,7 +126,16 @@
         <button type="submit">Entrar</button>
       </form>
 
-      <div class="links">
+      <!-- NOVO: Form de 2FA -->
+      <form id="twoFactorForm" style="display: none;">
+        <p style="margin-bottom: 20px;">Segurança: Digite sua senha secundária para continuar.</p>
+        <label>Senha Secundária</label>
+        <input type="password" id="twoFactorCode" placeholder="Sua senha de 2FA" />
+        <button type="submit">Confirmar e Entrar</button>
+        <button type="button" id="backBtn" style="background: transparent; border: 1px solid #2563eb; margin-top: 10px; color: #2563eb;">Voltar</button>
+      </form>
+
+      <div class="links" id="registerLinks">
         Não tem conta? <a href="cadastro.html">Cadastre-se</a>
       </div>
     </div>
@@ -135,26 +144,60 @@
     <script src="./static/js/auth.js"></script>
     <script>
       const form = document.getElementById("loginForm");
+      const twoFactorForm = document.getElementById("twoFactorForm");
       const errorBox = document.getElementById("error");
+      const registerLinks = document.getElementById("registerLinks");
+      
+      let pendingToken = null;
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         errorBox.style.display = "none";
 
-        const email = document
-          .getElementById("email")
-          .value.trim()
-          .toLowerCase();
+        const email = document.getElementById("email").value.trim().toLowerCase();
         const password = document.getElementById("password").value;
 
         try {
-          // Usa a classe Auth centralizada
-          await Auth.login(email, password);
+          const data = await Auth.login(email, password);
+          
+          if (data.two_factor_required) {
+            // Mostra o campo de 2FA
+            pendingToken = data.pending_token;
+            form.style.display = "none";
+            twoFactorForm.style.display = "block";
+            registerLinks.style.display = "none";
+            document.querySelector("p").innerText = "Verificação de Segurança";
+          } else {
+            window.location.href = "index.html";
+          }
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.style.display = "block";
+        }
+      });
+
+      twoFactorForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorBox.style.display = "none";
+        
+        const code = document.getElementById("twoFactorCode").value;
+        if (!code) return;
+
+        try {
+          await Auth.verify2FA(pendingToken, code);
           window.location.href = "index.html";
         } catch (err) {
           errorBox.textContent = err.message;
           errorBox.style.display = "block";
         }
+      });
+
+      document.getElementById("backBtn").addEventListener("click", () => {
+          twoFactorForm.style.display = "none";
+          form.style.display = "block";
+          registerLinks.style.display = "block";
+          document.querySelector("p").innerText = "Login";
+          errorBox.style.display = "none";
       });
     </script>
   </body>

@@ -11,25 +11,20 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ## ✨ Funcionalidades
 
-### **Recursos Gratuitos (Trial de 30 dias)**
+### **Recursos Principais**
 
-- **Consultoria Especializada (NOG):** O assistente "NOG" oferece respostas focadas no mercado brasileiro, analisando modelos, versões, manutenção e custo-benefício.
-- **Raio-X Mecânico:** Análise detalhada de fotos de veículos para identificar defeitos ocultos (ferrugem, desalinhamentos, vazamentos).
-- **Estimativa de Preço:** Comparação do estado do veículo com a tabela FIPE para avaliação de mercado.
-- **Visão Computacional:** Pipeline de dois estágios (Moondream + Qwen) para análise visual profunda.
-
-### **Recursos Premium (R$ 29,90)**
-
-- **Acesso Ilimitado:** Sem limite de tempo após o período de teste.
-- **Laudos Técnicos em PDF:** Geração de relatórios profissionais com análise completa e dados do usuário.
-- **Modo de Voz Bidirecional:** Interação por voz usando Web Speech API (Speech-to-Text + Text-to-Speech).
+- **Consultoria Especializada (NOG):** O assistente "NOG" utiliza o modelo **Gemma 2 (2B)** para oferecer respostas focadas no mercado brasileiro, analisando modelos, versões, manutenção e custo-benefício.
+- **Raio-X Mecânico:** Pipeline de visão computacional de dois estágios (**Moondream + Gemma 2**) para análise de fotos, identificando ferrugem, desalinhamentos e vazamentos.
+- **Dashboard de Veículo:** Painel centralizado que monitora a saúde das principais peças do seu veículo e fornece alertas de manutenção preventiva.
+- **Estimativa FIPE Inteligente:** Cálculo de depreciação e valor de mercado em tempo real, ajustado pelo estado de conservação do veículo.
+- **Viva-Voz Inteligente:** Interação por voz em modo "mãos livres" com detecção automática de silêncio (Voice Activity Detection).
 
 ### **Segurança e Privacidade**
 
-- **Privacidade Total:** Graças ao uso do **Ollama**, nenhum dado ou imagem sai do seu servidor. Todo o processamento é local.
-- **Autenticação JWT:** Sistema robusto com access tokens (24h) e refresh tokens (30 dias para gratuitos, infinito para premium).
-- **Proteção de Trial:** Bloqueio automático após 30 dias com modal de upgrade.
-- **Armazenamento Seguro:** Senhas com criptografia e rate limiting em endpoints sensíveis.
+- **Autenticação em Duas Etapas (2FA):** Camada de segurança adicional utilizando uma senha secundária escolhida pelo usuário.
+- **Privacidade Total:** Processamento local via **Ollama**. Nenhuma imagem ou dado de conversa sai do seu servidor privado.
+- **Autenticação JWT:** Sistema robusto com tokens de acesso (24h) e refresh tokens (30 dias).
+- **Trial Control:** Gestão automatizada de período de teste (30 dias) e benefícios para usuários **Premium**.
 
 ---
 
@@ -37,23 +32,24 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ### **Backend & Inteligência Artificial**
 
-| Tecnologia       | Função                                                           |
-| :--------------- | :--------------------------------------------------------------- |
-| **Flask**        | Orquestração da API, rotas e controle de sessão.                 |
-| **Neura IA**     | Integração Python com o motor de IA local (Ollama).              |
-| **PyMySQL**      | Conexão de alta performance com banco de dados MySQL.            |
-| **Pillow (PIL)** | Processamento e otimização de uploads de imagens.                |
-| **FPDF**         | Geração de relatórios PDF para usuários Premium.                 |
+| Tecnologia   | Função                                                           |
+| :----------- | :--------------------------------------------------------------- |
+| **Flask**    | Servidor robusto e orquestração de APIs REST.                    |
+| **Neura IA** | Framework de integração para orquestração de modelos LLM locais. |
+| **Ollama**   | Motor de execução local (Models: Gemma2:2b & Moondream).         |
+| **PyMySQL**  | Driver de alta performance para banco de dados MySQL.            |
+| **FPDF**     | Motor de geração de laudos técnicos em formato PDF.              |
+| **Pydub**    | Processamento e conversão de áudio para transcrição.             |
 
 ### **Frontend**
 
-| Tecnologia         | Função                                                      |
-| :----------------- | :---------------------------------------------------------- |
-| **Vanilla JS**     | Gerenciamento de estado, requisições Fetch e lógica de SPA. |
-| **Web Speech API** | Reconhecimento de voz e síntese de fala (Premium).          |
-| **CSS3 Variables** | Tematização fácil e design consistente.                     |
-| **Inter Font**     | Tipografia moderna focada em legibilidade.                  |
-| **Marked.js**      | Renderização de Markdown nas respostas do chat.             |
+| Tecnologia         | Função                                                        |
+| :----------------- | :------------------------------------------------------------ |
+| **UX Premium**     | Interface moderna com Dark Mode e Glassmorphism.              |
+| **Vanilla JS**     | Lógica de estado e autenticação JWT (Sem frameworks pesados). |
+| **Web Speech API** | Captura de áudio nativa com integração ao backend.            |
+| **Marked.js**      | Renderização dinâmica de Markdown nas respostas da IA.        |
+| **Inter Font**     | Tipografia moderna otimizada para legibilidade técnica.       |
 
 ---
 
@@ -61,21 +57,20 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ```
 AutoAssist/
-├── app.py                  # Servidor principal
-├── nogai.py                # Módulo de texto
-├── vision_ai.py            # Pipeline de visão
-├── report_generator.py     # Gerador de PDF
-├── static/
-│   ├── js/
-│   │   └── auth.js         # Gerenciamento de autenticação JWT
-│   └── reports/            # PDFs gerados
-├── templates/
-│   ├── home.html           # Landing page + Modal de Pagamento
-│   ├── chat.html           # Interface do consultor + Histórico + Voz
-│   ├── perfil.html         # Perfil do usuário
-│   ├── login.html          # Login
-│   └── cadastro.html       # Cadastro
-└── requirements.txt        # Dependências Python
+├── backend/
+│   ├── app.py                  # Servidor principal e API
+│   ├── nogai.py                # Módulo de texto (Gemma 2)
+│   ├── vision_ai.py            # Pipeline de visão (Moondream)
+│   ├── report_generator.py     # Gerador de PDFs técnicos
+│   └── requirements.txt        # Dependências Python
+├── frontend/
+│   ├── index.html              # Landing Page & Home
+│   ├── chat.html               # Interface do Consultor NOG
+│   ├── dashboard.html          # Painel de Saúde do Veículo
+│   ├── perfil.html             # Gestão de Dados e Veículo
+│   ├── login.html / cadastro.html
+│   └── static/                 # CSS, JS (auth.js, config.js) e assets
+└── README.md
 ```
 
 ---
@@ -84,127 +79,47 @@ AutoAssist/
 
 ### 1. Pré-requisitos
 
-- Python 3.10+
-- **Ollama** instalado e rodando no seu sistema
-- Servidor MySQL (Ex: XAMPP, Workbench ou Docker)
+- Python 3.10 ou superior
+- **Ollama** instalado e configurado
+- Servidor MySQL ativo
 
 ### 2. Configuração dos Modelos (Ollama)
 
-Antes de iniciar o Python, abra seu terminal e baixe os modelos necessários:
+Execute no terminal para baixar os pesos dos modelos otimizados:
 
 ```bash
-ollama pull qwen2:0.5b
+ollama pull gemma2:2b
 ollama pull moondream
 ```
 
-### 3. Instalar Dependências
+### 3. Instalação e Execução
 
 ```bash
+# Entre na pasta do backend
+cd backend
+
+# Instale as dependências
 pip install -r requirements.txt
-```
 
-### 4. Configurar Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz do projeto:
-
-```env
-JWT_SECRET_KEY=sua_chave_secreta_aqui
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=autoassist
-DB_PORT=3306
-```
-
-### 5. Executar Servidor
-
-```bash
+# Configure o arquivo .env manualmente conforme as variáveis necessárias
+# Execute o servidor
 python app.py
 ```
 
-O servidor estará disponível em `http://localhost:5000`
+A plataforma estará acessível em `http://localhost:5000`
 
 ---
 
-## 💰 Modelo de Monetização
+## 🔒 Segurança e Boas Práticas
 
-### **Trial Gratuito (30 dias)**
-
-- Acesso completo às funcionalidades de análise
-- Após 30 dias, modal de upgrade bloqueia o acesso
-
-### **Premium (R$ 29,90 - Pagamento Único)**
-
-- Desbloqueio permanente
-- Recursos exclusivos (PDF, Voz, Login Infinito)
-- Simulação de pagamento via PIX (endpoint `/api/pay/mock`)
-
-### **Implementação Técnica**
-
-- Função `is_trial_expired(user)` verifica idade da conta
-- Endpoint `/api/chat` retorna 402 (Payment Required) se expirado
-- Modal não-dismissível força upgrade na `home.html`
-- Endpoint `/api/pay/mock` simula confirmação de pagamento
+- **Bcrypt**: Todas as senhas (primárias e secundárias) são armazenadas como hashes seguros.
+- **JWT Protection**: Todos os endpoints `/api/` (exceto login/cadastro) exigem token válido.
+- **Rate Limiting**: Proteção contra ataques de força bruta e sobrecarga do motor de IA.
+- **CSP & Talisman**: Implementação de cabeçalhos de segurança HTTP.
 
 ---
 
-## 📊 Endpoints da API
+## 📝 Licença e Autoria
 
-### **Autenticação**
-
-- `POST /api/cadastro` - Registro de novo usuário
-- `POST /api/login` - Login (retorna access + refresh tokens)
-- `POST /api/refresh` - Renovação de access token (sliding expiration para Premium)
-
-### **Usuário**
-
-- `GET /api/user` - Dados do perfil (inclui `trial_expired` e `is_premium`)
-- `PUT /api/user` - Atualização de nome/email
-
-### **Chat**
-
-- `POST /api/chat` - Envio de mensagem/imagem (bloqueado se trial expirado)
-- `GET /api/chat/history` - Últimas 20 conversas
-
-### **Premium**
-
-- `POST /api/report` - Geração de PDF (requer `is_premium: true`)
-- `POST /api/pay/mock` - Simulação de pagamento PIX
-
----
-
-## 🎨 Design e UX
-
-- **Dark Mode Nativo:** Interface otimizada para reduzir fadiga visual
-- **Glassmorphism:** Efeitos modernos de vidro fosco
-- **Micro-animações:** Feedback visual em todas as interações
-- **Responsivo:** Adaptado para desktop, tablet e mobile
-- **Acessibilidade:** Suporte a leitores de tela e navegação por teclado
-
----
-
-## 🔒 Segurança
-
-- **JWT com Refresh Tokens:** Sliding expiration para Premium
-- **Bcrypt:** Hash de senhas com salt automático
-- **Rate Limiting:** Proteção contra brute-force (20 req/min no chat)
-- **Validação Server-Side:** Bloqueio de trial expirado no backend
-- **CORS Configurado:** Proteção contra requisições não autorizadas
-
----
-
-## 📝 Licença
-
-Este projeto é proprietário e foi desenvolvido para fins educacionais e comerciais.
-
----
-
-## 👨‍💻 Autor
-
-Desenvolvido por **Júlio César** usando **Neura IA**.
-
----
-
-## 🆘 Suporte
-
-Para dúvidas ou problemas, entre em contato através do email de suporte ou abra uma issue no repositório.
+Desenvolvido por **Júlio César** com o suporte da **Neura IA**.
+Este projeto é proprietário e focado em demonstrar o poder da IA local no setor automotivo.

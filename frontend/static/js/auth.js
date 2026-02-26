@@ -20,6 +20,11 @@ class AuthManager {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Erro no login');
 
+            // Se o login exige 2FA, não salvamos os tokens ainda e retornamos o pending_token
+            if (data.two_factor_required) {
+                return data;
+            }
+
             localStorage.setItem(this.ACCESS_KEY, data.access_token);
             localStorage.setItem(this.REFRESH_KEY, data.refresh_token);
             localStorage.setItem(this.USER_KEY, JSON.stringify(data.user));
@@ -32,13 +37,43 @@ class AuthManager {
     }
 
     /**
+     * Verifica o código 2FA para completar o login
+     */
+    async verify2FA(pending_token, code) {
+        try {
+            const res = await fetch(`${this.API_URL}/api/auth/2fa/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pending_token, code })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Código inválido');
+
+            localStorage.setItem(this.ACCESS_KEY, data.access_token);
+            localStorage.setItem(this.REFRESH_KEY, data.refresh_token);
+            localStorage.setItem(this.USER_KEY, JSON.stringify(data.user));
+
+            return data;
+        } catch (error) {
+            console.error('Erro na verificação 2FA:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Realiza cadastro de novo usuário
      */
-    async register(nome, email, password) {
+    async register(nome, email, password, veiculo = null) {
+        const payload = { nome, email: email.toLowerCase(), password };
+        if (veiculo) {
+            payload.veiculo = veiculo;
+        }
+        
         const res = await fetch(`${this.API_URL}/api/cadastro`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome, email: email.toLowerCase(), password })
+            body: JSON.stringify(payload)
         });
 
         const data = await res.json();

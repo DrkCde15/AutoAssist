@@ -21,18 +21,15 @@ Identifique:
 Seja extremamente crítico e técnico.
 """
 
-# Detecta o Host (Render/Túnel)
-host_env = os.getenv("OLLAMA_HOST")
-# Se não houver env, o fallback agora é o TUNNEL_URL da lib (se existir)
-host_library = getattr(NeuraConfig, 'TUNNEL_URL', None) 
-host_escolhido = host_env or host_library or "https://neura-ai.loca.lt/"
+# Força conexão local pura
+host_escolhido = "http://127.0.0.1:11434"
 
 try:
-    # Tenta o modo v0.2.7
-    brain = Neura(model="qwen2:0.5b", system_prompt=VISION_PROMPT, host=host_escolhido)
+    # Tenta o modo v0.2.7 (Moondream para visão + Qwen 2 para texto)
+    brain = Neura(model="gemma2:2b", vision_model="moondream:latest", system_prompt=VISION_PROMPT, host=host_escolhido)
 except TypeError:
-    # Fallback v0.2.5 (Onde o erro do log acontece)
-    brain = Neura(model="qwen2:0.5b", system_prompt=VISION_PROMPT)
+    # Fallback v0.2.5
+    brain = Neura(model="gemma2:2b", vision_model="moondream:latest", system_prompt=VISION_PROMPT, host=host_escolhido)
     
     # RECONFIGURAÇÃO IMEDIATA
     brain.host = host_escolhido.rstrip('/')
@@ -47,11 +44,7 @@ except TypeError:
     logger.info(f"🚀 Host reconfigurado com sucesso para: {brain.host}")
 
 def analisar_imagem(image_b64: str, pergunta: str | None = None, filename: str = "temp_vision_upload.png") -> str:
-    """
-    Analisa imagem usando Pipeline de Dois Estágios:
-    1. Moondream (Visão) extrai os dados brutos.
-    2. Qwen (Linguagem) interpreta como o consultor NOG.
-    """
+    
     temp_path = filename 
     
     try:

@@ -44,9 +44,36 @@
             text-align: center;
             color: white;
             position: relative;
+            overflow: hidden;
+            z-index: 1;
+            /* Fundo de segurança caso a imagem falhe */
+            background-color: var(--primary-dark);
+        }
+
+        /* Camada para o efeito de transição Wipe */
+        .hero-wipe-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            z-index: 1;
+            clip-path: inset(0 0 0 100%);
+            pointer-events: none;
+            
+            /* Correções para eliminar a linha na borda (anti-aliasing) */
+            will-change: clip-path;
+            transform: translateZ(0) scale(1.001); 
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
         .hero-content {
+            position: relative;
+            z-index: 10; /* Garante que o texto fique acima de tudo */
             max-width: 800px;
             padding: 0 20px;
             animation: fadeIn 1.5s ease-out;
@@ -216,6 +243,10 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        .badge-atencao { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge-aviso { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .badge-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; }
     </style>
 </head>
 <body>
@@ -398,12 +429,12 @@
                     localStorage.setItem('autoassist_user', JSON.stringify(userData));
                     
                     // --- ATUALIZA A NAVBAR (LOGADO) ---
-                    centralIcon.href = "/perfil";
+                    centralIcon.href = "perfil.html";
                     centralIcon.title = `Logado como ${userData.nome}`;
                     centralIcon.innerHTML = `<i class="fas fa-user"></i>`;
                     
                     authLinks.innerHTML = `
-                        <span class="nav-link" style="cursor: default; color: #94a3b8;">Olá, ${userData.nome.split(' ')[0]}</span>
+                        <a href="dashboard.html" class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link" style="color: #60a5fa;"><i class="fas fa-comments"></i> Chat</a>
                         <button id="btnLogout" class="nav-link" style="background:none; border:none; font-family:inherit;">SAIR</button>
                     `;
@@ -453,6 +484,55 @@
                     btnPix.innerHTML = originalText;
                 }
             });
+
+            // --- LÓGICA DE SLIDESHOW DO HERO (ESTILO WIPE POWERPOINT) ---
+            const heroSection = document.querySelector('.hero');
+            const images = [
+                'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=1920',
+                'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1920',
+                'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1920',
+                'https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=1920',
+                'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1920'
+            ];
+            
+            // Força o carregamento imediato de todas as imagens
+            images.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+
+            let currentImgIndex = 0;
+            const wipeLayer = document.createElement('div');
+            wipeLayer.className = 'hero-wipe-layer';
+            heroSection.appendChild(wipeLayer);
+
+            setInterval(() => {
+                const nextIndex = (currentImgIndex + 1) % images.length;
+                const nextBg = `linear-gradient(rgba(15, 23, 42, 0.8), rgba(30, 58, 138, 0.8)), url('${images[nextIndex]}')`;
+
+                // 1. Prepara a camada de wipe (invisível à direita)
+                wipeLayer.style.transition = 'none';
+                wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
+                wipeLayer.style.backgroundImage = nextBg;
+
+                // Força reflow para garantir que o CSS 'transition: none' seja aplicado
+                wipeLayer.offsetHeight;
+
+                // 2. Inicia a transição Wipe
+                wipeLayer.style.transition = 'clip-path 1.8s cubic-bezier(0.77, 0, 0.175, 1)';
+                wipeLayer.style.clipPath = 'inset(0 0 0 0)';
+
+                // 3. Quando a animação termina:
+                setTimeout(() => {
+                    // Torna a imagem do wipe o fundo principal
+                    heroSection.style.backgroundImage = nextBg;
+                    // Reseta o wipe para a próxima vez (esconde ele)
+                    wipeLayer.style.transition = 'none';
+                    wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
+                    currentImgIndex = nextIndex;
+                }, 1900);
+                
+            }, 3000); // 3 segundos para a transição
         });
     </script>
 </body>
