@@ -15,8 +15,8 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 - **Consultoria Especializada (NOG):** O assistente "NOG" utiliza o modelo **Gemma 2 (2B)** para oferecer respostas focadas no mercado brasileiro, analisando modelos, versões, manutenção e custo-benefício.
 - **Raio-X Mecânico:** Pipeline de visão computacional de dois estágios (**Moondream + Gemma 2**) para análise de fotos, identificando ferrugem, desalinhamentos e vazamentos.
-- **Dashboard de Veículo:** Painel centralizado que monitora a saúde das principais peças do seu veículo e fornece alertas de manutenção preventiva.
-- **Estimativa FIPE Inteligente:** Cálculo de depreciação e valor de mercado em tempo real, ajustado pelo estado de conservação do veículo.
+- **Dashboard de Veículo:** Painel centralizado que monitora a saúde das principais peças do seu veículo e fornece cotação em tempo real da Tabela FIPE.
+- **Tabela FIPE Real-Time:** Integração com a API FIPE (via Parallelum) para fornecer valores de mercado precisos e atualizados, com fallback inteligente para estimativas em caso de indisponibilidade.
 - **Viva-Voz Inteligente:** Interação por voz em modo "mãos livres" com detecção automática de silêncio (Voice Activity Detection).
 
 ### **Segurança e Privacidade**
@@ -120,6 +120,6 @@ A plataforma estará acessível em `http://localhost:5000`
 ---
 
 ## 📝 Licença e Autoria
+Ideia original de **Clara Francisco**.
 
-Desenvolvido por **Júlio César** com o suporte da **Neura IA**.
-Este projeto é proprietário e focado em demonstrar o poder da IA local no setor automotivo.
+Sistema desenvolvido por **Júlio César**, **Caio Lima**, **Eduardo Nishida** e **Caio Yugo** com o suporte de **Neura IA**.
