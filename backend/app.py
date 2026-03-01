@@ -18,7 +18,7 @@ from passlib.hash import bcrypt
 from dotenv import load_dotenv
 import pymysql
 from pymysql.cursors import DictCursor
-from nogai import gerar_resposta
+from nogai import gerar_resposta, get_fipe_value
 from vision_ai import analisar_imagem
 from report_generator import criar_relatorio_pdf
 import speech_recognition as sr
@@ -550,10 +550,32 @@ def get_dashboard():
             alertas.append({"item": "Pneus", "status": "Ok" if idade < 4 else "Atenção", "msg": "Verificar TWI e validade."})
             alertas.append({"item": "Freios", "status": "Ok", "msg": "Monitorar espessura das pastilhas."})
             
-            # Cálculo de depreciação simplificado (enquanto não batemos na API por ID)
-            # Valor base hipotético de 100k depreciando 8% ao ano
-            valor_base = 80000 if user["veiculo_tipo"] == "carro" else 30000
-            valor_estimado = valor_base * (0.92 ** idade)
+            # Mapeamento do tipo para a API Fipe
+            tipo_map = {
+                "carro": "carros",
+                "moto": "motos",
+                "caminhao": "caminhoes",
+                "caminhão": "caminhoes"
+            }
+            tipo_fipe = tipo_map.get(user["veiculo_tipo"].lower(), "carros") if user["veiculo_tipo"] else "carros"
+            
+            # Busca valor real na API Fipe
+            dados_fipe = get_fipe_value(
+                tipo_fipe, 
+                user["veiculo_marca"], 
+                user["veiculo_modelo"], 
+                ano_fab
+            )
+            
+            if dados_fipe:
+                preco_fipe = dados_fipe.get("Valor", "N/A")
+                mes_fipe = dados_fipe.get("MesReferencia", datetime.now().strftime("%B %Y"))
+            else:
+                # Fallback: Cálculo de depreciação simplificado se a API falhar
+                valor_base = 80000 if user["veiculo_tipo"] == "carro" else 30000
+                valor_estimado = valor_base * (0.92 ** idade)
+                preco_fipe = f"R$ {valor_estimado:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                mes_fipe = f"{datetime.now().strftime('%B %Y')} (Estimado)"
             
             return jsonify({
                 "veiculo": {
@@ -564,8 +586,8 @@ def get_dashboard():
                 },
                 "saude": alertas,
                 "fipe": {
-                    "preco": f"R$ {valor_estimado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                    "mes": datetime.now().strftime("%B %Y")
+                    "preco": preco_fipe,
+                    "mes": mes_fipe
                 }
             }), 200
     except Exception as e:

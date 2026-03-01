@@ -34,14 +34,65 @@ Estrutura de Resposta Padrão:
 3. 💰 **Avaliação (Se aplicável)**: Se falarem de compra/venda, sempre cite a Tabela FIPE como referência, mas ajuste pelo estado do carro.
 """
 
-def get_fipe_value(tipo, marca, modelo, ano):
-    """Busca o valor médio de mercado via API externa (opcional/auxiliar)"""
+def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
+    """
+    Busca o valor médio de mercado via API externa FIPE (Parallelum).
+    Implementação robusta que mapeia nomes de marcas e modelos para IDs da API.
+    """
     import requests
+    BASE_URL = "https://parallelum.com.br/fipe/api/v1"
+    
     try:
-        # Simplificação: Em uma implementação real, precisaríamos dos IDs da FIPE.
-        # Aqui simulamos ou usamos uma busca simplificada se disponível.
+        # 1. Buscar e mapear Marca
+        response = requests.get(f"{BASE_URL}/{tipo}/marcas", timeout=10)
+        if response.status_code != 200:
+            return None
+        
+        marcas = response.json()
+        marca_obj = next(
+            (m for m in marcas if marca_nome.lower() in m["nome"].lower()),
+            None
+        )
+        if not marca_obj:
+            return None
+
+        # 2. Buscar Modelos da Marca
+        response = requests.get(f"{BASE_URL}/{tipo}/marcas/{marca_obj['codigo']}/modelos", timeout=10)
+        if response.status_code != 200:
+            return None
+            
+        modelos_resp = response.json()
+        # Filtra todos os modelos que batem com o nome (candidatos)
+        candidatos = [m for m in modelos_resp.get("modelos", []) if modelo_nome.lower() in m["nome"].lower()]
+        
+        if not candidatos:
+            return None
+
+        # 3. Tentar encontrar o ano em cada variante do modelo
+        for modelo in candidatos:
+            response = requests.get(f"{BASE_URL}/{tipo}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos", timeout=10)
+            if response.status_code != 200:
+                continue
+                
+            anos_disponiveis = response.json()
+            ano_obj = next(
+                (a for a in anos_disponiveis if a["nome"].startswith(str(ano))),
+                None
+            )
+            
+            if ano_obj:
+                # 4. Se encontrou o ano, busca o valor final
+                valor_resp = requests.get(
+                    f"{BASE_URL}/{tipo}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}",
+                    timeout=10
+                )
+                if valor_resp.status_code == 200:
+                    return valor_resp.json()
+        
         return None
-    except:
+
+    except Exception as e:
+        logger.error(f"Erro ao buscar FIPE para {marca_nome} {modelo_nome} {ano}: {e}")
         return None
 
 # Força conexão local pura para cumprir o requisito de "conexões locais"
