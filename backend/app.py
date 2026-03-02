@@ -179,6 +179,12 @@ def is_trial_expired(user):
 @app.route("/health")
 def health(): return jsonify(status="healthy"), 200
 
+def is_valid_email_domain(email):
+    """Valida se o email pertence aos domínios permitidos."""
+    allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com"]
+    email_lower = email.lower()
+    return any(email_lower.endswith(domain) for domain in allowed_domains)
+
 # --- AUTH ENDPOINTS ---
 @app.route("/api/cadastro", methods=["POST"])
 def cadastro():
@@ -189,6 +195,9 @@ def cadastro():
     possui_veiculo = veiculo.get("possui", False)
     
     if not nome or not email or len(password) < 6: return jsonify(error="Dados inválidos"), 400
+    
+    if not is_valid_email_domain(email):
+        return jsonify(error="Insira um endereço de email valido"), 400
     try:
         with get_db() as (cursor, conn):
             cursor.execute("""
@@ -212,6 +221,9 @@ def login():
     data = request.get_json()
     email, password = data.get("email"), data.get("password")
     
+    if not email or not is_valid_email_domain(email):
+        return jsonify(error="Insira um endereço de email valido"), 401
+
     try:
         with get_db() as (cursor, conn):
             cursor.execute("SELECT * FROM users WHERE email = %s", (email.lower(),))
