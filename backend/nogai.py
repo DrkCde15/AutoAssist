@@ -97,8 +97,9 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         logger.error(f"Erro ao buscar FIPE para {marca_nome} {modelo_nome} {ano}: {e}")
         return None
 
-# Força conexão local pura para cumprir o requisito de "conexões locais"
-host_escolhido = "http://127.0.0.1:11434"
+# Configuração dinâmica do Host (Local vs Tunel/Produção)
+# No Render, basta criar a variável de ambiente NEURA_AI_URL apontando para o seu túnel
+host_escolhido = os.getenv("NEURA_AI_URL", "http://127.0.0.1:11434").rstrip("/")
 
 def get_mysql_history(user_id: int, limit: int = 5):
     """Recupera o histórico do MySQL para substituir o SQLite."""
