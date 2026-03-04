@@ -1,5 +1,4 @@
 from fpdf import FPDF
-import os
 from datetime import datetime
 
 class AutoAssistReport(FPDF):

@@ -5,8 +5,8 @@ import ollama
 import pymysql
 from pymysql.cursors import DictCursor
 import requests
-from neura_ai.core import Neura # type: ignore
-from neura_ai.config import NeuraConfig # type: ignore
+from neura_ai.core import Neura
+from neura_ai.config import NeuraConfig
 
 logger = logging.getLogger(__name__)
 
