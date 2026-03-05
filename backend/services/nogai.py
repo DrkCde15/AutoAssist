@@ -1,4 +1,5 @@
 # nogai.py - Módulo especializado em interações de texto automotivo usando Google Gemini (New SDK)
+# backend/services/nogai.py
 import logging
 import os
 import pymysql

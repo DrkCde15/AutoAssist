@@ -108,6 +108,20 @@ pip install -r requirements.txt
 # Execute o servidor
 python app.py
 ```
+### 3.1 Criando um ambiente virtual
+
+```bash
+# Entre na pasta do backend
+cd backend
+
+# Instale as dependências
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Execute o servidor
+python app.py
+```
 
 A plataforma estará acessível em `http://localhost:5000`
 

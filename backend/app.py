@@ -20,9 +20,9 @@ from flask_talisman import Talisman
 from passlib.hash import bcrypt
 import pymysql
 from pymysql.cursors import DictCursor
-from nogai import gerar_resposta, get_fipe_value
-from vision_ai import analisar_imagem
-from report_generator import criar_relatorio_pdf
+from services.nogai import gerar_resposta, get_fipe_value
+from services.vision_ai import analisar_imagem
+from services.report_generator import criar_relatorio_pdf
 import speech_recognition as sr
 from pydub import AudioSegment
 import io
