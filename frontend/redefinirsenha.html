@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>NOG • Redefinir Senha</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:"Inter",sans-serif;
+}
+
+body{
+background:radial-gradient(circle at top right,#1e3a8a 0%,#0b1a3a 40%,#0a1430 100%);
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:40px 20px;
+}
+
+.container{
+background:rgba(255,255,255,0.03);
+backdrop-filter:blur(15px);
+border-radius:24px;
+box-shadow:0 10px 50px rgba(0,0,0,0.5);
+padding:40px;
+width:100%;
+max-width:420px;
+border:1px solid rgba(255,255,255,0.1);
+animation:fadeIn .5s ease-out;
+}
+
+@keyframes fadeIn{
+from{opacity:0;transform:translateY(10px);}
+to{opacity:1;transform:translateY(0);}
+}
+
+.logo{
+text-align:center;
+margin-bottom:35px;
+}
+
+.logo h1{
+color:#fff;
+font-size:36px;
+font-weight:800;
+letter-spacing:-1px;
+margin-bottom:5px;
+}
+
+.logo span{
+color:#3b82f6;
+}
+
+.logo p{
+color:rgba(255,255,255,.5);
+font-size:14px;
+}
+
+.form-group{
+margin-bottom:20px;
+}
+
+label{
+display:block;
+color:rgba(255,255,255,.9);
+font-weight:600;
+margin-bottom:8px;
+font-size:13px;
+text-transform:uppercase;
+letter-spacing:.5px;
+}
+
+.input-wrapper{
+position:relative;
+}
+
+.input-wrapper i{
+position:absolute;
+left:16px;
+top:50%;
+transform:translateY(-50%);
+color:rgba(255,255,255,.4);
+font-size:14px;
+}
+
+input{
+width:100%;
+padding:14px 14px 14px 46px;
+border-radius:14px;
+border:1px solid rgba(255,255,255,.1);
+outline:none;
+font-size:15px;
+background:rgba(255,255,255,.05);
+color:#fff;
+transition:.3s;
+}
+
+input::placeholder{
+color:rgba(255,255,255,.3);
+}
+
+input:focus{
+border-color:#3b82f6;
+background:rgba(255,255,255,.08);
+box-shadow:0 0 0 4px rgba(59,130,246,.15);
+}
+
+.btn{
+width:100%;
+padding:16px;
+background:#3b82f6;
+color:#fff;
+border:none;
+border-radius:14px;
+font-size:16px;
+font-weight:700;
+cursor:pointer;
+transition:.3s;
+margin-top:10px;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:10px;
+}
+
+.btn:hover:not(:disabled){
+background:#2563eb;
+transform:translateY(-2px);
+box-shadow:0 8px 25px rgba(59,130,246,.4);
+}
+
+.btn:disabled{
+opacity:.6;
+cursor:not-allowed;
+}
+
+.alert{
+padding:14px 18px;
+border-radius:12px;
+margin-bottom:20px;
+font-size:14px;
+font-weight:500;
+display:none;
+}
+
+.alert-error{
+background:rgba(239,68,68,.15);
+color:#f87171;
+}
+
+.alert-success{
+background:rgba(34,197,94,.15);
+color:#4ade80;
+}
+
+.links{
+text-align:center;
+margin-top:25px;
+font-size:14px;
+color:rgba(255,255,255,.5);
+}
+
+.links a{
+color:#3b82f6;
+text-decoration:none;
+font-weight:700;
+}
+
+.links a:hover{
+text-decoration:underline;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="logo">
+<h1>NOG<span>.</span></h1>
+<p>Defina uma nova senha para sua conta</p>
+</div>
+
+<div id="alertError" class="alert alert-error"></div>
+<div id="alertSuccess" class="alert alert-success"></div>
+
+<div class="form-group">
+<label>Nova Senha</label>
+<div class="input-wrapper">
+<i class="fas fa-lock"></i>
+<input id="senha" type="password" placeholder="Digite a nova senha">
+</div>
+</div>
+
+<div class="form-group">
+<label>Confirmar Senha</label>
+<div class="input-wrapper">
+<i class="fas fa-shield-alt"></i>
+<input id="confirmarSenha" type="password" placeholder="Repita a nova senha">
+</div>
+</div>
+
+<button class="btn" id="btnResetar">
+Redefinir senha <i class="fas fa-key"></i>
+</button>
+
+<div class="links">
+<a href="login.html">Voltar para Login</a>
+</div>
+
+</div>
+
+<script src="./static/js/config.js"></script>
+<script src="./static/js/auth.js"></script>
+
+<script>
+
+const btn = document.getElementById("btnResetar");
+const alertError = document.getElementById("alertError");
+const alertSuccess = document.getElementById("alertSuccess");
+
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+
+function showError(msg){
+alertError.textContent = msg;
+alertError.style.display = "block";
+alertSuccess.style.display = "none";
+}
+
+function showSuccess(msg){
+alertSuccess.textContent = msg;
+alertSuccess.style.display = "block";
+alertError.style.display = "none";
+}
+
+btn.addEventListener("click",async()=>{
+
+alertError.style.display="none";
+alertSuccess.style.display="none";
+
+const senha=document.getElementById("senha").value;
+const confirmar=document.getElementById("confirmarSenha").value;
+
+if(!senha||!confirmar){
+showError("Preencha todos os campos.");
+return;
+}
+
+if(senha.length<6){
+showError("A senha deve ter pelo menos 6 caracteres.");
+return;
+}
+
+if(senha!==confirmar){
+showError("As senhas não coincidem.");
+return;
+}
+
+if(!token){
+showError("Token de redefinição inválido.");
+return;
+}
+
+btn.disabled=true;
+btn.innerHTML='Redefinindo... <i class="fas fa-circle-notch fa-spin"></i>';
+
+try{
+
+if(Auth.resetPassword){
+await Auth.resetPassword(token,senha);
+}
+
+showSuccess("Senha redefinida com sucesso! Redirecionando...");
+
+setTimeout(()=>{
+window.location.href="login.html";
+},2000);
+
+}catch(err){
+
+showError(err.message||"Erro ao redefinir senha.");
+
+}
+
+btn.disabled=false;
+btn.innerHTML='Redefinir senha <i class="fas fa-key"></i>';
+
+});
+
+</script>
+
+</body>
+</html>
