@@ -1,6 +1,9 @@
 from dotenv import load_dotenv
 load_dotenv()
-
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
 import os
 import logging
 from datetime import timedelta, datetime, timezone
@@ -29,6 +32,43 @@ from pydub import AudioSegment
 import io
 import pyotp
 import base64
+
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
+EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+
+def enviar_email(destinatario, assunto, mensagem_html):
+
+    msg = MIMEMultipart()
+
+    msg["From"] = EMAIL_REMETENTE
+    msg["To"] = destinatario
+    msg["Subject"] = assunto
+
+    msg.attach(MIMEText(mensagem_html, "html"))
+
+    try:
+
+        servidor = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        servidor.starttls()
+
+        servidor.login(EMAIL_REMETENTE, EMAIL_SENHA_APP)
+
+        servidor.sendmail(
+            EMAIL_REMETENTE,
+            destinatario,
+            msg.as_string()
+        )
+
+        servidor.quit()
+
+        print("📧 Email enviado com sucesso!")
+
+    except Exception as e:
+
+        print("Erro ao enviar email:", e)
 
 # ======================================================
 # CONFIGURAÇÃO DE LOGGING
@@ -161,6 +201,15 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        cursor.execute("""
+CREATE TABLE IF NOT EXISTS redefinicao_senha (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    data_expiracao DATETIME NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
+)
+""")
         print("✅ Banco de dados inicializado com sucesso!")
 
 @app.before_request
@@ -374,65 +423,136 @@ def disable_2fa():
 
 @app.route("/api/auth/forgot-password", methods=["POST"])
 def forgot_password():
-    """Gera um token de recuperação de senha e simula o envio de email."""
+
     data = request.get_json()
     email = data.get("email")
-    
-    if not email or not is_valid_email_domain(email):
-        return jsonify(error="Insira um endereço de email válido"), 400
-        
+
+    if not email:
+        return jsonify({"error": "Email é obrigatório"}), 400
+
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT id, nome FROM users WHERE email = %s", (email.lower(),))
-            user = cursor.fetchone()
-            
-            if not user:
-                # Por segurança, retornamos sucesso mesmo que o email não exista para evitar enumeração de usuários
-                return jsonify(message="Se o email existir, um link de recuperação será enviado."), 200
-            
-            # Gera um token de uso único (15 minutos)
-            reset_token = create_access_token(
-                identity=str(user['id']), 
-                expires_delta=timedelta(minutes=15),
-                additional_claims={"pw_reset": True}
-            )
-            
-            # Em um sistema real, aqui enviaríamos o email.
-            # Para este projeto, vamos apenas logar o link de recuperação.
-            reset_link = f"{request.host_url}redefinir-senha.html?token={reset_token}"
-            logger.info(f"🔑 [RECUPERAÇÃO DE SENHA] Usuário: {user['nome']} ({email})")
-            logger.info(f"🔗 Link: {reset_link}")
-            
-            return jsonify(message="Instruções de recuperação enviadas para o seu email."), 200
-    except Exception as e:
-        logger.error(f"Erro ao processar esqueci senha: {e}")
-        return jsonify(error="Erro interno ao processar solicitação"), 500
 
+            cursor.execute(
+                "SELECT id, nome FROM users WHERE email=%s",
+                (email.lower(),)
+            )
+
+            user = cursor.fetchone()
+
+            # Sempre retornar sucesso por segurança
+            if not user:
+                return jsonify({
+                    "message": "Se o email existir, um link será enviado."
+                }), 200
+
+            # gerar token seguro
+            token = secrets.token_urlsafe(32)
+
+            # expiração 15 minutos
+            expiracao = datetime.utcnow() + timedelta(minutes=15)
+
+            # salvar token no banco
+            cursor.execute("""
+                INSERT INTO redefinicao_senha
+                (usuario_id, token, data_expiracao)
+                VALUES (%s,%s,%s)
+            """, (user["id"], token, expiracao))
+
+            # gerar link
+            reset_link = f"{request.host_url}redefinir-senha.html?token={token}"
+
+            # =====================================================
+            # EMAIL
+            # =====================================================
+
+            mensagem = f"""
+<h2>Redefinição de senha</h2>
+
+<p>Você solicitou redefinir sua senha.</p>
+
+<p>Clique no link abaixo:</p>
+
+<a href="{reset_link}">
+Redefinir senha
+</a>
+
+<p>Este link expira em 15 minutos.</p>
+
+<p>Se você não solicitou isso, ignore este email.</p>
+"""
+
+            enviar_email(
+                email,
+                "Redefinição de senha",
+                mensagem
+            )
+
+            logger.info(f"Email de redefinição enviado para {email}")
+
+            return jsonify({
+                "message": "Se o email existir, um link será enviado."
+            }), 200
+
+    except Exception as e:
+
+        logger.error(f"Erro em forgot-password: {e}")
+
+        return jsonify({
+            "error": "Erro interno do servidor"
+        }), 500
+    
 @app.route("/api/auth/reset-password", methods=["POST"])
 def reset_password():
-    """Redefine a senha do usuário usando um token válido."""
+
     data = request.get_json()
+
     token = data.get("token")
     new_password = data.get("password")
-    
+
     if not token or not new_password or len(new_password) < 6:
-        return jsonify(error="Dados inválidos ou senha muito curta"), 400
-        
+        return jsonify(error="Senha inválida"), 400
+
     try:
-        from flask_jwt_extended import decode_token
-        decoded = decode_token(token)
-        
-        if not decoded.get("sub") or not decoded.get("pw_reset"):
-            return jsonify(error="Token de redefinição inválido ou expirado"), 401
-            
-        user_id = decoded["sub"]
+
         with get_db() as (cursor, conn):
-            hashed_password = bcrypt.hash(new_password)
-            cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_password, user_id))
-            return jsonify(message="Senha redefinida com sucesso"), 200
+
+            cursor.execute("""
+                SELECT usuario_id
+                FROM redefinicao_senha
+                WHERE token=%s
+                AND data_expiracao > NOW()
+            """, (token,))
+
+            registro = cursor.fetchone()
+
+            if not registro:
+                return jsonify(error="Token inválido ou expirado"), 400
+
+            hashed = bcrypt.hash(new_password)
+
+            cursor.execute("""
+                UPDATE users
+                SET password=%s
+                WHERE id=%s
+            """, (hashed, registro["usuario_id"]))
+
+            cursor.execute(
+                "DELETE FROM redefinicao_senha WHERE token=%s",
+                (token,)
+            )
+
+            return jsonify(
+                message="Senha redefinida com sucesso"
+            ), 200
+
     except Exception as e:
+
         logger.error(f"Erro ao redefinir senha: {e}")
-        return jsonify(error="Não foi possível redefinir a senha. O link pode ter expirado."), 400
+
+        return jsonify(
+            error="Erro ao redefinir senha"
+        ), 500
 
 @app.route("/api/user", methods=["GET"])
 @jwt_required()
