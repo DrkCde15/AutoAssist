@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>NOG • Recuperar Senha</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+
+      body {
+        background: radial-gradient(circle at top right, #1e3a8a 0%, #0b1a3a 40%, #0a1430 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(15px);
+        border-radius: 24px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+        padding: 40px;
+        width: 100%;
+        max-width: 420px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        animation: fadeIn 0.5s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .logo {
+        text-align: center;
+        margin-bottom: 35px;
+      }
+
+      .logo h1 {
+        color: #fff;
+        font-size: 36px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 5px;
+      }
+
+      .logo h1 span {
+        color: #3b82f6;
+      }
+
+      .logo p {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 14px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .input-wrapper {
+        position: relative;
+      }
+
+      .input-wrapper i {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 14px;
+      }
+
+      input {
+        width: 100%;
+        padding: 14px 14px 14px 46px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        outline: none;
+        font-size: 15px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        transition: all 0.3s;
+      }
+
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      input:focus {
+        border-color: #3b82f6;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      }
+
+      .btn {
+        width: 100%;
+        padding: 16px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .btn:hover:not(:disabled) {
+        background: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .alert {
+        padding: 14px 18px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        display: none;
+      }
+
+      .alert-error {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+      }
+
+      .alert-success {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+      }
+
+      .links {
+        text-align: center;
+        margin-top: 25px;
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .links a {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      .links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+
+      <div class="logo">
+        <h1>NOG<span>.</span></h1>
+        <p>Recuperar acesso à sua conta</p>
+      </div>
+
+      <div id="alertError" class="alert alert-error"></div>
+      <div id="alertSuccess" class="alert alert-success"></div>
+
+      <div class="form-group">
+        <label>E-mail da Conta</label>
+        <div class="input-wrapper">
+          <i class="fas fa-envelope"></i>
+          <input id="email" type="email" placeholder="seu@email.com">
+        </div>
+      </div>
+
+      <button class="btn" id="btnEnviar">
+        Enviar recuperação <i class="fas fa-paper-plane"></i>
+      </button>
+
+      <div class="links">
+        Lembrou sua senha?
+        <a href="login.html">Voltar para Login</a>
+      </div>
+
+    </div>
+
+    <script src="./static/js/config.js"></script>
+    <script src="./static/js/auth.js"></script>
+
+    <script>
+      const btn = document.getElementById("btnEnviar");
+      const alertError = document.getElementById("alertError");
+      const alertSuccess = document.getElementById("alertSuccess");
+
+      function showError(msg) {
+        alertError.textContent = msg;
+        alertError.style.display = "block";
+        alertSuccess.style.display = "none";
+      }
+
+      function showSuccess(msg) {
+        alertSuccess.textContent = msg;
+        alertSuccess.style.display = "block";
+        alertError.style.display = "none";
+      }
+
+      btn.addEventListener("click", async () => {
+
+        alertError.style.display = "none";
+        alertSuccess.style.display = "none";
+
+        const email = document.getElementById("email").value.trim();
+
+        if (!email) {
+          showError("Digite o email da sua conta.");
+          return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = 'Enviando... <i class="fas fa-circle-notch fa-spin"></i>';
+
+        try {
+
+          if (Auth.forgotPassword) {
+            await Auth.forgotPassword(email);
+          }
+
+          showSuccess("Se este email existir no sistema, um link de recuperação será enviado.");
+
+        } catch (err) {
+
+          showError(err.message || "Erro ao solicitar recuperação.");
+
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = 'Enviar recuperação <i class="fas fa-paper-plane"></i>';
+
+      });
+    </script>
+
+  </body>
+</html>
+
