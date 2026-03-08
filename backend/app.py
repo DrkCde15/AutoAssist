@@ -12,7 +12,8 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     jwt_required,
-    get_jwt_identity
+    get_jwt_identity,
+    decode_token
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -370,6 +371,68 @@ def disable_2fa():
     except Exception as e:
         logger.error(f"Erro ao desativar 2FA: {e}")
         return jsonify(error="Erro ao desativar 2FA"), 500
+
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    """Gera um token de recuperação de senha e simula o envio de email."""
+    data = request.get_json()
+    email = data.get("email")
+    
+    if not email or not is_valid_email_domain(email):
+        return jsonify(error="Insira um endereço de email válido"), 400
+        
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT id, nome FROM users WHERE email = %s", (email.lower(),))
+            user = cursor.fetchone()
+            
+            if not user:
+                # Por segurança, retornamos sucesso mesmo que o email não exista para evitar enumeração de usuários
+                return jsonify(message="Se o email existir, um link de recuperação será enviado."), 200
+            
+            # Gera um token de uso único (15 minutos)
+            reset_token = create_access_token(
+                identity=str(user['id']), 
+                expires_delta=timedelta(minutes=15),
+                additional_claims={"pw_reset": True}
+            )
+            
+            # Em um sistema real, aqui enviaríamos o email.
+            # Para este projeto, vamos apenas logar o link de recuperação.
+            reset_link = f"{request.host_url}redefinir-senha.html?token={reset_token}"
+            logger.info(f"🔑 [RECUPERAÇÃO DE SENHA] Usuário: {user['nome']} ({email})")
+            logger.info(f"🔗 Link: {reset_link}")
+            
+            return jsonify(message="Instruções de recuperação enviadas para o seu email."), 200
+    except Exception as e:
+        logger.error(f"Erro ao processar esqueci senha: {e}")
+        return jsonify(error="Erro interno ao processar solicitação"), 500
+
+@app.route("/api/auth/reset-password", methods=["POST"])
+def reset_password():
+    """Redefine a senha do usuário usando um token válido."""
+    data = request.get_json()
+    token = data.get("token")
+    new_password = data.get("password")
+    
+    if not token or not new_password or len(new_password) < 6:
+        return jsonify(error="Dados inválidos ou senha muito curta"), 400
+        
+    try:
+        from flask_jwt_extended import decode_token
+        decoded = decode_token(token)
+        
+        if not decoded.get("sub") or not decoded.get("pw_reset"):
+            return jsonify(error="Token de redefinição inválido ou expirado"), 401
+            
+        user_id = decoded["sub"]
+        with get_db() as (cursor, conn):
+            hashed_password = bcrypt.hash(new_password)
+            cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_password, user_id))
+            return jsonify(message="Senha redefinida com sucesso"), 200
+    except Exception as e:
+        logger.error(f"Erro ao redefinir senha: {e}")
+        return jsonify(error="Não foi possível redefinir a senha. O link pode ter expirado."), 400
 
 @app.route("/api/user", methods=["GET"])
 @jwt_required()

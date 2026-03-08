@@ -168,6 +168,46 @@ class AuthManager {
         }
     }
 
+    /**
+     * Solicita recuperação de senha via email
+     */
+    async forgotPassword(email) {
+        try {
+            const res = await fetch(`${this.API_URL}/api/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email.toLowerCase() })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Erro ao processar');
+            return data;
+        } catch (error) {
+            console.error('Erro no processo de esqueci senha:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Define uma nova senha usando o token de recuperação
+     */
+    async resetPassword(token, password) {
+        try {
+            const res = await fetch(`${this.API_URL}/api/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, password })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Erro ao processar');
+            return data;
+        } catch (error) {
+            console.error('Erro no processo de redefinir senha:', error);
+            throw error;
+        }
+    }
+
     isAuthenticated() {
         return !!localStorage.getItem(this.ACCESS_KEY);
     }
