@@ -460,8 +460,13 @@ def forgot_password():
                 VALUES (%s,%s,%s)
             """, (user["id"], token, expiracao))
 
-            # gerar link
-            reset_link = f"{request.host_url}redefinir-senha.html?token={token}"
+            # Gerar link apontando para o Frontend (GH Pages ou Local)
+            frontend_url = os.getenv("FRONTEND_URL", request.host_url)
+            # Garante que a URL termine com / se não tiver
+            if not frontend_url.endswith("/"):
+                frontend_url += "/"
+            
+            reset_link = f"{frontend_url}redefinir-senha.html?token={token}"
 
             # =====================================================
             # EMAIL
