@@ -113,6 +113,7 @@ jwt = JWTManager(app)
 # Altere as origens conforme necessário. Nunca use "*" com credenciais em produção.
 allowed_origins = [
     "https://autoassis.onrender.com",  # Produção
+    "https://drkcde15.github.io",  # Origem correta para GitHub Pages (sem path)
     "http://localhost:5000",
     "http://127.0.0.1:5000",
     "http://localhost:5500",           # Live Server
