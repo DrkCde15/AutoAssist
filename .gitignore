@@ -19,7 +19,7 @@ venv/
 *.sqlite3
 *.bak
 *.swp
-
+reports/
 # --- Packaging & Build ---
 *.egg-info/
 *.egg
