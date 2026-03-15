@@ -455,7 +455,7 @@
                         paymentModal.style.display = 'flex';
                     }
 
-                } else {
+                } else if (response.status === 401 || response.status === 403) {
                     console.warn('Sessão inválida, fazendo logout.');
                     Auth.logout(false);
                     window.location.reload();

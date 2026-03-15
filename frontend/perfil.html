@@ -359,7 +359,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         if (!Auth.isAuthenticated()) {
-            window.location.href = '/login.html';
+            window.location.href = 'login.html';
             return;
         }
 
@@ -512,7 +512,7 @@
                 infoVeiculoModelo.value = user.veiculo_modelo || '';
                 infoVeiculoAnoFab.value = user.veiculo_ano_fabricacao || '';
                 infoVeiculoAnoCompra.value = user.veiculo_ano_compra || '';
-            } else {
+            } else if (res.status === 401 || res.status === 403) {
                 Auth.logout();
             }
         } catch (e) {

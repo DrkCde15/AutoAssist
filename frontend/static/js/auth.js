@@ -92,7 +92,7 @@ class AuthManager {
         if (redirect) {
             // Evita redirecionamento infinito se já estiver na página de login
             if (!window.location.pathname.includes('login')) {
-                window.location.href = '/login.html'; // Ajuste conforme sua estrutura
+                window.location.href = 'login.html'; // Ajuste conforme sua estrutura
             }
         }
     }
@@ -127,7 +127,13 @@ class AuthManager {
             
             return data.access_token;
         } catch (error) {
-            this.logout();
+            // Se for erro de rede (Ex: servidor offline), não desloga
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+                console.warn('Erro de rede ao tentar renovar token. Mantendo sessão.');
+            } else {
+                console.error('Falha crítica na renovação de token:', error);
+                this.logout();
+            }
             throw error;
         }
     }
@@ -156,8 +162,8 @@ class AuthManager {
                     options.headers['Authorization'] = `Bearer ${newToken}`;
                     return await fetch(finalUrl, options);
                 } catch (retryError) {
-                    this.logout();
-                    throw new Error('Sessão encerrada por segurança.');
+                    // O logout agora é tratado dentro do refreshToken se necessário
+                    throw new Error('Sessão encerrada ou servidor indisponível.');
                 }
             }
 
