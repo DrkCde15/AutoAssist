@@ -98,6 +98,17 @@
         transition: color 0.3s;
       }
 
+      .input-wrapper i.password-toggle {
+        left: auto;
+        right: 16px;
+        cursor: pointer;
+        padding: 4px; /* Aumentar a área de clique */
+      }
+
+      .input-wrapper i.password-toggle:hover {
+        color: #fff;
+      }
+
       input, select {
         width: 100%;
         padding: 14px 14px 14px 46px;
@@ -274,6 +285,32 @@
         background: #0a1430;
         color: #fff;
       }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 20px 10px;
+        }
+
+        .cadastro-container {
+          padding: 30px 20px;
+        }
+
+        .logo h1 {
+          font-size: 28px;
+        }
+
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+
+        input, select {
+          padding: 12px 12px 12px 42px;
+        }
+
+        .btn {
+          padding: 14px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -305,7 +342,8 @@
         <label>Senha de Acesso</label>
         <div class="input-wrapper">
           <i class="fas fa-shield-alt"></i>
-          <input id="senha" type="password" placeholder="Mínimo 6 caracteres" />
+          <input id="senha" type="password" placeholder="Mínimo 6 caracteres" style="padding-right: 46px;" />
+          <i class="fas fa-eye password-toggle" id="toggleSenha"></i>
         </div>
       </div>
 
@@ -389,6 +427,23 @@
         alertError.textContent = msg;
         alertError.style.display = "block";
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      const toggleSenha = document.getElementById("toggleSenha");
+      const senhaInput = document.getElementById("senha");
+
+      if (toggleSenha && senhaInput) {
+        toggleSenha.addEventListener("click", function() {
+          if (senhaInput.type === "password") {
+            senhaInput.type = "text";
+            this.classList.remove("fa-eye");
+            this.classList.add("fa-eye-slash");
+          } else {
+            senhaInput.type = "password";
+            this.classList.remove("fa-eye-slash");
+            this.classList.add("fa-eye");
+          }
+        });
       }
 
       possuiVeiculoCheck.addEventListener("change", () => {
