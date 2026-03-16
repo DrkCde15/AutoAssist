@@ -287,3 +287,72 @@ def generate_report_endpoint():
     except Exception as e:
         logger.error(f"❌ Erro ao gerar relatório: {e}")
         return jsonify(error="Falha na geração do PDF"), 500
+
+@pages_bp.route("/api/videos", methods=["GET"])
+@jwt_required()
+def get_videos():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("""
+                SELECT id, titulo, url, descricao, created_at
+                FROM videos
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+            """, (user_id,))
+            videos = cursor.fetchall()
+            for v in videos:
+                if isinstance(v['created_at'], datetime):
+                    v['created_at'] = v['created_at'].isoformat()
+            return jsonify(videos=videos), 200
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar vídeos: {e}")
+        return jsonify(error="Erro ao buscar vídeos"), 500
+
+@pages_bp.route("/api/videos", methods=["POST"])
+@jwt_required()
+def add_video():
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    titulo = (data.get("titulo") or "").strip()
+    url = (data.get("url") or "").strip()
+    descricao = (data.get("descricao") or "").strip()
+
+    if not titulo or not url:
+        return jsonify(error="Título e URL são obrigatórios"), 400
+
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("""
+                INSERT INTO videos (user_id, titulo, url, descricao)
+                VALUES (%s, %s, %s, %s)
+            """, (user_id, titulo, url, descricao))
+            video_id = cursor.lastrowid
+            
+            cursor.execute("SELECT * FROM videos WHERE id = %s", (video_id,))
+            video = cursor.fetchone()
+            if isinstance(video['created_at'], datetime):
+                video['created_at'] = video['created_at'].isoformat()
+                
+            return jsonify(video=video, success=True), 201
+    except Exception as e:
+        logger.error(f"❌ Erro ao adicionar vídeo: {e}")
+        return jsonify(error="Erro ao adicionar vídeo"), 500
+
+@pages_bp.route("/api/videos/<int:video_id>", methods=["DELETE"])
+@jwt_required()
+def delete_video(video_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            # Verifica se o vídeo pertence ao usuário
+            cursor.execute("SELECT id FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
+            if not cursor.fetchone():
+                return jsonify(error="Vídeo não encontrado ou acesso negado"), 404
+                
+            cursor.execute("DELETE FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
+            return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"❌ Erro ao deletar vídeo: {e}")
+        return jsonify(error="Erro ao deletar vídeo"), 500
+

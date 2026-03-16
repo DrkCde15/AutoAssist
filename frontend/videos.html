@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vídeos - AutoAssist</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-dark: #0f172a;
+            --secondary-dark: #1e293b;
+            --accent-blue: #3b82f6;
+            --text-gray: #94a3b8;
+            --white: #ffffff;
+            --danger-red: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-dark);
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px 50px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .nav-logo {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 20px;
+            letter-spacing: 2px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .nav-link:hover { opacity: 1; }
+
+        /* Content */
+        .videos-content {
+            padding: 60px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .btn-add {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover {
+            background: #2563eb;
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Grid de Vídeos */
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 30px;
+        }
+
+        .video-card {
+            background: var(--secondary-dark);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .video-info {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .video-desc {
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.5;
+            flex: 1;
+            margin-bottom: 15px;
+        }
+
+        .video-actions {
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 15px;
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: var(--danger-red);
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            color: var(--text-gray);
+            opacity: 0.3;
+            margin-bottom: 20px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--secondary-dark);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            color: var(--text-gray);
+            font-size: 20px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .btn-close:hover { color: white; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: white;
+            font-family: inherit;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-submit:hover { background: #2563eb; }
+
+        .message { margin-top: 15px; font-size: 14px; text-align: center; }
+        .message.error { color: var(--danger-red); }
+        .message.success { color: #34d399; }
+
+        @media (max-width: 768px) {
+            .navbar { padding: 15px 20px; }
+            .nav-container { flex-direction: column; gap: 15px; }
+            .header-section { flex-direction: column; gap: 20px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">AUTOASSIST</a>
+            <div class="nav-links">
+                <a href="dashboard.html" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+                <a href="videos.html" class="nav-link" style="color: var(--accent-blue);"><i class="fas fa-video"></i> Vídeos</a>
+                <a href="perfil.html" class="nav-link"><i class="fas fa-user-circle"></i> Perfil</a>
+                <button onclick="Auth.logout()" class="nav-link" style="background:none; border:none; cursor:pointer;">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="videos-content">
+        <div class="header-section">
+            <div>
+                <h1 style="font-weight: 300; font-size: 36px;">Meus <span style="color: var(--accent-blue);">Vídeos</span></h1>
+                <p style="color: var(--text-gray); margin-top: 10px;">Salve tutoriais e dicas de manutenção para consultar quando precisar.</p>
+            </div>
+            <button class="btn-add" onclick="openModal()">
+                <i class="fas fa-plus"></i> Adicionar Vídeo
+            </button>
+        </div>
+
+        <div id="loadingVideos" style="text-align: center; padding: 50px;">
+            <i class="fas fa-circle-notch fa-spin" style="font-size: 30px; color: var(--accent-blue);"></i>
+        </div>
+
+        <div class="videos-grid" id="videosGrid">
+            <!-- Vídeos injetados via JS -->
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Vídeo -->
+    <div class="modal-overlay" id="videoModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Adicionar Novo Vídeo</h3>
+                <button class="btn-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="addVideoForm">
+                <div class="form-group">
+                    <label>Título do Vídeo</label>
+                    <input type="text" id="videoTitle" class="form-control" placeholder="Ex: Como trocar o óleo" required>
+                </div>
+                <div class="form-group">
+                    <label>URL do Vídeo (YouTube)</label>
+                    <input type="url" id="videoUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=..." required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição (Opcional)</label>
+                    <textarea id="videoDesc" class="form-control" rows="3" placeholder="Anotações sobre este vídeo..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit" id="btnSubmitVideo">Salvar Vídeo</button>
+                <div id="formMessage" class="message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!Auth.isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+            loadVideos();
+        });
+
+        // Utils para Extrair ID do YouTube
+        function getYouTubeVideoId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        async function loadVideos() {
+            const grid = document.getElementById('videosGrid');
+            const loading = document.getElementById('loadingVideos');
+            
+            try {
+                const res = await Auth.authenticatedFetch('/api/videos');
+                if (!res.ok) throw new Error("Erro ao buscar vídeos");
+                
+                const data = await res.json();
+                loading.style.display = 'none';
+
+                if (data.videos.length === 0) {
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-video-slash"></i>
+                            <h3>Nenhum vídeo salvo ainda</h3>
+                            <p style="color: var(--text-gray); margin-top: 10px;">Clique em "Adicionar Vídeo" para começar sua biblioteca.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                grid.innerHTML = data.videos.map(video => {
+                    const ytId = getYouTubeVideoId(video.url);
+                    const embedUrl = ytId ? `https://www.youtube.com/embed/${ytId}` : null;
+                    
+                    const mediaContent = embedUrl 
+                        ? `<iframe src="${embedUrl}" allowfullscreen></iframe>`
+                        : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#111827;color:var(--text-gray);text-align:center;padding:20px;">
+                             <span><i class="fas fa-external-link-alt" style="font-size:24px;margin-bottom:10px;display:block;"></i>Link Externo<br><a href="${video.url}" target="_blank" style="color:var(--accent-blue);font-size:12px;margin-top:5px;display:block;word-break:break-all;">Acessar</a></span>
+                           </div>`;
+
+                    return `
+                        <div class="video-card">
+                            <div class="video-wrapper">
+                                ${mediaContent}
+                            </div>
+                            <div class="video-info">
+                                <div class="video-title">${video.titulo}</div>
+                                <div class="video-desc">${video.descricao || 'Sem descrição.'}</div>
+                                <div class="video-actions">
+                                    <button class="btn-delete" onclick="deleteVideo(${video.id})">
+                                        <i class="fas fa-trash"></i> Remover
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error(error);
+                loading.innerHTML = '<span style="color:var(--danger-red)">Erro ao carregar vídeos. Tente novamente.</span>';
+            }
+        }
+
+        // Modal Logic
+        const modal = document.getElementById('videoModal');
+        const form = document.getElementById('addVideoForm');
+        const msgDiv = document.getElementById('formMessage');
+
+        function openModal() {
+            modal.classList.add('active');
+            form.reset();
+            msgDiv.textContent = '';
+            msgDiv.className = 'message';
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        // Fechar ao clicar fora
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // Submit form
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitVideo');
+            
+            const payload = {
+                titulo: document.getElementById('videoTitle').value,
+                url: document.getElementById('videoUrl').value,
+                descricao: document.getElementById('videoDesc').value
+            };
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+                
+                const res = await Auth.authenticatedFetch('/api/videos', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    closeModal();
+                    document.getElementById('loadingVideos').style.display = 'block';
+                    document.getElementById('videosGrid').innerHTML = '';
+                    loadVideos();
+                } else {
+                    const err = await res.json();
+                    msgDiv.textContent = err.error || 'Erro ao salvar vídeo.';
+                    msgDiv.className = 'message error';
+                }
+            } catch (error) {
+                msgDiv.textContent = 'Erro de conexão com o servidor.';
+                msgDiv.className = 'message error';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Salvar Vídeo';
+            }
+        });
+
+        async function deleteVideo(id) {
+            if (!confirm('Deseja realmente remover este vídeo?')) return;
+            
+            try {
+                const res = await Auth.authenticatedFetch(`/api/videos/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    loadVideos();
+                } else {
+                    alert('Erro ao excluir vídeo.');
+                }
+            } catch (error) {
+                alert('Erro de conexão ao excluir vídeo.');
+            }
+        }
+    </script>
+</body>
+</html>

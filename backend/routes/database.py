@@ -98,6 +98,17 @@ def init_db():
                 FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS videos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                titulo VARCHAR(255) NOT NULL,
+                url VARCHAR(500) NOT NULL,
+                descricao TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
         print("✅ Banco de dados inicializado com sucesso!")
 
 def enviar_email(destinatario, assunto, mensagem_html):
