@@ -217,6 +217,32 @@
             color: var(--white);
         }
 
+        .btn-video {
+            background: #8b5cf6;
+            color: var(--white);
+            width: 100%;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 14px;
+            text-transform: none;
+            border: none;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+            font-weight: 600;
+        }
+
+        .btn-video:hover {
+            background: #7c3aed;
+            color: var(--white);
+        }
+
         @media (max-width: 640px) {
             .profile-header {
                 flex-direction: column;
@@ -239,7 +265,6 @@
     <div class="nav-container">
         <a href="index.html" class="nav-logo">AutoAssist IA</a>
         <div class="nav-menu">
-            <a href="videos.html" class="nav-link">Vídeos</a>
             <a href="chat.html" class="nav-link">Chat</a>
             <button class="btn" onclick="logout()">Sair</button>
         </div>
@@ -351,6 +376,9 @@
 
         <div class="actions">
             <button id="btnSave" class="btn btn-primary">Salvar Alterações</button>
+            <a href="videos.html" class="btn-video">
+                <i class="fas fa-video"></i> Acessar vídeos
+            </a>
         </div>
     </div>
 </div>
