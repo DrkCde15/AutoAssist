@@ -89,6 +89,10 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        try:
+            cursor.execute("ALTER TABLE chats ADD COLUMN videos JSON")
+        except Exception:
+            pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS redefinicao_senha (
                 id INT AUTO_INCREMENT PRIMARY KEY,

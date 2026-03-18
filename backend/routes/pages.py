@@ -6,7 +6,9 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import speech_recognition as sr
 from pydub import AudioSegment
-from services.nogai import gerar_resposta, get_fipe_value
+from services.nogai import gerar_resposta, get_fipe_value, gerar_termo_busca_youtube
+import json
+from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
 from services.report_generator import criar_relatorio_pdf
 from .database import get_db, is_trial_expired
@@ -123,9 +125,18 @@ def chat():
             if is_trial_expired(user): return jsonify(error="TRIAL_EXPIRED"), 402
             
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
-            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia) VALUES (%s, %s, %s)",
-                           (user_id, msg or "[Imagem]", resposta))
-            return jsonify(response=resposta)
+            
+            videos = []
+            if not img_b64 and msg:
+                termo_busca = gerar_termo_busca_youtube(msg, resposta)
+                if termo_busca:
+                    videos = buscar_videos_youtube(termo_busca)
+                    
+            videos_json = json.dumps(videos) if videos else None
+            
+            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
+                           (user_id, msg or "[Imagem]", resposta, videos_json))
+            return jsonify(response=resposta, videos=videos)
     except Exception as e:
         logger.error(f"❌ Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno ao processar chat."), 500
@@ -156,10 +167,18 @@ def voice_to_text():
             user = cursor.fetchone()
             
             resposta = gerar_resposta(text, user_id, user_data=user)
-            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia) VALUES (%s, %s, %s)",
-                           (user_id, text, resposta))
             
-            return jsonify(text=text, response=resposta)
+            termo_busca = gerar_termo_busca_youtube(text, resposta)
+            videos = []
+            if termo_busca:
+                videos = buscar_videos_youtube(termo_busca)
+                
+            videos_json = json.dumps(videos) if videos else None
+            
+            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
+                           (user_id, text, resposta, videos_json))
+            
+            return jsonify(text=text, response=resposta, videos=videos)
 
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que você disse"), 422
@@ -177,7 +196,7 @@ def get_chat_history():
     try:
         with get_db() as (cursor, conn):
             cursor.execute("""
-                SELECT mensagem_usuario, resposta_ia, created_at 
+                SELECT mensagem_usuario, resposta_ia, created_at, videos
                 FROM chats 
                 WHERE user_id = %s 
                 ORDER BY created_at ASC
@@ -186,6 +205,17 @@ def get_chat_history():
             for c in chats:
                 if isinstance(c['created_at'], datetime):
                     c['created_at'] = c['created_at'].isoformat()
+                
+                # Parse videos JSON if available
+                if c.get('videos'):
+                    if isinstance(c['videos'], str):
+                        try:
+                            c['videos'] = json.loads(c['videos'])
+                        except json.JSONDecodeError:
+                            c['videos'] = []
+                else:
+                    c['videos'] = []
+                    
             return jsonify(chats=chats), 200
     except Exception as e:
         logger.error(f"❌ Erro ao buscar histórico: {e}")

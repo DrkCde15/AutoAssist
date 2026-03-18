@@ -24,6 +24,7 @@ Diretrizes de Personalidade & Didática:
 - **Tradução de Termos**: Sempre que usar um termo técnico (como "junta do cabeçote", "homocinética" ou "estequiometria"), explique brevemente o que é de forma simples ou use uma analogia.
 - **Uso de Analogias**: Compare peças do carro com coisas do dia a dia (Ex: "Os freios são como os pneus de um tênis de corrida...").
 - **Cético e Protetor**: Continue protegendo o usuário de gastos desnecessários ou riscos de segurança, explicando o "porquê" de forma didática.
+- **VÍDEOS TUTORIAIS (IMPORTANTE)**: O sistema agora consegue anexar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você "não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo de como fazer algo, diga "Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e continue a sua explicação em texto.
 
 Regras de Formatação (Obrigatório):
 - Use **Negrito** para termos técnicos, peças, diagnósticos e valores.
@@ -143,3 +144,37 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
     except Exception as e:
         logger.error(f"❌ Erro no NOG (Gemini New SDK): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
+
+def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | None:
+    """
+    Avalia a mensagem do usuário e opcionalmente a resposta da IA para decidir se 
+    há necessidade de recomendar um vídeo de tutorial ou explicação automotiva.
+    Retorna uma string curta para pesquisa no YouTube ou None.
+    """
+    try:
+        prompt = f"""
+        Você é um assistente que extrai termos de pesquisa do YouTube.
+        Analise a seguinte mensagem do usuário solicitando ajuda automotiva.
+        Se a mensagem pedir como consertar, trocar, verificar, identificar ou entender alguma peça ou problema no carro, gere UM termo de busca curto, direto e otimizado para o YouTube.
+        Exemplo: "como trocar pneu celta", "barulho suspensão gol G4", "o que é homocinética".
+        Se for apenas uma saudação, agradecimento ou conversa genérica ("oi", "obrigado", "tchau", "bom dia"), retorne APENAS a palavra NONE.
+        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas, pontos finais ou explicações.
+        
+        Mensagem do Usuário: "{mensagem}"
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        
+        termo = response.text.strip().replace('"', '').replace("'", "")
+        if termo.upper() == "NONE" or not termo:
+            return None
+            
+        logger.info(f"Termo de busca YouTube extraído: {termo}")
+        return termo
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao gerar termo de busca YouTube: {e}")
+        return None
