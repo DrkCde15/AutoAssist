@@ -71,14 +71,21 @@ def init_db():
             ("veiculo_ano_compra", "INT"),
             ("veiculo_tipo", "VARCHAR(50)"),
             ("two_factor_secret", "VARCHAR(255)"), 
-            ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE")
+            ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
+            ("google_id", "VARCHAR(255)"),
+            ("profile_pic", "VARCHAR(500)")
         ]
         for col, dtype in columns:
             try:
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
             except Exception: 
-                if col == "two_factor_secret":
-                    cursor.execute("ALTER TABLE users MODIFY COLUMN two_factor_secret VARCHAR(255)")
+                pass
+        
+        # Permitir senha NULA para usuários de Login Social
+        try:
+            cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")
+        except Exception as e:
+            print(f"Erro ao modificar coluna password: {e}")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS chats (
                 id INT AUTO_INCREMENT PRIMARY KEY,

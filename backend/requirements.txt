@@ -9,7 +9,6 @@ python-dotenv
 pillow
 fpdf
 gunicorn
-ollama
 requests
 cryptography
 flask-talisman
@@ -20,3 +19,4 @@ pyotp
 google-genai
 youtube-search-python
 httpx==0.27.2
+oauthlib

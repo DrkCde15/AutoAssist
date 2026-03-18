@@ -415,6 +415,21 @@
             const paymentModal = document.getElementById('paymentModal');
             const btnPix = document.getElementById('btnPix');
 
+            // --- CAPTURA TOKENS DO GOOGLE (OAuth2 Callback) ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const googleAccessToken = urlParams.get('access_token');
+            const googleRefreshToken = urlParams.get('refresh_token');
+            const googleUser = urlParams.get('user');
+
+            if (googleAccessToken && googleRefreshToken && googleUser) {
+                localStorage.setItem(Auth.ACCESS_KEY, googleAccessToken);
+                localStorage.setItem(Auth.REFRESH_KEY, googleRefreshToken);
+                localStorage.setItem(Auth.USER_KEY, googleUser);
+                
+                // Limpa a URL para não exibir os tokens e evitar re-processamento
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
             // Se não estiver logado, não faz nada (HTML já é estado deslogado)
             if (!Auth.isAuthenticated()) {
                 return;

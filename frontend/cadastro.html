@@ -320,6 +320,19 @@
         <p>Consultoria Automotiva Inteligente</p>
       </div>
 
+      <!-- BOTÃO LOGIN GOOGLE -->
+      <div id="googleLogin" style="margin-bottom: 25px;">
+          <a id="btnGoogleLogin" href="#" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; color: #1f2937; padding: 14px; border-radius: 14px; font-weight: 600; transition: transform 0.2s; border: 1px solid rgba(255,255,255,0.1);">
+              <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" style="width: 20px;">
+              Entrar com Google
+          </a>
+          <div style="display: flex; align-items: center; margin: 25px 0 15px; color: rgba(255,255,255,0.4); font-size: 12px;">
+              <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+              <span style="margin: 0 10px; text-transform: uppercase; letter-spacing: 1px;">ou cadastrar com email</span>
+              <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+          </div>
+      </div>
+
       <div class="alert alert-error" id="alertError"></div>
 
       <div class="form-group">
@@ -422,6 +435,12 @@
       const alertError = document.getElementById("alertError");
       const possuiVeiculoCheck = document.getElementById("possuiVeiculo");
       const vehicleSection = document.getElementById("vehicleSection");
+      const btnGoogleLogin = document.getElementById("btnGoogleLogin");
+
+      // Configura link do Google baseado no CONFIG
+      if (btnGoogleLogin) {
+          btnGoogleLogin.href = `${CONFIG.API_URL}/api/auth/google/login`;
+      }
 
       function showError(msg) {
         alertError.textContent = msg;
