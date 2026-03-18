@@ -16,14 +16,15 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 - **Consultoria Especializada (NOG):** O assistente "NOG" utiliza o modelo **Gemini 2.5 Flash** para oferecer respostas focadas no mercado brasileiro, analisando modelos, versões, manutenção e custo-benefício.
 - **Raio-X Mecânico:** Análise visual avançada alimentada por **Gemini Vision** para identificação de ferrugem, desalinhamentos e vazamentos em fotos.
 - **Dashboard de Veículo:** Painel centralizado que monitora a saúde das principais peças do seu veículo e fornece cotação em tempo real da Tabela FIPE.
-- **Tabela FIPE Real-Time:** Integração com a API FIPE (via Parallelum) para fornecer valores de mercado precisos e atualizados, com fallback inteligente para estimativas em caso de indisponibilidade.
+- **Biblioteca de Vídeos Automática:** Integração com YouTube que recomenda tutoriais baseados na conversa e os salva automaticamente na biblioteca do usuário ("Meus Vídeos").
+- **Tabela FIPE Real-Time:** Integração com a API FIPE (via Parallelum) para fornecer valores de mercado precisos e atualizados.
 - **Viva-Voz Inteligente:** Interação por voz em modo "mãos livres" com detecção automática de silêncio (Voice Activity Detection).
 
 ### **Segurança e Cloud**
 
 - **Autenticação em Duas Etapas (2FA):** Camada de segurança adicional utilizando uma senha secundária escolhida pelo usuário.
-- **Performance Cloud:** Respostas rápidas e precisas via infraestrutura do Google Gemini.
-- **Autenticação JWT:** Sistema robusto com tokens de acesso (24h) e refresh tokens (30 dias).
+- **Performance Cloud:** Respostas rápidas e precisas via infraestrutura do Google Gemini 2.5 Flash.
+- **Autenticação JWT:** Sistema robusto com tokens de acesso e refresh tokens.
 - **Trial Control:** Gestão automatizada de período de teste (30 dias) e benefícios para usuários **Premium**.
 
 ---
@@ -32,24 +33,23 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ### **Backend & Inteligência Artificial**
 
-| Tecnologia     | Função                                                            |
-| :------------- | :---------------------------------------------------------------- |
-| **Flask**      | Servidor robusto e orquestração de APIs REST.                     |
-| **Gemini API** | Inteligência Artificial na nuvem para texto e visão (Multimodal). |
-| **PyMySQL**    | Driver de alta performance para banco de dados MySQL.             |
-| **FPDF**       | Motor de geração de laudos técnicos em formato PDF.               |
-| **Pydub**      | Processamento e conversão de áudio para transcrição.              |
-| **Google AI**  | SDK oficial (`google-genai`) para integração com modelos Gemini.  |
+| Tecnologia                | Função                                                            |
+| :------------------------ | :---------------------------------------------------------------- |
+| **Flask**                 | Servidor robusto e orquestração de APIs REST.                     |
+| **Gemini AI SDK**         | Novo SDK (`google-genai`) para texto e visão multimodal.          |
+| **MySQL**                 | Armazenamento persistente de usuários, histórico e vídeos.        |
+| **YouTube Search Python** | Motor de recomendação visual de tutoriais e manutenção.           |
+| **FPDF**                  | Motor de geração de laudos técnicos em formato PDF.               |
+| **SpeechRecognition**     | Processamento de áudio e transcrição de comandos de voz.          |
 
 ### **Frontend**
 
 | Tecnologia         | Função                                                        |
 | :----------------- | :------------------------------------------------------------ |
-| **UX Premium**     | Interface moderna com Dark Mode e Glassmorphism.              |
-| **Vanilla JS**     | Lógica de estado e autenticação JWT (Sem frameworks pesados). |
+| **UX/UI Premium**  | Design moderno com Glassmorphism e animações dinâmicas.       |
+| **Vanilla JS**     | Lógica de estado e consumo de API (Consumo de JWT).           |
 | **Web Speech API** | Captura de áudio nativa com integração ao backend.            |
 | **Marked.js**      | Renderização dinâmica de Markdown nas respostas da IA.        |
-| **Inter Font**     | Tipografia moderna otimizada para legibilidade técnica.       |
 
 ---
 
@@ -58,18 +58,17 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 ```
 AutoAssist/
 ├── backend/
-│   ├── app.py                  # Servidor principal e API
-│   ├── nogai.py                # Módulo de texto (Gemini API)
-│   ├── vision_ai.py            # Pipeline de visão (Gemini Vision)
-│   ├── report_generator.py     # Gerador de PDFs técnicos
-│   └── requirements.txt        # Dependências Python
+│   ├── app.py                  # Entry-point (Servidor Flask)
+│   ├── routes/                 # Módulos de API (Auth, Pages, Database, Payment)
+│   ├── services/               # Lógica de Integração (Gemini, Vision, YouTube, PDF)
+│   └── requirements.txt        # Dependências do projeto
 ├── frontend/
-│   ├── index.html              # Landing Page & Home
-│   ├── chat.html               # Interface do Consultor NOG
-│   ├── dashboard.html          # Painel de Saúde do Veículo
-│   ├── perfil.html             # Gestão de Dados e Veículo
-│   ├── login.html / cadastro.html
-│   └── static/                 # CSS, JS (auth.js, config.js) e assets
+│   ├── index.html              # Landing Page
+│   ├── chat.html               # Consultor NOG com Video Cards
+│   ├── dashboard.html          # Diagnóstico e Tabela FIPE
+│   ├── videos.html             # Biblioteca Pessoal de Vídeos Salvos
+│   ├── perfil.html             # Gestão de Perfil e Veículo
+│   └── static/                 # CSS, assets e lógica global (auth.js)
 └── README.md
 ```
 
@@ -129,6 +128,7 @@ A plataforma estará acessível em `http://localhost:5000`
 
 ## 🔒 Segurança e Boas Práticas
 
+- **Monkey Patching**: Gerenciamento cirúrgico de compatibilidade entre o SDK do Gemini e a biblioteca de vídeos.
 - **Bcrypt**: Todas as senhas (primárias e secundárias) são armazenadas como hashes seguros.
 - **JWT Protection**: Todos os endpoints `/api/` (exceto login/cadastro) exigem token válido.
 - **Rate Limiting**: Proteção contra abusos na API.
