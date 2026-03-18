@@ -131,6 +131,12 @@ def chat():
                 termo_busca = gerar_termo_busca_youtube(msg, resposta)
                 if termo_busca:
                     videos = buscar_videos_youtube(termo_busca)
+                    # Salvar vídeos automaticamente na biblioteca do usuário
+                    for v in videos:
+                        cursor.execute("""
+                            INSERT INTO videos (user_id, titulo, url, descricao)
+                            VALUES (%s, %s, %s, %s)
+                        """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA durante o chat"))
                     
             videos_json = json.dumps(videos) if videos else None
             
@@ -172,6 +178,12 @@ def voice_to_text():
             videos = []
             if termo_busca:
                 videos = buscar_videos_youtube(termo_busca)
+                # Salvar vídeos automaticamente na biblioteca do usuário
+                for v in videos:
+                    cursor.execute("""
+                        INSERT INTO videos (user_id, titulo, url, descricao)
+                        VALUES (%s, %s, %s, %s)
+                    """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA via comando de voz"))
                 
             videos_json = json.dumps(videos) if videos else None
             

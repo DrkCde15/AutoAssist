@@ -1,5 +1,16 @@
 import logging
 from youtubesearchpython import VideosSearch
+import httpx
+
+# Monkey Patch para corrigir a biblioteca youtube-search-python
+original_post = httpx.post
+def patched_post(*args, **kwargs):
+    if 'proxies' in kwargs:
+        proxies = kwargs.pop('proxies')
+        if proxies and 'proxy' not in kwargs:
+            kwargs['proxy'] = proxies.get('http') or proxies.get('https') if isinstance(proxies, dict) else proxies
+    return original_post(*args, **kwargs)
+httpx.post = patched_post
 
 logger = logging.getLogger(__name__)
 

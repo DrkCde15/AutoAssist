@@ -220,6 +220,7 @@
         margin-bottom: 8px;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
@@ -540,9 +541,6 @@
                       <a href="${v.url}" target="_blank" style="text-decoration:none;">
                         <div class="video-title" title="${safeTitle}">${v.titulo}</div>
                       </a>
-                      <button class="btn-save-video" onclick="saveVideo('${v.url}', '${safeTitle}')">
-                        <i class="fas fa-bookmark"></i> Salvar Vídeo
-                      </button>
                     </div>
                   `;
                   vContainer.appendChild(vCard);
