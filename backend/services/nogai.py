@@ -5,6 +5,7 @@ import os
 import pymysql
 from pymysql.cursors import DictCursor
 import requests
+import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -113,6 +114,9 @@ def transformar_historico_gemini(historico_mysql):
         ))
     return gemini_history
 
+# Ordem de preferência dos modelos
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-1.5-flash"]
+
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
     try:
         logger.info(f"NOG Gemini: Processando msg do usuário {user_id}")
@@ -128,18 +132,43 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
                                 f"Responda considerando este veículo se for relevante.")
             prompt_final = contexto_veiculo + "\n\nPergunta do usuário: " + mensagem
             
-        # Inicia chat
-        chat = client.chats.create(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.7,
-            ),
-            history=historico_gemini
-        )
-        
-        response = chat.send_message(message=prompt_final)
-        return response.text
+        # Tentativa inicial com Gemini 2.5 Flash
+        try:
+            chat = client.chats.create(
+                model="gemini-2.5-flash",
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.7,
+                ),
+                history=historico_gemini
+            )
+            response = chat.send_message(message=prompt_final)
+            return response.text
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                logger.warning(f"⚠️ Gemini 2.5 Flash indisponível (503). Tentando modelos estáveis...")
+                time.sleep(1) # Pequeno atraso antes do fallback
+                
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        logger.info(f"Tentando fallback para {model_name}...")
+                        chat = client.chats.create(
+                            model=model_name,
+                            config=types.GenerateContentConfig(
+                                system_instruction=SYSTEM_PROMPT,
+                                temperature=0.7,
+                            ),
+                            history=historico_gemini
+                        )
+                        response = chat.send_message(message=prompt_final)
+                        return response.text
+                    except Exception as fallback_err:
+                        logger.error(f"❌ Fallback para {model_name} também falhou: {fallback_err}")
+                        continue
+            
+            # Se não for erro 503 ou todos fallbacks falharem
+            raise e
         
     except Exception as e:
         logger.error(f"❌ Erro no NOG (Gemini New SDK): {e}", exc_info=True)
@@ -163,10 +192,33 @@ def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | Non
         Mensagem do Usuário: "{mensagem}"
         """
         
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+        # Tentativa inicial com Gemini 2.5 Flash
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                logger.warning(f"⚠️ YouTube Search LLM indisponível (503). Tentando modelos estáveis...")
+                
+                response = None
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        logger.info(f"Tentando fallback para {model_name} (YouTube Search)...")
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                        )
+                        if response: break
+                    except Exception as fallback_err:
+                        logger.error(f"❌ Fallback para {model_name} (YouTube) falhou: {fallback_err}")
+                        continue
+                
+                if not response: raise e
+            else:
+                raise e
         
         termo = response.text.strip().replace('"', '').replace("'", "")
         if termo.upper() == "NONE" or not termo:

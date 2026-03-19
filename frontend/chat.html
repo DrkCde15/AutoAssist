@@ -667,7 +667,7 @@
             body: JSON.stringify({ text: lastAnalysisText }),
           });
           const data = await res.json();
-          if (data.url) window.open(data.url, "_blank");
+          if (data.url) window.open(`${CONFIG.API_URL}${data.url}`, "_blank");
         } catch (e) {
           alert("Erro ao gerar PDF.");
         }
