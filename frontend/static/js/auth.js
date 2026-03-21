@@ -229,3 +229,21 @@ class AuthManager {
 }
 
 const Auth = new AuthManager();
+
+// Renderiza Timer de Teste Grátis globalmente
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.pathname.endsWith('index.html') || window.location.pathname.endsWith('/') || window.location.pathname.endsWith('login.html') || window.location.pathname.endsWith('cadastro.html')) return;
+    
+    const navContainer = document.querySelector('.nav-links') || document.querySelector('.nav-menu') || document.querySelector('.header-right');
+    const user = Auth.getUser();
+
+    if (navContainer && user && !user.is_premium && user.trial_days_remaining !== undefined) {
+        if (!document.getElementById('globalTrialBadge')) {
+            const badge = document.createElement('div');
+            badge.id = 'globalTrialBadge';
+            badge.style.cssText = "background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; gap: 5px; margin-right: 15px;";
+            badge.innerHTML = `<i class="fas fa-clock"></i> Teste Grátis: ${user.trial_days_remaining} dias`;
+            navContainer.prepend(badge);
+        }
+    }
+});

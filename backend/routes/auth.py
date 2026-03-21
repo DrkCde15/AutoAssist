@@ -15,7 +15,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from oauthlib.oauth2 import WebApplicationClient
-from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_email
+from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_email, get_trial_days_remaining
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
@@ -143,6 +143,7 @@ def google_callback():
             "nome": user["nome"], 
             "is_premium": bool(user["is_premium"]), 
             "trial_expired": is_trial_expired(user),
+            "trial_days_remaining": get_trial_days_remaining(user),
             "possui_veiculo": bool(user["possui_veiculo"]),
             "veiculo_marca": user["veiculo_marca"],
             "veiculo_modelo": user["veiculo_modelo"],
@@ -236,6 +237,7 @@ def login():
                     "nome": user["nome"], 
                     "is_premium": bool(user["is_premium"]), 
                     "trial_expired": is_trial_expired(user),
+                    "trial_days_remaining": get_trial_days_remaining(user),
                     "possui_veiculo": bool(user["possui_veiculo"]),
                     "veiculo_marca": user["veiculo_marca"],
                     "veiculo_modelo": user["veiculo_modelo"]
@@ -280,6 +282,7 @@ def verify_2fa_login():
                         "nome": user["nome"], 
                         "is_premium": bool(user["is_premium"]), 
                         "trial_expired": is_trial_expired(user),
+                        "trial_days_remaining": get_trial_days_remaining(user),
                         "possui_veiculo": bool(user["possui_veiculo"]),
                         "veiculo_marca": user["veiculo_marca"],
                         "veiculo_modelo": user["veiculo_modelo"]

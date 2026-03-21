@@ -458,7 +458,13 @@
                     centralIcon.title = `Logado como ${userData.nome}`;
                     centralIcon.innerHTML = `<i class="fas fa-user"></i>`;
                     
+                    let trialBadge = '';
+                    if (!userData.is_premium && userData.trial_days_remaining !== undefined) {
+                        trialBadge = `<div style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; gap: 5px;"><i class="fas fa-clock"></i> Teste Grátis: ${userData.trial_days_remaining} dias</div>`;
+                    }
+                    
                     authLinks.innerHTML = `
+                        ${trialBadge}
                         <a href="dashboard.html" class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link" style="color: #60a5fa;"><i class="fas fa-comments"></i> Chat</a>
                         <button id="btnLogout" class="nav-link" style="background:none; border:none; font-family:inherit;">SAIR</button>

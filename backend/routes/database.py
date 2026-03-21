@@ -145,6 +145,14 @@ def is_trial_expired(user):
     if created_at.tzinfo is None: created_at = created_at.replace(tzinfo=timezone.utc)
     return (datetime.now(timezone.utc) - created_at).days >= 30
 
+def get_trial_days_remaining(user):
+    if user.get("is_premium"): return None
+    created_at = user["created_at"]
+    if isinstance(created_at, str): created_at = datetime.fromisoformat(created_at)
+    if created_at.tzinfo is None: created_at = created_at.replace(tzinfo=timezone.utc)
+    days_passed = (datetime.now(timezone.utc) - created_at).days
+    return max(0, 30 - days_passed)
+
 def is_valid_email_domain(email):
     """Valida se o email pertence aos domínios permitidos."""
     allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com"]

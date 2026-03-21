@@ -11,7 +11,7 @@ import json
 from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
 from services.report_generator import criar_relatorio_pdf
-from .database import get_db, is_trial_expired
+from .database import get_db, is_trial_expired, get_trial_days_remaining
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ def get_user():
         return jsonify({
             **user,
             "trial_expired": is_trial_expired(user),
+            "trial_days_remaining": get_trial_days_remaining(user),
             "is_premium": bool(user["is_premium"]),
             "total_consultas": int(total["total"])
         }), 200
@@ -92,6 +93,7 @@ def update_user():
             return jsonify({
                 **user,
                 "trial_expired": is_trial_expired(user),
+                "trial_days_remaining": get_trial_days_remaining(user),
                 "is_premium": bool(user["is_premium"]),
                 "total_consultas": int(total["total"]),
                 "success": True
