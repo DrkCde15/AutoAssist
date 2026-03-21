@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfil - AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo.png">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -263,7 +264,10 @@
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">AutoAssist IA</a>
+        <a href="index.html" class="nav-logo" style="display: flex; align-items: center; gap: 10px;">
+            <img src="static/logo.png" alt="AutoAssist Logo" style="height: 110px; width: auto; max-width: 350px; object-fit: contain;">
+            AutoAssist IA
+        </a>
         <div class="nav-menu">
             <a href="chat.html" class="nav-link">Chat</a>
             <button class="btn" onclick="logout()">Sair</button>
