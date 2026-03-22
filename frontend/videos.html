@@ -323,7 +323,7 @@
                 AUTOASSIST
             </a>
             <div class="nav-links">
-                <a href="dashboard.html" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="dashboard.html" id="premiumDashboardLink" class="nav-link" style="display: none;"><i class="fas fa-chart-line"></i> Dashboard</a>
                 <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
                 <a href="videos.html" class="nav-link" style="color: var(--accent-blue);"><i class="fas fa-video"></i> Vídeos</a>
                 <a href="perfil.html" class="nav-link"><i class="fas fa-user-circle"></i> Perfil</a>
@@ -386,6 +386,13 @@
                 window.location.href = 'login.html';
                 return;
             }
+
+            const currentUser = Auth.getUser();
+            if (!currentUser?.is_premium) {
+                window.location.href = 'chat.html';
+                return;
+            }
+            document.getElementById('premiumDashboardLink').style.display = 'inline-flex';
             loadVideos();
         });
 

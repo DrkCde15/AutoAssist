@@ -380,7 +380,7 @@
 
         <div class="actions">
             <button id="btnSave" class="btn btn-primary">Salvar Alterações</button>
-            <a href="videos.html" class="btn-video">
+            <a href="videos.html" id="btnPremiumVideos" class="btn-video" style="display: none;">
                 <i class="fas fa-video"></i> Acessar vídeos
             </a>
         </div>
@@ -414,6 +414,7 @@
 
         const btnSave = document.getElementById('btnSave');
         const btnDelete = document.getElementById('btnDelete');
+        const btnPremiumVideos = document.getElementById('btnPremiumVideos');
 
         // 2FA Elements
         const status2FA = document.getElementById('status2FA');
@@ -531,6 +532,7 @@
                 const isPrem = user.is_premium;
                 infoStatus.textContent = isPrem ? 'Premium' : 'Gratuito';
                 infoStatus.style.color = isPrem ? '#fbbf24' : '#94a3b8';
+                btnPremiumVideos.style.display = isPrem ? 'inline-flex' : 'none';
 
                 infoConsultas.textContent = user.total_consultas ?? 0;
                 

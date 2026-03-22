@@ -16,6 +16,19 @@ from .database import get_db, is_trial_expired, get_trial_days_remaining
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
 
+PREMIUM_ONLY_ERROR = "Recurso exclusivo para Premium"
+
+def get_user_by_id(cursor, user_id):
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    return cursor.fetchone()
+
+def ensure_premium_user(user):
+    if not user:
+        return jsonify(error="Usuário não encontrado"), 404
+    if not user.get("is_premium"):
+        return jsonify(error=PREMIUM_ONLY_ERROR), 403
+    return None
+
 @pages_bp.route("/")
 def index():
     return current_app.send_static_file("index.html")
@@ -122,14 +135,13 @@ def chat():
     msg, img_b64 = data.get("message"), data.get("image")
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user = get_user_by_id(cursor, user_id)
             if is_trial_expired(user): return jsonify(error="TRIAL_EXPIRED"), 402
             
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
             
             videos = []
-            if not img_b64 and msg:
+            if user.get("is_premium") and not img_b64 and msg:
                 termo_busca = gerar_termo_busca_youtube(msg, resposta)
                 if termo_busca:
                     videos = buscar_videos_youtube(termo_busca)
@@ -171,12 +183,11 @@ def voice_to_text():
         logger.info(f"🎙️ Voz transcrita para usuário {user_id}: {text}")
         
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user = get_user_by_id(cursor, user_id)
             
             resposta = gerar_resposta(text, user_id, user_data=user)
             
-            termo_busca = gerar_termo_busca_youtube(text, resposta)
+            termo_busca = gerar_termo_busca_youtube(text, resposta) if user.get("is_premium") else None
             videos = []
             if termo_busca:
                 videos = buscar_videos_youtube(termo_busca)
@@ -241,8 +252,10 @@ def get_dashboard():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
             
             if not user or not user.get("possui_veiculo"):
                 return jsonify(error="VEHICLE_NOT_FOUND"), 404
@@ -313,10 +326,10 @@ def generate_report_endpoint():
 
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
-            if not user or not user['is_premium']:
-                return jsonify(error="Recurso exclusivo para Premium"), 403
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
         
         report_dir = os.path.join(current_app.static_folder, 'reports')
         if not os.path.exists(report_dir):
@@ -338,6 +351,11 @@ def get_videos():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("""
                 SELECT id, titulo, url, descricao, created_at
                 FROM videos
@@ -367,6 +385,11 @@ def add_video():
 
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("""
                 INSERT INTO videos (user_id, titulo, url, descricao)
                 VALUES (%s, %s, %s, %s)
@@ -389,6 +412,10 @@ def delete_video(video_id):
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
             # Verifica se o vídeo pertence ao usuário
             cursor.execute("SELECT id FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
             if not cursor.fetchone():
