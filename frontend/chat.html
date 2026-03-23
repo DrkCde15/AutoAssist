@@ -305,13 +305,13 @@
         <a href="index.html" class="btn-nav"
           ><i class="fas fa-home"></i> <span>Início</span></a
         >
-        <a href="videos.html" id="btnMyVideos" class="btn-nav" style="display: none; background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4);">
+        <a href="videos.html" id="btnMyVideos" data-premium-gate class="btn-nav" style="background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4);">
           <i class="fas fa-folder-open"></i> <span>Meus Vídeos</span>
         </a>
       </div>
       <a href="#" class="logo-text">AutoAssist <span>IA</span></a>
       <div class="header-side header-right">
-        <button id="btnReport" class="btn-nav" style="display: none">
+        <button id="btnReport" data-premium-gate class="btn-nav">
           <i class="fas fa-file-pdf"></i> <span>Laudo</span>
         </button>
         <button id="logout" class="btn-nav btn-logout-red">
@@ -349,22 +349,18 @@
       const fileInput = document.getElementById("fileInput");
       const attachBtn = document.getElementById("attach");
       const sendBtn = document.getElementById("send");
+      const btnMyVideos = document.getElementById("btnMyVideos");
       const btnReport = document.getElementById("btnReport");
       const btnVoice = document.getElementById("btnVoice");
-      const btnMyVideos = document.getElementById("btnMyVideos");
 
       let lastAnalysisText = "";
       let isVoiceActive = false;
 
       // --- SETUP INICIAL ---
       if (!Auth.isAuthenticated()) window.location.href = "login.html";
+      btnMyVideos.style.display = "flex";
+      btnReport.style.display = "flex";
 
-      const user = Auth.getUser();
-      if (user?.is_premium) {
-        btnReport.style.display = "flex";
-        btnMyVideos.style.display = "flex";
-      }
-      
       // Habilita voz para todos se o browser suportar
       if ("webkitSpeechRecognition" in window) {
           btnVoice.style.display = "block";

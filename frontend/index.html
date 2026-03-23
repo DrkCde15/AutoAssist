@@ -331,26 +331,26 @@
         <div class="modal-content">
             <div style="text-align: center; margin-bottom: 20px;">
                 <i class="fas fa-crown" style="font-size: 48px; color: #fbbf24; margin-bottom: 10px;"></i>
-                <h2>Seu período de teste acabou!</h2>
+                <h2>AutoAssist Premium</h2>
                 <p style="color: #94a3b8;">Para continuar usando o AutoAssist e desbloquear recursos exclusivos, faça o upgrade.</p>
             </div>
 
             <div class="premium-benefits">
                 <div class="benefit-item">
                     <i class="fas fa-check-circle" style="color: #4ade80;"></i>
-                    <span>Acesso Ilimitado ao Chat</span>
+                    <span>Acesso Ilimitado ao Site</span>
                 </div>
                 <div class="benefit-item">
                     <i class="fas fa-file-pdf" style="color: #4ade80;"></i>
                     <span>Laudos Técnicos em PDF</span>
                 </div>
                 <div class="benefit-item">
-                    <i class="fas fa-microphone" style="color: #4ade80;"></i>
-                    <span>Modo de Voz Bidirecional</span>
+                    <i class="fas fa-chart-line" style="color: #4ade80;"></i>
+                    <span>Dashboard de Análise do Veículo</span>
                 </div>
                 <div class="benefit-item">
-                    <i class="fas fa-infinity" style="color: #4ade80;"></i>
-                    <span>Login Infinito (Sem expiração)</span>
+                    <i class="fas fa-play-circle" style="color: #4ade80;"></i>
+                    <span>Vídeos recomendados</span>
                 </div>
             </div>
 
@@ -465,7 +465,7 @@
                     
                     authLinks.innerHTML = `
                         ${trialBadge}
-                        ${userData.is_premium ? `<a href="dashboard.html" class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>` : ''}
+                        <a href="dashboard.html" data-premium-gate class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link" style="color: #60a5fa;"><i class="fas fa-comments"></i> Chat</a>
                         <button id="btnLogout" class="nav-link" style="background:none; border:none; font-family:inherit;">SAIR</button>
                     `;
