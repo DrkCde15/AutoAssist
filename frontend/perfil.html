@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perfil - AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -217,6 +218,32 @@
             color: var(--white);
         }
 
+        .btn-video {
+            background: #8b5cf6;
+            color: var(--white);
+            width: 100%;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 14px;
+            text-transform: none;
+            border: none;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+            font-weight: 600;
+        }
+
+        .btn-video:hover {
+            background: #7c3aed;
+            color: var(--white);
+        }
+
         @media (max-width: 640px) {
             .profile-header {
                 flex-direction: column;
@@ -237,7 +264,10 @@
 
 <nav class="navbar">
     <div class="nav-container">
-        <a href="index.html" class="nav-logo">AutoAssist IA</a>
+        <a href="index.html" class="nav-logo" style="display: flex; align-items: center; gap: 10px;">
+            <img src="static/logo.png" alt="AutoAssist Logo" style="height: 110px; width: auto; max-width: 350px; object-fit: contain;">
+            AutoAssist IA
+        </a>
         <div class="nav-menu">
             <a href="chat.html" class="nav-link">Chat</a>
             <button class="btn" onclick="logout()">Sair</button>
@@ -350,6 +380,9 @@
 
         <div class="actions">
             <button id="btnSave" class="btn btn-primary">Salvar Alterações</button>
+            <a href="videos.html" id="btnPremiumVideos" data-premium-gate class="btn-video">
+                <i class="fas fa-video"></i> Acessar vídeos
+            </a>
         </div>
     </div>
 </div>
@@ -381,6 +414,8 @@
 
         const btnSave = document.getElementById('btnSave');
         const btnDelete = document.getElementById('btnDelete');
+        const btnPremiumVideos = document.getElementById('btnPremiumVideos');
+        btnPremiumVideos.style.display = 'flex';
 
         // 2FA Elements
         const status2FA = document.getElementById('status2FA');
@@ -498,7 +533,6 @@
                 const isPrem = user.is_premium;
                 infoStatus.textContent = isPrem ? 'Premium' : 'Gratuito';
                 infoStatus.style.color = isPrem ? '#fbbf24' : '#94a3b8';
-
                 infoConsultas.textContent = user.total_consultas ?? 0;
                 
                 // 2FA Status (assumindo que o backend retorna is_two_factor_enabled no /api/user se eu adicionei)

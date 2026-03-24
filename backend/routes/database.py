@@ -71,14 +71,21 @@ def init_db():
             ("veiculo_ano_compra", "INT"),
             ("veiculo_tipo", "VARCHAR(50)"),
             ("two_factor_secret", "VARCHAR(255)"), 
-            ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE")
+            ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
+            ("google_id", "VARCHAR(255)"),
+            ("profile_pic", "VARCHAR(500)")
         ]
         for col, dtype in columns:
             try:
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
             except Exception: 
-                if col == "two_factor_secret":
-                    cursor.execute("ALTER TABLE users MODIFY COLUMN two_factor_secret VARCHAR(255)")
+                pass
+        
+        # Permitir senha NULA para usuários de Login Social
+        try:
+            cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")
+        except Exception as e:
+            print(f"Erro ao modificar coluna password: {e}")
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS chats (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -89,6 +96,10 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        try:
+            cursor.execute("ALTER TABLE chats ADD COLUMN videos JSON")
+        except Exception:
+            pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS redefinicao_senha (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -96,6 +107,17 @@ def init_db():
                 token VARCHAR(255) NOT NULL,
                 data_expiracao DATETIME NOT NULL,
                 FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS videos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                titulo VARCHAR(255) NOT NULL,
+                url VARCHAR(500) NOT NULL,
+                descricao TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
         print("✅ Banco de dados inicializado com sucesso!")
@@ -122,6 +144,14 @@ def is_trial_expired(user):
     if isinstance(created_at, str): created_at = datetime.fromisoformat(created_at)
     if created_at.tzinfo is None: created_at = created_at.replace(tzinfo=timezone.utc)
     return (datetime.now(timezone.utc) - created_at).days >= 30
+
+def get_trial_days_remaining(user):
+    if user.get("is_premium"): return None
+    created_at = user["created_at"]
+    if isinstance(created_at, str): created_at = datetime.fromisoformat(created_at)
+    if created_at.tzinfo is None: created_at = created_at.replace(tzinfo=timezone.utc)
+    days_passed = (datetime.now(timezone.utc) - created_at).days
+    return max(0, 30 - days_passed)
 
 def is_valid_email_domain(email):
     """Valida se o email pertence aos domínios permitidos."""

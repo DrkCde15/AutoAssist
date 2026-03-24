@@ -5,6 +5,7 @@ import os
 import pymysql
 from pymysql.cursors import DictCursor
 import requests
+import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -24,6 +25,7 @@ Diretrizes de Personalidade & Didática:
 - **Tradução de Termos**: Sempre que usar um termo técnico (como "junta do cabeçote", "homocinética" ou "estequiometria"), explique brevemente o que é de forma simples ou use uma analogia.
 - **Uso de Analogias**: Compare peças do carro com coisas do dia a dia (Ex: "Os freios são como os pneus de um tênis de corrida...").
 - **Cético e Protetor**: Continue protegendo o usuário de gastos desnecessários ou riscos de segurança, explicando o "porquê" de forma didática.
+- **VÍDEOS TUTORIAIS (IMPORTANTE)**: O sistema agora consegue anexar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você "não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo de como fazer algo, diga "Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e continue a sua explicação em texto.
 
 Regras de Formatação (Obrigatório):
 - Use **Negrito** para termos técnicos, peças, diagnósticos e valores.
@@ -112,6 +114,9 @@ def transformar_historico_gemini(historico_mysql):
         ))
     return gemini_history
 
+# Ordem de preferência dos modelos
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-1.5-flash"]
+
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
     try:
         logger.info(f"NOG Gemini: Processando msg do usuário {user_id}")
@@ -127,19 +132,101 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
                                 f"Responda considerando este veículo se for relevante.")
             prompt_final = contexto_veiculo + "\n\nPergunta do usuário: " + mensagem
             
-        # Inicia chat
-        chat = client.chats.create(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.7,
-            ),
-            history=historico_gemini
-        )
-        
-        response = chat.send_message(message=prompt_final)
-        return response.text
+        # Tentativa inicial com Gemini 2.5 Flash
+        try:
+            chat = client.chats.create(
+                model="gemini-2.5-flash",
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.7,
+                ),
+                history=historico_gemini
+            )
+            response = chat.send_message(message=prompt_final)
+            return response.text
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                logger.warning(f"⚠️ Gemini 2.5 Flash indisponível (503). Tentando modelos estáveis...")
+                time.sleep(1) # Pequeno atraso antes do fallback
+                
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        logger.info(f"Tentando fallback para {model_name}...")
+                        chat = client.chats.create(
+                            model=model_name,
+                            config=types.GenerateContentConfig(
+                                system_instruction=SYSTEM_PROMPT,
+                                temperature=0.7,
+                            ),
+                            history=historico_gemini
+                        )
+                        response = chat.send_message(message=prompt_final)
+                        return response.text
+                    except Exception as fallback_err:
+                        logger.error(f"❌ Fallback para {model_name} também falhou: {fallback_err}")
+                        continue
+            
+            # Se não for erro 503 ou todos fallbacks falharem
+            raise e
         
     except Exception as e:
         logger.error(f"❌ Erro no NOG (Gemini New SDK): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
+
+def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | None:
+    """
+    Avalia a mensagem do usuário e opcionalmente a resposta da IA para decidir se 
+    há necessidade de recomendar um vídeo de tutorial ou explicação automotiva.
+    Retorna uma string curta para pesquisa no YouTube ou None.
+    """
+    try:
+        prompt = f"""
+        Você é um assistente que extrai termos de pesquisa do YouTube.
+        Analise a seguinte mensagem do usuário solicitando ajuda automotiva.
+        Se a mensagem pedir como consertar, trocar, verificar, identificar ou entender alguma peça ou problema no carro, gere UM termo de busca curto, direto e otimizado para o YouTube.
+        Exemplo: "como trocar pneu celta", "barulho suspensão gol G4", "o que é homocinética".
+        Se for apenas uma saudação, agradecimento ou conversa genérica ("oi", "obrigado", "tchau", "bom dia"), retorne APENAS a palavra NONE.
+        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas, pontos finais ou explicações.
+        
+        Mensagem do Usuário: "{mensagem}"
+        """
+        
+        # Tentativa inicial com Gemini 2.5 Flash
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                logger.warning(f"⚠️ YouTube Search LLM indisponível (503). Tentando modelos estáveis...")
+                
+                response = None
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        logger.info(f"Tentando fallback para {model_name} (YouTube Search)...")
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                        )
+                        if response: break
+                    except Exception as fallback_err:
+                        logger.error(f"❌ Fallback para {model_name} (YouTube) falhou: {fallback_err}")
+                        continue
+                
+                if not response: raise e
+            else:
+                raise e
+        
+        termo = response.text.strip().replace('"', '').replace("'", "")
+        if termo.upper() == "NONE" or not termo:
+            return None
+            
+        logger.info(f"Termo de busca YouTube extraído: {termo}")
+        return termo
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao gerar termo de busca YouTube: {e}")
+        return None

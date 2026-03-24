@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>AutoAssist • Chat</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
@@ -182,6 +183,65 @@
         margin-bottom: 10px;
       }
 
+      /* --- VIDEOS --- */
+      .videos-container {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-top: 10px;
+        margin-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .video-card {
+        min-width: 220px;
+        max-width: 220px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+      }
+      .video-thumbnail {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+      }
+      .video-info {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        justify-content: space-between;
+      }
+      .video-title {
+        font-size: 0.85rem;
+        color: #fff;
+        line-height: 1.3;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .btn-save-video {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 0.8rem;
+        padding: 6px;
+        border-radius: 6px;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+      }
+      .btn-save-video:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+
       /* --- FOOTER --- */
       footer {
         padding: 16px;
@@ -238,14 +298,20 @@
   </head>
   <body>
     <header>
-      <div class="header-side">
+      <div class="header-side" style="gap: 10px; align-items: center;">
+        <a href="index.html" style="text-decoration: none; display: flex; align-items: center; margin-right: 5px;">
+            <img src="static/logo.png" alt="AutoAssist Logo" style="height: 90px; width: auto; max-width: 300px; object-fit: contain;">
+        </a>
         <a href="index.html" class="btn-nav"
           ><i class="fas fa-home"></i> <span>Início</span></a
         >
+        <a href="videos.html" id="btnMyVideos" data-premium-gate class="btn-nav" style="background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4);">
+          <i class="fas fa-folder-open"></i> <span>Meus Vídeos</span>
+        </a>
       </div>
       <a href="#" class="logo-text">AutoAssist <span>IA</span></a>
       <div class="header-side header-right">
-        <button id="btnReport" class="btn-nav" style="display: none">
+        <button id="btnReport" data-premium-gate class="btn-nav">
           <i class="fas fa-file-pdf"></i> <span>Laudo</span>
         </button>
         <button id="logout" class="btn-nav btn-logout-red">
@@ -283,6 +349,7 @@
       const fileInput = document.getElementById("fileInput");
       const attachBtn = document.getElementById("attach");
       const sendBtn = document.getElementById("send");
+      const btnMyVideos = document.getElementById("btnMyVideos");
       const btnReport = document.getElementById("btnReport");
       const btnVoice = document.getElementById("btnVoice");
 
@@ -291,12 +358,9 @@
 
       // --- SETUP INICIAL ---
       if (!Auth.isAuthenticated()) window.location.href = "login.html";
+      btnMyVideos.style.display = "flex";
+      btnReport.style.display = "flex";
 
-      const user = Auth.getUser();
-      if (user?.is_premium) {
-        btnReport.style.display = "flex";
-      }
-      
       // Habilita voz para todos se o browser suportar
       if ("webkitSpeechRecognition" in window) {
           btnVoice.style.display = "block";
@@ -447,6 +511,7 @@
             
             const cleanHtml = DOMPurify.sanitize(marked.parse(data.response));
             typingDiv.innerHTML = `<strong>NOG:</strong><br>${cleanHtml}`;
+            appendVideosToDiv(typingDiv, data.videos);
             lastAnalysisText = data.response;
           }
         } catch (err) {
@@ -462,15 +527,62 @@
         }, 100);
       };
 
-      function addMessage(text, cls, isHtml = false) {
+      function appendVideosToDiv(div, videos) {
+          if (videos && videos.length > 0) {
+              const vContainer = document.createElement("div");
+              vContainer.className = "videos-container";
+              
+              videos.forEach(v => {
+                  const vCard = document.createElement("div");
+                  vCard.className = "video-card";
+                  const safeTitle = (v.titulo || "").replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                  
+                  vCard.innerHTML = `
+                    ${v.thumbnail ? `<a href="${v.url}" target="_blank"><img src="${v.thumbnail}" class="video-thumbnail" alt="Thumbnail"></a>` : ''}
+                    <div class="video-info">
+                      <a href="${v.url}" target="_blank" style="text-decoration:none;">
+                        <div class="video-title" title="${safeTitle}">${v.titulo}</div>
+                      </a>
+                    </div>
+                  `;
+                  vContainer.appendChild(vCard);
+              });
+              div.appendChild(vContainer);
+              scrollToBottom();
+          }
+      }
+
+      function addMessage(text, cls, isHtml = false, videos = []) {
         const div = document.createElement("div");
         div.className = cls;
         div.innerHTML = isHtml ? text : text;
         if (!isHtml) div.textContent = text;
         messagesDiv.appendChild(div);
+        
+        appendVideosToDiv(div, videos);
+        
         scrollToBottom();
         return div;
       }
+      
+      window.saveVideo = async function(url, titulo) {
+         try {
+             const res = await Auth.authenticatedFetch("/api/videos", {
+                 method: "POST",
+                 headers: { "Content-Type": "application/json" },
+                 body: JSON.stringify({ titulo: titulo, url: url, descricao: "Recomendado pelo NOG IA" })
+             });
+             const data = await res.json();
+             if (data.success) {
+                 alert("Vídeo salvo na sua página de vídeos com sucesso!");
+             } else {
+                 alert("Erro ao salvar o vídeo.");
+             }
+         } catch (e) {
+             console.error(e);
+             alert("Erro ao salvar o vídeo.");
+         }
+      };
 
       const sendMessage = async () => {
         const msg = input.value.trim();
@@ -519,6 +631,7 @@
 
           const cleanHtml = DOMPurify.sanitize(marked.parse(botResponse));
           typingDiv.innerHTML = `<strong>NOG:</strong><br>${cleanHtml}`;
+          appendVideosToDiv(typingDiv, data.videos);
           typingDiv.id = "";
 
           if (isVoiceActive) {
@@ -556,7 +669,7 @@
             body: JSON.stringify({ text: lastAnalysisText }),
           });
           const data = await res.json();
-          if (data.url) window.open(data.url, "_blank");
+          if (data.url) window.open(`${CONFIG.API_URL}${data.url}`, "_blank");
         } catch (e) {
           alert("Erro ao gerar PDF.");
         }
@@ -575,6 +688,7 @@
               `<strong>NOG:</strong><br>${marked.parse(c.resposta_ia)}`,
               "msg-bot",
               true,
+              c.videos
             );
           });
           scrollToBottom();

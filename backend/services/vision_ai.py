@@ -2,6 +2,7 @@
 import os
 import base64
 import logging
+import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -25,7 +26,8 @@ Indique se vê ferrugem, desalinhamentos ou vazamentos.
 Seja didático, use negrito para termos técnicos e emojis. Proteja o comprador.
 """
 
-# Inicializa o cliente Gemini
+# Ordem de preferência dos modelos
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-1.5-flash"]
 client = genai.Client(api_key=os.getenv("API_GEMINI"))
 
 def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:
@@ -44,14 +46,35 @@ def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:
         if pergunta:
             prompt += f"\n\nPergunta específica do usuário: {pergunta}"
 
-        # 3. Gerar conteúdo multimodal usando o novo SDK
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[prompt, img]
-        )
-        
-        logger.info(f"✓ Análise visual completa")
-        return response.text
+        # 3. Gerar conteúdo multimodal usando o novo SDK com Fallback
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[prompt, img]
+            )
+            logger.info(f"✓ Análise visual completa (Gemini 2.5 Flash)")
+            return response.text
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                logger.warning(f"⚠️ Gemini Vision 2.5 Flash indisponível (503). Tentando modelos estáveis...")
+                time.sleep(1)
+                
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        logger.info(f"Tentando fallback para {model_name} (Vision)...")
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=[prompt, img]
+                        )
+                        logger.info(f"✓ Análise visual completa ({model_name})")
+                        return response.text
+                    except Exception as fallback_err:
+                        logger.error(f"❌ Fallback para {model_name} (Vision) falhou: {fallback_err}")
+                        continue
+            
+            # Se não for 503 ou todos falharem
+            raise e
 
     except Exception as e:
         logger.error(f"❌ Erro na análise de visão Gemini (New SDK): {e}", exc_info=True)

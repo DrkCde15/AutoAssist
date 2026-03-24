@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, redirect, url_for
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -10,11 +10,168 @@ from passlib.hash import bcrypt
 import secrets
 import os
 import logging
+import requests
+import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_email
+from oauthlib.oauth2 import WebApplicationClient
+from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_email, get_trial_days_remaining
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
+
+# Configuração Google OAuth2
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+
+google_client = WebApplicationClient(GOOGLE_CLIENT_ID) if GOOGLE_CLIENT_ID else None
+
+@dataclass
+class GoogleHosts:
+    authorization_endpoint: str
+    token_endpoint: str
+    userinfo_endpoint: str
+
+def get_google_oauth_hosts():
+    try:
+        response = requests.get("https://accounts.google.com/.well-known/openid-configuration")
+        if response.status_code != 200:
+            return None
+        data = response.json()
+        return GoogleHosts(
+            authorization_endpoint=data.get("authorization_endpoint"), 
+            token_endpoint=data.get("token_endpoint"), 
+            userinfo_endpoint=data.get("userinfo_endpoint")
+        )
+    except Exception as e:
+        logger.error(f"Erro ao buscar endpoints do Google: {e}")
+        return None
+
+@auth_bp.route("/api/auth/google/login")
+def google_login():
+    hosts = get_google_oauth_hosts()
+    if not hosts or not google_client:
+        logger.error("Configuração Google OAuth2 ausente ou incompleta")
+        return jsonify(error="Configuração do Google OAuth2 incompleta"), 500
+    
+    authorization_url = google_client.prepare_request_uri(
+        uri=hosts.authorization_endpoint,
+        redirect_uri=GOOGLE_REDIRECT_URI,
+        scope=["openid", "email", "profile"]
+    )
+    return redirect(authorization_url)
+
+@auth_bp.route("/api/auth/google/callback")
+def google_callback():
+    code = request.args.get("code")
+    hosts = get_google_oauth_hosts()
+    
+    if not hosts or not google_client or not code:
+        return jsonify(error="Dados de callback inválidos"), 400
+
+    try:
+        # Trocar código por token
+        token_url, headers, body = google_client.prepare_token_request(
+            token_url=hosts.token_endpoint,
+            authorization_response=request.url.replace("http://", "https://") if os.getenv('FLASK_ENV') == 'production' else request.url,
+            redirect_url=GOOGLE_REDIRECT_URI,
+            code=code
+        )
+        
+        token_response = requests.post(
+            token_url,
+            headers=headers,
+            data=body,
+            auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+        )
+
+        if token_response.status_code != 200:
+            logger.error(f"Erro ao trocar token: {token_response.text}")
+            return jsonify(error="Falha na autenticação com Google"), 400
+
+        google_client.parse_request_body_response(json.dumps(token_response.json()))
+
+        # Pegar dados do usuário
+        uri, headers, body = google_client.add_token(hosts.userinfo_endpoint)
+        user_info_response = requests.get(uri, headers=headers, data=body)
+        
+        if user_info_response.status_code != 200:
+            return jsonify(error="Falha ao obter dados do usuário"), 400
+
+        user_info = user_info_response.json()
+        if not user_info.get("email_verified"):
+            return jsonify(error="Email Google não verificado"), 400
+
+        google_id = user_info["sub"]
+        email = user_info["email"].lower()
+        nome = user_info.get("name", email.split('@')[0])
+        picture = user_info.get("picture")
+
+        # Persistir no MySQL
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+            if user:
+                # Atualiza usuário existente com info do Google
+                cursor.execute("""
+                    UPDATE users 
+                    SET google_id = %s, profile_pic = %s 
+                    WHERE email = %s
+                """, (google_id, picture, email))
+            else:
+                # Cria novo usuário sem senha (Login Social)
+                cursor.execute("""
+                    INSERT INTO users (nome, email, google_id, profile_pic) 
+                    VALUES (%s, %s, %s, %s)
+                """, (nome, email, google_id, picture))
+                
+            # Busca o usuário (novo ou atualizado) para gerar os tokens
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+        # Gerar tokens JWT (iguais ao login regular)
+        access_token = create_access_token(identity=str(user["id"]))
+        refresh_token = create_refresh_token(identity=str(user["id"]))
+        
+        # Obter a URL do frontend do .env
+        frontend_base = os.getenv("FRONTEND_URL", "http://localhost:5500/")
+        
+        # Preparar dados do usuário para o frontend
+        user_payload = {
+            "nome": user["nome"], 
+            "is_premium": bool(user["is_premium"]), 
+            "trial_expired": is_trial_expired(user),
+            "trial_days_remaining": get_trial_days_remaining(user),
+            "possui_veiculo": bool(user["possui_veiculo"]),
+            "veiculo_marca": user["veiculo_marca"],
+            "veiculo_modelo": user["veiculo_modelo"],
+            "profile_pic": user.get("profile_pic")
+        }
+
+        # Redirecionar com os tokens na URL
+        import urllib.parse
+        params = urllib.parse.urlencode({
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": json.dumps(user_payload)
+        })
+        
+        # Trata a URL de redirecionamento
+        if "index.html" in frontend_base:
+            separator = "&" if "?" in frontend_base else "?"
+            redirect_url = f"{frontend_base}{separator}{params}"
+        else:
+            # Garante que termina com / antes de index.html
+            base = frontend_base if frontend_base.endswith("/") else f"{frontend_base}/"
+            redirect_url = f"{base}index.html?{params}"
+            
+        return redirect(redirect_url)
+
+    except Exception as e:
+        logger.error(f"Erro no callback do Google: {e}", exc_info=True)
+        return jsonify(error="Erro interno no login Google"), 500
 
 @auth_bp.route("/api/cadastro", methods=["POST"])
 def cadastro():
@@ -80,6 +237,7 @@ def login():
                     "nome": user["nome"], 
                     "is_premium": bool(user["is_premium"]), 
                     "trial_expired": is_trial_expired(user),
+                    "trial_days_remaining": get_trial_days_remaining(user),
                     "possui_veiculo": bool(user["possui_veiculo"]),
                     "veiculo_marca": user["veiculo_marca"],
                     "veiculo_modelo": user["veiculo_modelo"]
@@ -124,6 +282,7 @@ def verify_2fa_login():
                         "nome": user["nome"], 
                         "is_premium": bool(user["is_premium"]), 
                         "trial_expired": is_trial_expired(user),
+                        "trial_days_remaining": get_trial_days_remaining(user),
                         "possui_veiculo": bool(user["possui_veiculo"]),
                         "veiculo_marca": user["veiculo_marca"],
                         "veiculo_modelo": user["veiculo_modelo"]

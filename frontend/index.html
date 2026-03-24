@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoAssist - Seu Consultor Automotivo com IA</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
@@ -258,7 +259,11 @@
 
     <nav class="navbar">
         <div class="nav-container">
-            <div style="flex: 1;"></div>
+            <div style="flex: 1; display: flex; align-items: center;">
+                <a href="index.html" style="text-decoration: none;">
+                    <img src="static/logo.png" alt="AutoAssist Logo" style="height: 110px; width: auto; max-width: 350px; object-fit: contain;">
+                </a>
+            </div>
 
             <a href="index.html" class="nav-logo-minimal" id="centralIcon">A</a>
 
@@ -326,26 +331,26 @@
         <div class="modal-content">
             <div style="text-align: center; margin-bottom: 20px;">
                 <i class="fas fa-crown" style="font-size: 48px; color: #fbbf24; margin-bottom: 10px;"></i>
-                <h2>Seu período de teste acabou!</h2>
+                <h2>AutoAssist Premium</h2>
                 <p style="color: #94a3b8;">Para continuar usando o AutoAssist e desbloquear recursos exclusivos, faça o upgrade.</p>
             </div>
 
             <div class="premium-benefits">
                 <div class="benefit-item">
                     <i class="fas fa-check-circle" style="color: #4ade80;"></i>
-                    <span>Acesso Ilimitado ao Chat</span>
+                    <span>Acesso Ilimitado ao Site</span>
                 </div>
                 <div class="benefit-item">
                     <i class="fas fa-file-pdf" style="color: #4ade80;"></i>
                     <span>Laudos Técnicos em PDF</span>
                 </div>
                 <div class="benefit-item">
-                    <i class="fas fa-microphone" style="color: #4ade80;"></i>
-                    <span>Modo de Voz Bidirecional</span>
+                    <i class="fas fa-chart-line" style="color: #4ade80;"></i>
+                    <span>Dashboard de Análise do Veículo</span>
                 </div>
                 <div class="benefit-item">
-                    <i class="fas fa-infinity" style="color: #4ade80;"></i>
-                    <span>Login Infinito (Sem expiração)</span>
+                    <i class="fas fa-play-circle" style="color: #4ade80;"></i>
+                    <span>Vídeos recomendados</span>
                 </div>
             </div>
 
@@ -415,6 +420,21 @@
             const paymentModal = document.getElementById('paymentModal');
             const btnPix = document.getElementById('btnPix');
 
+            // --- CAPTURA TOKENS DO GOOGLE (OAuth2 Callback) ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const googleAccessToken = urlParams.get('access_token');
+            const googleRefreshToken = urlParams.get('refresh_token');
+            const googleUser = urlParams.get('user');
+
+            if (googleAccessToken && googleRefreshToken && googleUser) {
+                localStorage.setItem(Auth.ACCESS_KEY, googleAccessToken);
+                localStorage.setItem(Auth.REFRESH_KEY, googleRefreshToken);
+                localStorage.setItem(Auth.USER_KEY, googleUser);
+                
+                // Limpa a URL para não exibir os tokens e evitar re-processamento
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
             // Se não estiver logado, não faz nada (HTML já é estado deslogado)
             if (!Auth.isAuthenticated()) {
                 return;
@@ -438,8 +458,14 @@
                     centralIcon.title = `Logado como ${userData.nome}`;
                     centralIcon.innerHTML = `<i class="fas fa-user"></i>`;
                     
+                    let trialBadge = '';
+                    if (!userData.is_premium && userData.trial_days_remaining !== undefined) {
+                        trialBadge = `<div style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; gap: 5px;"><i class="fas fa-clock"></i> Teste Grátis: ${userData.trial_days_remaining} dias</div>`;
+                    }
+                    
                     authLinks.innerHTML = `
-                        <a href="dashboard.html" class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        ${trialBadge}
+                        <a href="dashboard.html" data-premium-gate class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link" style="color: #60a5fa;"><i class="fas fa-comments"></i> Chat</a>
                         <button id="btnLogout" class="nav-link" style="background:none; border:none; font-family:inherit;">SAIR</button>
                     `;

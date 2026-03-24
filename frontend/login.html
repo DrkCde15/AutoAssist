@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login • AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
 
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
@@ -163,6 +164,19 @@
       <h1>NOG</h1>
       <p>Login</p>
 
+      <!-- BOTÃO LOGIN GOOGLE -->
+      <div id="googleLogin" style="margin-bottom: 25px;">
+          <a id="btnGoogleLogin" href="#" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; color: #1f2937; padding: 14px; border-radius: 12px; font-weight: 600; transition: transform 0.2s;">
+              <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" style="width: 20px;">
+              Entrar com Google
+          </a>
+          <div style="display: flex; align-items: center; margin: 20px 0; color: rgba(255,255,255,0.4); font-size: 12px;">
+              <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+              <span style="margin: 0 10px; text-transform: uppercase; letter-spacing: 1px;">ou usar email</span>
+              <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+          </div>
+      </div>
+
       <div id="error" class="alert error"></div>
 
       <form id="loginForm">
@@ -209,6 +223,12 @@
         const twoFactorForm = document.getElementById("twoFactorForm");
         const errorBox = document.getElementById("error");
         const registerLinks = document.getElementById("registerLinks");
+        const btnGoogleLogin = document.getElementById("btnGoogleLogin");
+
+        // Configura link do Google baseado no CONFIG
+        if (btnGoogleLogin) {
+            btnGoogleLogin.href = `${CONFIG.API_URL}/api/auth/google/login`;
+        }
         
         let pendingToken = null;
 

@@ -6,13 +6,28 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import speech_recognition as sr
 from pydub import AudioSegment
-from services.nogai import gerar_resposta, get_fipe_value
+from services.nogai import gerar_resposta, get_fipe_value, gerar_termo_busca_youtube
+import json
+from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
 from services.report_generator import criar_relatorio_pdf
-from .database import get_db, is_trial_expired
+from .database import get_db, is_trial_expired, get_trial_days_remaining
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
+
+PREMIUM_ONLY_ERROR = "Recurso exclusivo para Premium"
+
+def get_user_by_id(cursor, user_id):
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    return cursor.fetchone()
+
+def ensure_premium_user(user):
+    if not user:
+        return jsonify(error="Usuário não encontrado"), 404
+    if not user.get("is_premium"):
+        return jsonify(error=PREMIUM_ONLY_ERROR), 403
+    return None
 
 @pages_bp.route("/")
 def index():
@@ -41,6 +56,7 @@ def get_user():
         return jsonify({
             **user,
             "trial_expired": is_trial_expired(user),
+            "trial_days_remaining": get_trial_days_remaining(user),
             "is_premium": bool(user["is_premium"]),
             "total_consultas": int(total["total"])
         }), 200
@@ -90,6 +106,7 @@ def update_user():
             return jsonify({
                 **user,
                 "trial_expired": is_trial_expired(user),
+                "trial_days_remaining": get_trial_days_remaining(user),
                 "is_premium": bool(user["is_premium"]),
                 "total_consultas": int(total["total"]),
                 "success": True
@@ -118,14 +135,28 @@ def chat():
     msg, img_b64 = data.get("message"), data.get("image")
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user = get_user_by_id(cursor, user_id)
             if is_trial_expired(user): return jsonify(error="TRIAL_EXPIRED"), 402
             
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
-            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia) VALUES (%s, %s, %s)",
-                           (user_id, msg or "[Imagem]", resposta))
-            return jsonify(response=resposta)
+            
+            videos = []
+            if user.get("is_premium") and not img_b64 and msg:
+                termo_busca = gerar_termo_busca_youtube(msg, resposta)
+                if termo_busca:
+                    videos = buscar_videos_youtube(termo_busca)
+                    # Salvar vídeos automaticamente na biblioteca do usuário
+                    for v in videos:
+                        cursor.execute("""
+                            INSERT INTO videos (user_id, titulo, url, descricao)
+                            VALUES (%s, %s, %s, %s)
+                        """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA durante o chat"))
+                    
+            videos_json = json.dumps(videos) if videos else None
+            
+            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
+                           (user_id, msg or "[Imagem]", resposta, videos_json))
+            return jsonify(response=resposta, videos=videos)
     except Exception as e:
         logger.error(f"❌ Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno ao processar chat."), 500
@@ -152,14 +183,27 @@ def voice_to_text():
         logger.info(f"🎙️ Voz transcrita para usuário {user_id}: {text}")
         
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user = get_user_by_id(cursor, user_id)
             
             resposta = gerar_resposta(text, user_id, user_data=user)
-            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia) VALUES (%s, %s, %s)",
-                           (user_id, text, resposta))
             
-            return jsonify(text=text, response=resposta)
+            termo_busca = gerar_termo_busca_youtube(text, resposta) if user.get("is_premium") else None
+            videos = []
+            if termo_busca:
+                videos = buscar_videos_youtube(termo_busca)
+                # Salvar vídeos automaticamente na biblioteca do usuário
+                for v in videos:
+                    cursor.execute("""
+                        INSERT INTO videos (user_id, titulo, url, descricao)
+                        VALUES (%s, %s, %s, %s)
+                    """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA via comando de voz"))
+                
+            videos_json = json.dumps(videos) if videos else None
+            
+            cursor.execute("INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
+                           (user_id, text, resposta, videos_json))
+            
+            return jsonify(text=text, response=resposta, videos=videos)
 
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que você disse"), 422
@@ -177,7 +221,7 @@ def get_chat_history():
     try:
         with get_db() as (cursor, conn):
             cursor.execute("""
-                SELECT mensagem_usuario, resposta_ia, created_at 
+                SELECT mensagem_usuario, resposta_ia, created_at, videos
                 FROM chats 
                 WHERE user_id = %s 
                 ORDER BY created_at ASC
@@ -186,6 +230,17 @@ def get_chat_history():
             for c in chats:
                 if isinstance(c['created_at'], datetime):
                     c['created_at'] = c['created_at'].isoformat()
+                
+                # Parse videos JSON if available
+                if c.get('videos'):
+                    if isinstance(c['videos'], str):
+                        try:
+                            c['videos'] = json.loads(c['videos'])
+                        except json.JSONDecodeError:
+                            c['videos'] = []
+                else:
+                    c['videos'] = []
+                    
             return jsonify(chats=chats), 200
     except Exception as e:
         logger.error(f"❌ Erro ao buscar histórico: {e}")
@@ -197,8 +252,10 @@ def get_dashboard():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
             
             if not user or not user.get("possui_veiculo"):
                 return jsonify(error="VEHICLE_NOT_FOUND"), 404
@@ -269,10 +326,10 @@ def generate_report_endpoint():
 
     try:
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
-            if not user or not user['is_premium']:
-                return jsonify(error="Recurso exclusivo para Premium"), 403
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
         
         report_dir = os.path.join(current_app.static_folder, 'reports')
         if not os.path.exists(report_dir):
@@ -287,3 +344,86 @@ def generate_report_endpoint():
     except Exception as e:
         logger.error(f"❌ Erro ao gerar relatório: {e}")
         return jsonify(error="Falha na geração do PDF"), 500
+
+@pages_bp.route("/api/videos", methods=["GET"])
+@jwt_required()
+def get_videos():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
+            cursor.execute("""
+                SELECT id, titulo, url, descricao, created_at
+                FROM videos
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+            """, (user_id,))
+            videos = cursor.fetchall()
+            for v in videos:
+                if isinstance(v['created_at'], datetime):
+                    v['created_at'] = v['created_at'].isoformat()
+            return jsonify(videos=videos), 200
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar vídeos: {e}")
+        return jsonify(error="Erro ao buscar vídeos"), 500
+
+@pages_bp.route("/api/videos", methods=["POST"])
+@jwt_required()
+def add_video():
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    titulo = (data.get("titulo") or "").strip()
+    url = (data.get("url") or "").strip()
+    descricao = (data.get("descricao") or "").strip()
+
+    if not titulo or not url:
+        return jsonify(error="Título e URL são obrigatórios"), 400
+
+    try:
+        with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
+            cursor.execute("""
+                INSERT INTO videos (user_id, titulo, url, descricao)
+                VALUES (%s, %s, %s, %s)
+            """, (user_id, titulo, url, descricao))
+            video_id = cursor.lastrowid
+            
+            cursor.execute("SELECT * FROM videos WHERE id = %s", (video_id,))
+            video = cursor.fetchone()
+            if isinstance(video['created_at'], datetime):
+                video['created_at'] = video['created_at'].isoformat()
+                
+            return jsonify(video=video, success=True), 201
+    except Exception as e:
+        logger.error(f"❌ Erro ao adicionar vídeo: {e}")
+        return jsonify(error="Erro ao adicionar vídeo"), 500
+
+@pages_bp.route("/api/videos/<int:video_id>", methods=["DELETE"])
+@jwt_required()
+def delete_video(video_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+            # Verifica se o vídeo pertence ao usuário
+            cursor.execute("SELECT id FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
+            if not cursor.fetchone():
+                return jsonify(error="Vídeo não encontrado ou acesso negado"), 404
+                
+            cursor.execute("DELETE FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
+            return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"❌ Erro ao deletar vídeo: {e}")
+        return jsonify(error="Erro ao deletar vídeo"), 500
+
