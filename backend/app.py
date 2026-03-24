@@ -8,6 +8,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from dotenv import load_dotenv
+from routes.gateway import gateway_bp
 
 # Carrega variáveis de ambiente localizando o arquivo .env no diretório atual do script
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -79,6 +80,7 @@ def health():
 app.register_blueprint(auth_bp)
 app.register_blueprint(pages_bp)
 app.register_blueprint(payment_bp)
+app.register_blueprint(gateway_bp)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
