@@ -6,9 +6,10 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import speech_recognition as sr
 from pydub import AudioSegment
-from services.nogai import gerar_resposta, get_fipe_value, gerar_termo_busca_youtube
+from services.nogai import gerar_resposta, get_fipe_value, gerar_termo_busca_youtube, gerar_termo_busca_loja, gerar_termo_busca_pecas
 import json
 from services.youtube_service import buscar_videos_youtube
+from services.web_scraping import WebScraper
 from services.vision_ai import analisar_imagem
 from services.report_generator import criar_relatorio_pdf
 from .database import get_db, is_trial_expired, get_trial_days_remaining
@@ -141,16 +142,45 @@ def chat():
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
             
             videos = []
-            if user.get("is_premium") and not img_b64 and msg:
-                termo_busca = gerar_termo_busca_youtube(msg, resposta)
-                if termo_busca:
-                    videos = buscar_videos_youtube(termo_busca)
-                    # Salvar vídeos automaticamente na biblioteca do usuário
-                    for v in videos:
+            if not img_b64 and msg:
+                # Buscar peças
+                termo_pecas = gerar_termo_busca_pecas(msg)
+                if termo_pecas:
+                    pecas_lojas = WebScraper().search_car_parts(termo_pecas)
+                    for loja in pecas_lojas:
+                        domain = loja['url'].split('//')[-1].split('/')[0]
+                        titulo = f"🔧 {domain}"
+                        descricao = f"Busca em lojas de peças sugerida pelo NOG"
+                        videos.append({'titulo': titulo, 'url': loja['url'], 'descricao': descricao})
                         cursor.execute("""
                             INSERT INTO videos (user_id, titulo, url, descricao)
                             VALUES (%s, %s, %s, %s)
-                        """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA durante o chat"))
+                        """, (user_id, titulo, loja['url'], descricao))
+
+                # Buscar links de lojas de veículos e salvar na base "videos" (cards)
+                termo_loja = gerar_termo_busca_loja(msg)
+                if termo_loja:
+                    lojas = WebScraper().search_car_stores(termo_loja)
+                    for loja in lojas:
+                        domain = loja['url'].split('//')[-1].split('/')[0]
+                        titulo = f"🛒 {domain}"
+                        descricao = f"Busca em lojas web sugerida pelo NOG"
+                        videos.append({'titulo': titulo, 'url': loja['url'], 'descricao': descricao})
+                        cursor.execute("""
+                            INSERT INTO videos (user_id, titulo, url, descricao)
+                            VALUES (%s, %s, %s, %s)
+                        """, (user_id, titulo, loja['url'], descricao))
+
+                if user.get("is_premium"):
+                    termo_busca = gerar_termo_busca_youtube(msg, resposta)
+                    if termo_busca:
+                        yt_videos = buscar_videos_youtube(termo_busca)
+                        for v in yt_videos:
+                            videos.append(v)
+                            cursor.execute("""
+                                INSERT INTO videos (user_id, titulo, url, descricao)
+                                VALUES (%s, %s, %s, %s)
+                            """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA durante o chat"))
                     
             videos_json = json.dumps(videos) if videos else None
             
@@ -187,16 +217,45 @@ def voice_to_text():
             
             resposta = gerar_resposta(text, user_id, user_data=user)
             
-            termo_busca = gerar_termo_busca_youtube(text, resposta) if user.get("is_premium") else None
             videos = []
-            if termo_busca:
-                videos = buscar_videos_youtube(termo_busca)
-                # Salvar vídeos automaticamente na biblioteca do usuário
-                for v in videos:
+            # Buscar peças via voz
+            termo_pecas = gerar_termo_busca_pecas(text)
+            if termo_pecas:
+                pecas_lojas = WebScraper().search_car_parts(termo_pecas)
+                for loja in pecas_lojas:
+                    domain = loja['url'].split('//')[-1].split('/')[0]
+                    titulo = f"🔧 {domain}"
+                    descricao = f"Busca em lojas de peças sugerida pelo NOG via áudio"
+                    videos.append({'titulo': titulo, 'url': loja['url'], 'descricao': descricao})
                     cursor.execute("""
                         INSERT INTO videos (user_id, titulo, url, descricao)
                         VALUES (%s, %s, %s, %s)
-                    """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA via comando de voz"))
+                    """, (user_id, titulo, loja['url'], descricao))
+
+            # Buscar links de lojas de automóveis via voz
+            termo_loja = gerar_termo_busca_loja(text)
+            if termo_loja:
+                lojas = WebScraper().search_car_stores(termo_loja)
+                for loja in lojas:
+                    domain = loja['url'].split('//')[-1].split('/')[0]
+                    titulo = f"🛒 {domain}"
+                    descricao = f"Busca em lojas sugerida pelo NOG via áudio"
+                    videos.append({'titulo': titulo, 'url': loja['url'], 'descricao': descricao})
+                    cursor.execute("""
+                        INSERT INTO videos (user_id, titulo, url, descricao)
+                        VALUES (%s, %s, %s, %s)
+                    """, (user_id, titulo, loja['url'], descricao))
+            
+            if user.get("is_premium"):
+                termo_busca = gerar_termo_busca_youtube(text, resposta)
+                if termo_busca:
+                    yt_videos = buscar_videos_youtube(termo_busca)
+                    for v in yt_videos:
+                        videos.append(v)
+                        cursor.execute("""
+                            INSERT INTO videos (user_id, titulo, url, descricao)
+                            VALUES (%s, %s, %s, %s)
+                        """, (user_id, v['titulo'], v['url'], "Recomendado pelo NOG IA via comando de voz"))
                 
             videos_json = json.dumps(videos) if videos else None
             

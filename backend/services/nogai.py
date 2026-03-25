@@ -25,7 +25,6 @@ Diretrizes de Personalidade & Didática:
 - **Tradução de Termos**: Sempre que usar um termo técnico (como "junta do cabeçote", "homocinética" ou "estequiometria"), explique brevemente o que é de forma simples ou use uma analogia.
 - **Uso de Analogias**: Compare peças do carro com coisas do dia a dia (Ex: "Os freios são como os pneus de um tênis de corrida...").
 - **Cético e Protetor**: Continue protegendo o usuário de gastos desnecessários ou riscos de segurança, explicando o "porquê" de forma didática.
-- **VÍDEOS TUTORIAIS (IMPORTANTE)**: O sistema agora consegue anexar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você "não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo de como fazer algo, diga "Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e continue a sua explicação em texto.
 
 Regras de Formatação (Obrigatório):
 - Use **Negrito** para termos técnicos, peças, diagnósticos e valores.
@@ -40,6 +39,11 @@ Estrutura de Resposta Padrão:
 2. 📖 **Dicionário do NOG**: Se houver peças complexas, explique o que elas fazem aqui.
 3. 🔧 **Passo a Passo**: O que o usuário deve fazer ou verificar, ou como falar com o mecânico.
 4. 💰 **Valores e FIPE**: Estimativas de custo e referências de mercado, sempre explicando o que influencia o preço.
+"""
+
+PREMIUM_TUTORIAL_PROMPT = """
+[DIRETRIZ PREMIUM EXCLUSIVA PARA ESTE USUÁRIO]:
+- **VÍDEOS TUTORIAIS**: O sistema em anexo vai capturar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você "não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo sobre o assunto, confirme educadamente: "Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e termine o aviso, prosseguindo com dicas em texto.
 """
 
 def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
@@ -124,6 +128,10 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
         historico_mysql = get_mysql_history(user_id)
         historico_gemini = transformar_historico_gemini(historico_mysql)
         
+        prompt_instrucoes = SYSTEM_PROMPT
+        if user_data and user_data.get("is_premium"):
+            prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
+            
         prompt_final = mensagem
         if user_data and user_data.get("possui_veiculo"):
             contexto_veiculo = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
@@ -137,7 +145,7 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
             chat = client.chats.create(
                 model="gemini-2.5-flash",
                 config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
+                    system_instruction=prompt_instrucoes,
                     temperature=0.7,
                 ),
                 history=historico_gemini
@@ -156,7 +164,7 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
                         chat = client.chats.create(
                             model=model_name,
                             config=types.GenerateContentConfig(
-                                system_instruction=SYSTEM_PROMPT,
+                                system_instruction=prompt_instrucoes,
                                 temperature=0.7,
                             ),
                             history=historico_gemini
@@ -230,3 +238,85 @@ def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | Non
     except Exception as e:
         logger.error(f"❌ Erro ao gerar termo de busca YouTube: {e}")
         return None
+
+def gerar_termo_busca_loja(mensagem: str) -> str | None:
+    """
+    Avalia a mensagem do usuário para decidir se há necessidade de recomendar 
+    links de lojas para comprar um veículo.
+    Retorna uma string curta para pesquisa ou None.
+    """
+    try:
+        prompt = f"""
+        Você é um assistente que extrai termos de pesquisa de veículos.
+        Analise a seguinte mensagem do usuário.
+        Se a mensagem indicar que o usuário quer comprar um veículo (carro, moto, caminhão, etc.), sugerir modelos, perguntar o preço ou onde comprar, gere UM termo de busca curto focado no modelo ou busca.
+        Exemplo: "Honda Civic", "Yamaha MT-09", "Volvo FH", "comprar moto".
+        Se não envolver compra de veículo, retorne APENAS a palavra NONE.
+        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas.
+        
+        Mensagem do Usuário: "{mensagem}"
+        """
+        try:
+            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                response = None
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        response = client.models.generate_content(model=model_name, contents=prompt)
+                        if response: break
+                    except:
+                        continue
+                if not response: raise e
+            else:
+                raise e
+        
+        termo = response.text.strip().replace('"', '').replace("'", "")
+        if termo.upper() == "NONE" or not termo:
+            return None
+        return termo
+    except Exception as e:
+        logger.error(f"Erro ao gerar termo busca loja: {e}")
+        return None
+
+def gerar_termo_busca_pecas(mensagem: str) -> str | None:
+    """
+    Avalia a mensagem do usuário para decidir se há necessidade de recomendar 
+    links para comprar peças e componentes automotivos.
+    Retorna uma string curta para pesquisa ou None.
+    """
+    try:
+        prompt = f"""
+        Você é um assistente que extrai termos de pesquisa de PEÇAS automotivas.
+        Analise a seguinte mensagem do usuário.
+        Se a mensagem indicar que o usuário quer comprar uma peça (ex: pneu, bateria, óleo, pastilha de freio, amortecedor, etc.), gere UM termo de busca curto focado na peça e no modelo do carro (se mencionado).
+        Exemplo: "pneu aro 15", "bateria Moura", "pastilha de freio Honda Civic", "óleo de motor 5w30".
+        Se não envolver compra de peças, retorne APENAS a palavra NONE.
+        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas.
+        
+        Mensagem do Usuário: "{mensagem}"
+        """
+        try:
+            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        except Exception as e:
+            error_str = str(e)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
+                response = None
+                for model_name in MODELS_TO_TRY:
+                    try:
+                        response = client.models.generate_content(model=model_name, contents=prompt)
+                        if response: break
+                    except:
+                        continue
+                if not response: raise e
+            else:
+                raise e
+        
+        termo = response.text.strip().replace('"', '').replace("'", "")
+        if termo.upper() == "NONE" or not termo:
+            return None
+        return termo
+    except Exception as e:
+        logger.error(f"Erro ao gerar termo busca pecas: {e}")
+        return None
