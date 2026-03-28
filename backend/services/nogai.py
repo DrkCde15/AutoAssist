@@ -133,11 +133,16 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
             prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
             
         prompt_final = mensagem
-        if user_data and user_data.get("possui_veiculo"):
-            contexto_veiculo = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
-                                f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
-                                f"ano {user_data.get('veiculo_ano_fabricacao')}. "
-                                f"Responda considerando este veículo se for relevante.")
+        if user_data and (user_data.get("possui_veiculo") or user_data.get("lista_veiculos")):
+            veiculos = user_data.get("lista_veiculos")
+            if veiculos:
+                lista_str = "; ".join([f"{v.get('tipo', 'veículo')} {v.get('marca', '')} {v.get('modelo', '')} ano {v.get('ano_fabricacao', '')}".strip() for v in veiculos])
+                contexto_veiculo = f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui os seguintes veículos cadastrados: {lista_str}. Responda considerando os veículos do usuário se for relevante."
+            else:
+                contexto_veiculo = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
+                                    f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
+                                    f"ano {user_data.get('veiculo_ano_fabricacao')}. "
+                                    f"Responda considerando este veículo se for relevante.")
             prompt_final = contexto_veiculo + "\n\nPergunta do usuário: " + mensagem
             
         # Tentativa inicial com Gemini 2.5 Flash

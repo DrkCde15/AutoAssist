@@ -201,6 +201,11 @@ def chat():
             user = get_user_by_id(cursor, user_id)
             if is_trial_expired(user): return jsonify(error="TRIAL_EXPIRED"), 402
             
+            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+            veiculos = cursor.fetchall()
+            if veiculos:
+                user['lista_veiculos'] = veiculos
+
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
             
             videos = []
@@ -276,6 +281,11 @@ def voice_to_text():
         
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            
+            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+            veiculos = cursor.fetchall()
+            if veiculos:
+                user['lista_veiculos'] = veiculos
             
             resposta = gerar_resposta(text, user_id, user_data=user)
             
