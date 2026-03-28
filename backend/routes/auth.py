@@ -20,6 +20,11 @@ from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_em
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
+def fetch_veiculos_user(cursor, user_id):
+    cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+    return cursor.fetchall()
+
+
 # Configuração Google OAuth2
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -127,9 +132,9 @@ def google_callback():
                     VALUES (%s, %s, %s, %s)
                 """, (nome, email, google_id, picture))
                 
-            # Busca o usuário (novo ou atualizado) para gerar os tokens
             cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cursor.fetchone()
+            veiculos = fetch_veiculos_user(cursor, user["id"])
 
         # Gerar tokens JWT (iguais ao login regular)
         access_token = create_access_token(identity=str(user["id"]))
@@ -144,9 +149,8 @@ def google_callback():
             "is_premium": bool(user["is_premium"]), 
             "trial_expired": is_trial_expired(user),
             "trial_days_remaining": get_trial_days_remaining(user),
-            "possui_veiculo": bool(user["possui_veiculo"]),
-            "veiculo_marca": user["veiculo_marca"],
-            "veiculo_modelo": user["veiculo_modelo"],
+            "possui_veiculo": len(veiculos) > 0,
+            "veiculos": veiculos,
             "profile_pic": user.get("profile_pic")
         }
 
@@ -179,7 +183,11 @@ def cadastro():
     nome, email, password = data.get("nome"), data.get("email"), data.get("password")
     
     veiculo = data.get("veiculo", {})
-    possui_veiculo = veiculo.get("possui", False)
+    veiculos = data.get("veiculos", [])
+    if veiculo and veiculo.get("possui"):
+        veiculos.append(veiculo)
+    
+    possui_veiculo = len(veiculos) > 0
     
     if not nome or not email or len(password) < 6: return jsonify(error="Dados inválidos"), 400
     
@@ -189,15 +197,26 @@ def cadastro():
         with get_db() as (cursor, conn):
             cursor.execute("""
                 INSERT INTO users (
-                    nome, email, password, possui_veiculo, 
-                    veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, 
-                    veiculo_ano_compra, veiculo_tipo
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    nome, email, password, possui_veiculo
+                ) VALUES (%s, %s, %s, %s)
             """, (
-                nome, email.lower(), bcrypt.hash(password), possui_veiculo,
-                veiculo.get("marca"), veiculo.get("modelo"), veiculo.get("ano_fabricacao"),
-                veiculo.get("ano_compra"), veiculo.get("tipo")
+                nome, email.lower(), bcrypt.hash(password), possui_veiculo
             ))
+            user_id = cursor.lastrowid
+            
+            for v in veiculos:
+                ano_fab = v.get("ano_fabricacao")
+                ano_compra = v.get("ano_compra")
+                ano_fab = int(ano_fab) if ano_fab else None
+                ano_compra = int(ano_compra) if ano_compra else None
+                
+                cursor.execute("""
+                    INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    user_id, v.get("tipo"), v.get("marca"), v.get("modelo"),
+                    ano_fab, ano_compra
+                ))
         return jsonify(success=True), 201
     except Exception as e:
         logger.error(f"❌ Erro no cadastro: {e}")
@@ -230,6 +249,7 @@ def login():
                     "pending_token": pending_token
                 }), 200
 
+            veiculos = fetch_veiculos_user(cursor, user["id"])
             return jsonify(
                 access_token=create_access_token(identity=str(user["id"])),
                 refresh_token=create_refresh_token(identity=str(user["id"])),
@@ -238,9 +258,8 @@ def login():
                     "is_premium": bool(user["is_premium"]), 
                     "trial_expired": is_trial_expired(user),
                     "trial_days_remaining": get_trial_days_remaining(user),
-                    "possui_veiculo": bool(user["possui_veiculo"]),
-                    "veiculo_marca": user["veiculo_marca"],
-                    "veiculo_modelo": user["veiculo_modelo"]
+                    "possui_veiculo": len(veiculos) > 0,
+                    "veiculos": veiculos
                 }
             ), 200
     except Exception as e:
@@ -275,6 +294,7 @@ def verify_2fa_login():
                 if not secret_hash or not bcrypt.verify(code, secret_hash):
                     return jsonify(error="Senha secundária incorreta"), 401
                 
+                veiculos = fetch_veiculos_user(cursor, user_id)
                 return jsonify(
                     access_token=create_access_token(identity=str(user_id)),
                     refresh_token=create_refresh_token(identity=str(user_id)),
@@ -283,9 +303,8 @@ def verify_2fa_login():
                         "is_premium": bool(user["is_premium"]), 
                         "trial_expired": is_trial_expired(user),
                         "trial_days_remaining": get_trial_days_remaining(user),
-                        "possui_veiculo": bool(user["possui_veiculo"]),
-                        "veiculo_marca": user["veiculo_marca"],
-                        "veiculo_modelo": user["veiculo_modelo"]
+                        "possui_veiculo": len(veiculos) > 0,
+                        "veiculos": veiculos
                     }
                 ), 200
             except Exception as e:

@@ -366,58 +366,11 @@
         <label for="possuiVeiculo">Eu possuo um veículo para consulta</label>
       </div>
 
-      <div class="vehicle-section" id="vehicleSection">
-        <h3><i class="fas fa-car-side"></i> Detalhes do Veículo</h3>
-
-        <div class="form-group">
-          <label>Tipo de Veículo</label>
-          <div class="input-wrapper">
-            <i class="fas fa-list-ul"></i>
-            <select id="veiculoTipo">
-              <option value="carro">🚘 Carro</option>
-              <option value="moto">🏍️ Moto</option>
-              <option value="caminhao">🚛 Caminhão</option>
-              <option value="aviao">✈️ Avião</option>
-              <option value="navio">🚢 Navio</option>
-              <option value="outro">❓ Outro</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="form-group">
-            <label>Marca</label>
-            <div class="input-wrapper">
-              <i class="fas fa-tags"></i>
-              <input id="veiculoMarca" placeholder="Ex: Honda" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Modelo</label>
-            <div class="input-wrapper">
-              <i class="fas fa-car"></i>
-              <input id="veiculoModelo" placeholder="Ex: Civic" />
-            </div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="form-group">
-            <label>Ano Fabricação</label>
-            <div class="input-wrapper">
-              <i class="fas fa-calendar-alt"></i>
-              <input id="veiculoAnoFab" type="number" placeholder="2022" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Ano Compra</label>
-            <div class="input-wrapper">
-              <i class="fas fa-shopping-cart"></i>
-              <input id="veiculoAnoCompra" type="number" placeholder="2023" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="vehiclesContainer" style="display: none;"></div>
+      
+      <button type="button" id="btnAddVehicle" class="btn" style="display: none; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); margin-bottom: 20px; font-weight: normal; font-size: 14px;">
+        <i class="fas fa-plus"></i> Adicionar outro veículo
+      </button>
 
       <button class="btn" id="btnCadastrar">
         Criar Minha Conta <i class="fas fa-arrow-right"></i>
@@ -435,8 +388,73 @@
       const btn = document.getElementById("btnCadastrar");
       const alertError = document.getElementById("alertError");
       const possuiVeiculoCheck = document.getElementById("possuiVeiculo");
-      const vehicleSection = document.getElementById("vehicleSection");
+      const vehiclesContainer = document.getElementById("vehiclesContainer");
+      const btnAddVehicle = document.getElementById("btnAddVehicle");
       const btnGoogleLogin = document.getElementById("btnGoogleLogin");
+      
+      let vehicleCount = 0;
+
+      function createVehicleForm() {
+        vehicleCount++;
+        const html = `
+          <div class="vehicle-section" style="display: block; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 0;"><i class="fas fa-car-side"></i> Veículo ${vehicleCount}</h3>
+                ${vehicleCount > 1 ? `<button type="button" onclick="this.closest('.vehicle-section').remove()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px;"><i class="fas fa-trash"></i> Remover</button>` : ''}
+            </div>
+
+            <div class="form-group">
+              <label>Tipo de Veículo</label>
+              <div class="input-wrapper">
+                <i class="fas fa-list-ul"></i>
+                <select class="v-tipo">
+                  <option value="carro">🚘 Carro</option>
+                  <option value="moto">🏍️ Moto</option>
+                  <option value="caminhao">🚛 Caminhão</option>
+                  <option value="outro">❓ Outro</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Marca</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-tags"></i>
+                  <input class="v-marca" placeholder="Ex: Honda" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Modelo</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-car"></i>
+                  <input class="v-modelo" placeholder="Ex: Civic" />
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Ano Fabricação</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-calendar-alt"></i>
+                  <input type="number" class="v-ano-fab" placeholder="2022" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Ano Compra</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-shopping-cart"></i>
+                  <input type="number" class="v-ano-compra" placeholder="2023" />
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        vehiclesContainer.insertAdjacentHTML('beforeend', html);
+      }
+      
+      btnAddVehicle.addEventListener('click', createVehicleForm);
 
       // Configura link do Google baseado no CONFIG
       if (btnGoogleLogin) {
@@ -468,9 +486,12 @@
 
       possuiVeiculoCheck.addEventListener("change", () => {
         if (possuiVeiculoCheck.checked) {
-          vehicleSection.style.display = "block";
+          if (vehiclesContainer.children.length === 0) createVehicleForm();
+          vehiclesContainer.style.display = "block";
+          btnAddVehicle.style.display = "flex";
         } else {
-          vehicleSection.style.display = "none";
+          vehiclesContainer.style.display = "none";
+          btnAddVehicle.style.display = "none";
         }
       });
 
@@ -491,19 +512,25 @@
           return;
         }
 
-        let veiculoData = null;
+        let veiculos = [];
         if (possuiVeiculoCheck.checked) {
-          veiculoData = {
-            possui: true,
-            tipo: document.getElementById("veiculoTipo").value,
-            marca: document.getElementById("veiculoMarca").value.trim(),
-            modelo: document.getElementById("veiculoModelo").value.trim(),
-            ano_fabricacao: document.getElementById("veiculoAnoFab").value,
-            ano_compra: document.getElementById("veiculoAnoCompra").value,
-          };
+          const blocks = document.querySelectorAll('.vehicle-section');
+          blocks.forEach(block => {
+            const marca = block.querySelector('.v-marca').value.trim();
+            const modelo = block.querySelector('.v-modelo').value.trim();
+            if (marca || modelo) { // Só adiciona se tiver tentado preencher
+                veiculos.push({
+                    tipo: block.querySelector('.v-tipo').value,
+                    marca,
+                    modelo,
+                    ano_fabricacao: block.querySelector('.v-ano-fab').value,
+                    ano_compra: block.querySelector('.v-ano-compra').value
+                });
+            }
+          });
 
-          if (!veiculoData.marca || !veiculoData.modelo) {
-            showError("Preencha a marca e o modelo do seu veículo.");
+          if (veiculos.length === 0 || !veiculos[0].marca || !veiculos[0].modelo) {
+            showError("Preencha a marca e o modelo de pelo menos um veículo.");
             return;
           }
         }
@@ -512,7 +539,7 @@
         btn.innerHTML = 'Processando... <i class="fas fa-circle-notch fa-spin"></i>';
 
         try {
-          await Auth.register(nome, email, senha, veiculoData);
+          await Auth.register(nome, email, senha, veiculos);
           alert("Boas-vindas ao AutoAssist! Cadastro realizado com sucesso.");
           window.location.href = "login.html";
         } catch (err) {

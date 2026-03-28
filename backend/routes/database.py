@@ -62,6 +62,32 @@ def init_db():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Criação da tabela de múltiplos veículos
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS veiculos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                tipo VARCHAR(50),
+                marca VARCHAR(50),
+                modelo VARCHAR(50),
+                ano_fabricacao INT,
+                ano_compra INT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        # Migração de dados de veículos existentes da tabela users
+        try:
+            cursor.execute("""
+                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra)
+                SELECT id, veiculo_tipo, veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, veiculo_ano_compra 
+                FROM users 
+                WHERE possui_veiculo = TRUE 
+                AND veiculo_marca IS NOT NULL
+                AND id NOT IN (SELECT DISTINCT user_id FROM veiculos)
+            """)
+        except Exception as e:
+            print(f"Aviso migração veículos: {e}")
         # Adiciona colunas para usuários existentes (ignora erros se já existirem)
         columns = [
             ("possui_veiculo", "BOOLEAN DEFAULT FALSE"),

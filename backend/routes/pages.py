@@ -54,11 +54,17 @@ def get_user():
         user = cursor.fetchone()
         cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
+        
+        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+        veiculos = cursor.fetchall()
+        
         return jsonify({
             **user,
             "trial_expired": is_trial_expired(user),
             "trial_days_remaining": get_trial_days_remaining(user),
             "is_premium": bool(user["is_premium"]),
+            "possui_veiculo": len(veiculos) > 0,
+            "veiculos": veiculos,
             "total_consultas": int(total["total"])
         }), 200
 
@@ -81,24 +87,12 @@ def update_user():
 
             cursor.execute("""
                 UPDATE users SET 
-                    nome = %s, email = %s, possui_veiculo = %s,
-                    veiculo_marca = %s, veiculo_modelo = %s, veiculo_ano_fabricacao = %s,
-                    veiculo_ano_compra = %s, veiculo_tipo = %s
+                    nome = %s, email = %s
                 WHERE id = %s
-            """, (
-                nome, email, data.get("possui_veiculo", False),
-                data.get("veiculo_marca"), data.get("veiculo_modelo"),
-                data.get("veiculo_ano_fabricacao"), data.get("veiculo_ano_compra"),
-                data.get("veiculo_tipo"), user_id
-            ))
+            """, (nome, email, user_id))
             conn.commit()
             
-            cursor.execute("""
-                SELECT nome, email, is_premium, created_at, possui_veiculo,
-                       veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao,
-                       veiculo_ano_compra, veiculo_tipo
-                FROM users WHERE id = %s
-            """, (user_id,))
+            cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             
             cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
@@ -115,6 +109,74 @@ def update_user():
     except Exception as e:
         logger.error(f"❌ Erro ao atualizar perfil: {e}")
         return jsonify(error="Erro ao atualizar perfil"), 500
+
+@pages_bp.route("/api/veiculos", methods=["POST"])
+@jwt_required()
+def add_veiculo():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    try:
+        with get_db() as (cursor, conn):
+            ano_fab = data.get("ano_fabricacao")
+            ano_compra = data.get("ano_compra")
+            ano_fab = int(ano_fab) if ano_fab else None
+            ano_compra = int(ano_compra) if ano_compra else None
+            
+            cursor.execute("""
+                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (user_id, data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra))
+            v_id = cursor.lastrowid
+            cursor.execute("UPDATE users SET possui_veiculo = TRUE WHERE id = %s", (user_id,))
+            return jsonify(success=True, id=v_id), 201
+    except Exception as e:
+        logger.error(f"Erro ao adicionar veiculo: {e}")
+        return jsonify(error="Erro interno ao adicionar veículo"), 500
+
+@pages_bp.route("/api/veiculos/<int:v_id>", methods=["PUT"])
+@jwt_required()
+def edit_veiculo(v_id):
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT id FROM veiculos WHERE id = %s AND user_id = %s", (v_id, user_id))
+            if not cursor.fetchone():
+                return jsonify(error="Veículo não encontrado"), 404
+                
+            ano_fab = data.get("ano_fabricacao")
+            ano_compra = data.get("ano_compra")
+            ano_fab = int(ano_fab) if ano_fab else None
+            ano_compra = int(ano_compra) if ano_compra else None
+            
+            cursor.execute("""
+                UPDATE veiculos 
+                SET tipo = %s, marca = %s, modelo = %s, ano_fabricacao = %s, ano_compra = %s
+                WHERE id = %s AND user_id = %s
+            """, (data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, v_id, user_id))
+            return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"Erro ao editar veiculo: {e}")
+        return jsonify(error="Erro interno ao editar veículo"), 500
+
+@pages_bp.route("/api/veiculos/<int:v_id>", methods=["DELETE"])
+@jwt_required()
+def delete_veiculo(v_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("DELETE FROM veiculos WHERE id = %s AND user_id = %s", (v_id, user_id))
+            if cursor.rowcount == 0:
+                return jsonify(error="Veículo não encontrado"), 404
+            
+            cursor.execute("SELECT COUNT(*) as count FROM veiculos WHERE user_id = %s", (user_id,))
+            if cursor.fetchone()["count"] == 0:
+                cursor.execute("UPDATE users SET possui_veiculo = FALSE WHERE id = %s", (user_id,))
+
+            return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"Erro ao excluir veiculo: {e}")
+        return jsonify(error="Erro interno"), 500
 
 @pages_bp.route("/api/user", methods=["DELETE"])
 @jwt_required()
@@ -316,59 +378,69 @@ def get_dashboard():
             if premium_error:
                 return premium_error
             
-            if not user or not user.get("possui_veiculo"):
+            cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+            veiculos = cursor.fetchall()
+            
+            if not veiculos:
                 return jsonify(error="VEHICLE_NOT_FOUND"), 404
                 
-            ano_atual = datetime.now().year
-            ano_fab = user["veiculo_ano_fabricacao"] or ano_atual
-            idade = ano_atual - ano_fab
+            resultados = []
             
-            alertas = []
-            if idade >= 5:
-                alertas.append({"item": "Suspensão", "status": "Atenção", "msg": "Revisar amortecedores e buchas."})
-            if idade >= 3:
-                alertas.append({"item": "Líquido Arrefecimento", "status": "Aviso", "msg": "Troca recomendada a cada 2-3 anos."})
-            
-            alertas.append({"item": "Pneus", "status": "Ok" if idade < 4 else "Atenção", "msg": "Verificar TWI e validade."})
-            alertas.append({"item": "Freios", "status": "Ok", "msg": "Monitorar espessura das pastilhas."})
-            
-            tipo_map = {
-                "carro": "carros",
-                "moto": "motos",
-                "caminhao": "caminhoes",
-                "caminhão": "caminhoes"
-            }
-            tipo_fipe = tipo_map.get(user["veiculo_tipo"].lower(), "carros") if user["veiculo_tipo"] else "carros"
-            
-            dados_fipe = get_fipe_value(
-                tipo_fipe, 
-                user["veiculo_marca"], 
-                user["veiculo_modelo"], 
-                ano_fab
-            )
-            
-            if dados_fipe:
-                preco_fipe = dados_fipe.get("Valor", "N/A")
-                mes_fipe = dados_fipe.get("MesReferencia", datetime.now().strftime("%B %Y"))
-            else:
-                valor_base = 80000 if user["veiculo_tipo"] == "carro" else 30000
-                valor_estimado = valor_base * (0.92 ** idade)
-                preco_fipe = f"R$ {valor_estimado:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                mes_fipe = f"{datetime.now().strftime('%B %Y')} (Estimado)"
-            
-            return jsonify({
-                "veiculo": {
-                    "marca": user["veiculo_marca"],
-                    "modelo": user["veiculo_modelo"],
-                    "ano": ano_fab,
-                    "tipo": user["veiculo_tipo"]
-                },
-                "saude": alertas,
-                "fipe": {
-                    "preco": preco_fipe,
-                    "mes": mes_fipe
+            for v in veiculos:
+                ano_atual = datetime.now().year
+                ano_fab = v["ano_fabricacao"] or ano_atual
+                idade = ano_atual - ano_fab
+                
+                alertas = []
+                if idade >= 5:
+                    alertas.append({"item": "Suspensão", "status": "Atenção", "msg": "Revisar amortecedores e buchas."})
+                if idade >= 3:
+                    alertas.append({"item": "Líquido Arrefecimento", "status": "Aviso", "msg": "Troca recomendada a cada 2-3 anos."})
+                
+                alertas.append({"item": "Pneus", "status": "Ok" if idade < 4 else "Atenção", "msg": "Verificar TWI e validade."})
+                alertas.append({"item": "Freios", "status": "Ok", "msg": "Monitorar espessura das pastilhas."})
+                
+                tipo_map = {
+                    "carro": "carros",
+                    "moto": "motos",
+                    "caminhao": "caminhoes",
+                    "caminhão": "caminhoes"
                 }
-            }), 200
+                v_tipo = v.get("tipo") or "carro"
+                tipo_fipe = tipo_map.get(v_tipo.lower(), "carros")
+                
+                dados_fipe = get_fipe_value(
+                    tipo_fipe, 
+                    v["marca"], 
+                    v["modelo"], 
+                    ano_fab
+                )
+                
+                if dados_fipe:
+                    preco_fipe = dados_fipe.get("Valor", "N/A")
+                    mes_fipe = dados_fipe.get("MesReferencia", datetime.now().strftime("%B %Y"))
+                else:
+                    valor_base = 80000 if v_tipo == "carro" else 30000
+                    valor_estimado = valor_base * (0.92 ** idade)
+                    preco_fipe = f"R$ {valor_estimado:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    mes_fipe = f"{datetime.now().strftime('%B %Y')} (Estimado)"
+                
+                resultados.append({
+                    "id": v["id"],
+                    "veiculo": {
+                        "marca": v["marca"],
+                        "modelo": v["modelo"],
+                        "ano": ano_fab,
+                        "tipo": v_tipo
+                    },
+                    "saude": alertas,
+                    "fipe": {
+                        "preco": preco_fipe,
+                        "mes": mes_fipe
+                    }
+                })
+            
+            return jsonify(resultados), 200
     except Exception as e:
         logger.error(f"❌ Erro no dashboard: {e}")
         return jsonify(error="Erro ao carregar dashboard"), 500

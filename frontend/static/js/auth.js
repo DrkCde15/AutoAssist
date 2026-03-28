@@ -64,10 +64,10 @@ class AuthManager {
     /**
      * Realiza cadastro de novo usuário
      */
-    async register(nome, email, password, veiculo = null) {
+    async register(nome, email, password, veiculos = []) {
         const payload = { nome, email: email.toLowerCase(), password };
-        if (veiculo) {
-            payload.veiculo = veiculo;
+        if (veiculos && veiculos.length > 0) {
+            payload.veiculos = veiculos;
         }
         
         const res = await fetch(`${this.API_URL}/api/cadastro`, {

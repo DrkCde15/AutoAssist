@@ -274,36 +274,39 @@
                         'navio': 'fa-ship',
                         'geral': 'fa-car'
                     };
-                    const iconClass = icons[data.veiculo.tipo] || 'fa-car';
-
-                    content.innerHTML = `
+                    
+                    let htmlBuilder = `
                         <div class="dashboard-header">
                             <h1 style="font-weight: 300; font-size: 36px;">Olá! Este é seu <span style="color: var(--accent-blue);">Dashboard</span></h1>
                             <p style="color: var(--text-gray); margin-top: 10px;">Acompanhe a saúde e o valor do seu patrimônio em tempo real.</p>
                         </div>
+                    `;
 
-                        <div class="vehicle-info-card">
+                    data.forEach(item => {
+                        const iconClass = icons[item.veiculo.tipo] || 'fa-car';
+                        htmlBuilder += `
+                        <div class="vehicle-info-card" style="margin-top: 30px; margin-bottom: 30px;">
                             <div class="vehicle-icon">
                                 <i class="fas ${iconClass}"></i>
                             </div>
                             <div>
-                                <h2 style="font-size: 32px; margin-bottom: 5px;">${data.veiculo.marca} ${data.veiculo.modelo}</h2>
-                                <p style="color: var(--text-gray); letter-spacing: 3px; text-transform: uppercase; font-size: 14px;">Ano de Fabricação: ${data.veiculo.ano}</p>
+                                <h2 style="font-size: 32px; margin-bottom: 5px;">${item.veiculo.marca} ${item.veiculo.modelo}</h2>
+                                <p style="color: var(--text-gray); letter-spacing: 3px; text-transform: uppercase; font-size: 14px;">Ano de Fabricação: ${item.veiculo.ano}</p>
                             </div>
                         </div>
 
-                        <div class="stats-grid">
+                        <div class="stats-grid" style="margin-bottom: 50px;">
                             <div class="stat-card fipe">
                                 <h4 style="margin-bottom: 15px; font-size: 14px; color: var(--accent-blue); text-transform: uppercase;">Valor de Mercado (FIPE)</h4>
-                                <div style="font-size: 36px; font-weight: bold;">${data.fipe.preco}</div>
-                                <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">Referência: ${data.fipe.mes}</p>
+                                <div style="font-size: 36px; font-weight: bold;">${item.fipe.preco}</div>
+                                <p style="font-size: 12px; color: var(--text-gray); margin-top: 8px;">Referência: ${item.fipe.mes}</p>
                                 <p style="font-size: 11px; color: #64748b; margin-top: 20px; font-style: italic;">* Valor estimado baseado em algoritmos de depreciação.</p>
                             </div>
 
                             <div class="stat-card">
                                 <h4 style="margin-bottom: 20px; font-size: 14px; text-transform: uppercase;">Estado de Conservação e Alertas</h4>
                                 <div id="alertsList">
-                                    ${data.saude.map(alert => `
+                                    ${item.saude.map(alert => `
                                         <div class="alert-item">
                                             <div style="flex: 1;">
                                                 <div style="font-size: 15px; font-weight: 600;">${alert.item}</div>
@@ -318,7 +321,11 @@
                                 </a>
                             </div>
                         </div>
-                    `;
+                        <hr style="border: 1px dashed rgba(255,255,255,0.1); margin-bottom: 30px;">
+                        `;
+                    });
+                    
+                    content.innerHTML = htmlBuilder;
                 } else {
                     throw new Error('Erro ao buscar dados');
                 }

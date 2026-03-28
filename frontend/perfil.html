@@ -309,42 +309,50 @@
                 <div class="field-value" id="infoConsultas">-</div>
             </div>
 
-            <!-- Veículo -->
-            <div class="field-card" style="flex-direction: row; align-items: center; justify-content: space-between;">
-                <div class="field-label" style="margin-bottom: 0;">Eu possuo um veículo</div>
-                <input type="checkbox" id="infoPossuiVeiculo" style="width: auto;">
-            </div>
-
-            <div id="sectionVeiculo" style="display: none; gap: 14px; flex-direction: column;">
-                <div class="field-card">
-                    <div class="field-label">Tipo do Veículo</div>
-                    <select id="infoVeiculoTipo" class="input-field" style="background: var(--card-strong); border-radius: 8px; padding: 5px;">
-                        <option value="carro">Carro</option>
-                        <option value="moto">Moto</option>
-                        <option value="caminhao">Caminhão</option>
-                        <option value="outro">Outro</option>
-                    </select>
+            <!-- Meus Veículos -->
+            <div class="field-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="field-label" style="margin-bottom: 0;">Meus Veículos</div>
+                    <button id="btnAddNewVehicle" class="btn" style="border-color: var(--primary); color: var(--primary); padding: 5px 10px; font-size: 11px;"><i class="fas fa-plus"></i> Novo Veículo</button>
                 </div>
-
-                <div class="field-card">
-                    <div class="field-label">Marca</div>
-                    <input type="text" id="infoVeiculoMarca" class="input-field" placeholder="Ex: Honda">
+                <div id="veiculosListContainer" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <!-- Lista de veículos renderizada via JS -->
                 </div>
-
-                <div class="field-card">
-                    <div class="field-label">Modelo</div>
-                    <input type="text" id="infoVeiculoModelo" class="input-field" placeholder="Ex: Civic">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                
+                <div id="sectionVeiculo" style="display: none; gap: 14px; flex-direction: column; margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                    <div class="field-label">Novo Veículo</div>
                     <div class="field-card">
-                        <div class="field-label">Ano Fab.</div>
-                        <input type="number" id="infoVeiculoAnoFab" class="input-field">
+                        <div class="field-label">Tipo do Veículo</div>
+                        <select id="infoVeiculoTipo" class="input-field" style="background: var(--card-strong); border-radius: 8px; padding: 5px;">
+                            <option value="carro">Carro</option>
+                            <option value="moto">Moto</option>
+                            <option value="caminhao">Caminhão</option>
+                            <option value="outro">Outro</option>
+                        </select>
                     </div>
+
                     <div class="field-card">
-                        <div class="field-label">Ano Compra</div>
-                        <input type="number" id="infoVeiculoAnoCompra" class="input-field">
+                        <div class="field-label">Marca</div>
+                        <input type="text" id="infoVeiculoMarca" class="input-field" placeholder="Ex: Honda">
                     </div>
+
+                    <div class="field-card">
+                        <div class="field-label">Modelo</div>
+                        <input type="text" id="infoVeiculoModelo" class="input-field" placeholder="Ex: Civic">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="field-card">
+                            <div class="field-label">Ano Fab.</div>
+                            <input type="number" id="infoVeiculoAnoFab" class="input-field">
+                        </div>
+                        <div class="field-card">
+                            <div class="field-label">Ano Compra</div>
+                            <input type="number" id="infoVeiculoAnoCompra" class="input-field">
+                        </div>
+                    </div>
+                    <button id="btnConfirmAddVehicle" class="btn btn-primary" style="margin-top: 10px;">Salvar Veículo</button>
+                    <button id="btnCancelAddVehicle" class="btn" style="border-color: var(--danger); color: var(--danger);">Cancelar</button>
                 </div>
             </div>
 
@@ -404,14 +412,18 @@
         const infoStatus = document.getElementById('infoStatus');
         const infoConsultas = document.getElementById('infoConsultas');
 
-        const infoPossuiVeiculo = document.getElementById('infoPossuiVeiculo');
+        const veiculosListContainer = document.getElementById('veiculosListContainer');
         const sectionVeiculo = document.getElementById('sectionVeiculo');
+        const btnAddNewVehicle = document.getElementById('btnAddNewVehicle');
+        const btnConfirmAddVehicle = document.getElementById('btnConfirmAddVehicle');
+        const btnCancelAddVehicle = document.getElementById('btnCancelAddVehicle');
         const infoVeiculoTipo = document.getElementById('infoVeiculoTipo');
         const infoVeiculoMarca = document.getElementById('infoVeiculoMarca');
         const infoVeiculoModelo = document.getElementById('infoVeiculoModelo');
         const infoVeiculoAnoFab = document.getElementById('infoVeiculoAnoFab');
         const infoVeiculoAnoCompra = document.getElementById('infoVeiculoAnoCompra');
-
+        
+        let userVeiculos = [];
         const btnSave = document.getElementById('btnSave');
         const btnDelete = document.getElementById('btnDelete');
         const btnPremiumVideos = document.getElementById('btnPremiumVideos');
@@ -429,9 +441,92 @@
         const newSecondaryPassword = document.getElementById('newSecondaryPassword');
         const disable2FAPassword = document.getElementById('disable2FAPassword');
 
-        infoPossuiVeiculo.addEventListener('change', () => {
-            sectionVeiculo.style.display = infoPossuiVeiculo.checked ? 'flex' : 'none';
+        btnAddNewVehicle.addEventListener('click', () => {
+            sectionVeiculo.style.display = 'flex';
+            btnAddNewVehicle.style.display = 'none';
         });
+
+        btnCancelAddVehicle.addEventListener('click', () => {
+            sectionVeiculo.style.display = 'none';
+            btnAddNewVehicle.style.display = 'block';
+            infoVeiculoMarca.value = '';
+            infoVeiculoModelo.value = '';
+            infoVeiculoAnoFab.value = '';
+            infoVeiculoAnoCompra.value = '';
+        });
+        
+        btnConfirmAddVehicle.addEventListener('click', async () => {
+            const marca = infoVeiculoMarca.value.trim();
+            const modelo = infoVeiculoModelo.value.trim();
+            if(!marca || !modelo) return alert('Preencha marca e modelo do veículo.');
+            
+            btnConfirmAddVehicle.disabled = true;
+            try {
+                const res = await Auth.authenticatedFetch('/api/veiculos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tipo: infoVeiculoTipo.value,
+                        marca,
+                        modelo,
+                        ano_fabricacao: infoVeiculoAnoFab.value,
+                        ano_compra: infoVeiculoAnoCompra.value
+                    })
+                });
+                
+                if (res.ok) {
+                    alert('Veículo adicionado!');
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Erro ao adicionar veículo');
+                }
+            } catch (e) {
+                alert('Erro de conexão ao adicionar veículo');
+            } finally {
+                btnConfirmAddVehicle.disabled = false;
+            }
+        });
+        
+        window.removerVeiculo = async (id) => {
+            if(!confirm('Deseja remover este veículo?')) return;
+            try {
+                const res = await Auth.authenticatedFetch('/api/veiculos/' + id, { method: 'DELETE' });
+                if(res.ok) {
+                    alert('Veículo removido');
+                    window.location.reload();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Erro ao remover veículo');
+                }
+            } catch (e) { alert('Erro de conexão'); }
+        };
+        
+        function renderVeiculos() {
+            veiculosListContainer.innerHTML = '';
+            if(userVeiculos.length === 0) {
+                veiculosListContainer.innerHTML = '<div style="font-size: 13px; color: var(--text-muted); padding: 10px 0;">Nenhum veículo cadastrado.</div>';
+                return;
+            }
+            userVeiculos.forEach(v => {
+                const iconMap = { 'carro': 'fa-car', 'moto': 'fa-motorcycle', 'caminhao': 'fa-truck' };
+                const icon = iconMap[v.tipo?.toLowerCase()] || 'fa-car';
+                const el = document.createElement('div');
+                el.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;";
+                el.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fas ${icon}" style="color: var(--primary); font-size: 18px;"></i>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 600;">${v.marca} ${v.modelo}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">${v.ano_fabricacao || ''}</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="removerVeiculo(${v.id})"><i class="fas fa-trash"></i></button>
+                `;
+                veiculosListContainer.appendChild(el);
+            });
+        }
+
 
         function updateAvatar(name) {
             const initial = (name || 'A').trim().charAt(0).toUpperCase();
@@ -539,13 +634,8 @@
                 update2FAUI(user.is_two_factor_enabled);
 
                 // Dados do Veículo
-                infoPossuiVeiculo.checked = !!user.possui_veiculo;
-                sectionVeiculo.style.display = infoPossuiVeiculo.checked ? 'flex' : 'none';
-                infoVeiculoTipo.value = user.veiculo_tipo || 'carro';
-                infoVeiculoMarca.value = user.veiculo_marca || '';
-                infoVeiculoModelo.value = user.veiculo_modelo || '';
-                infoVeiculoAnoFab.value = user.veiculo_ano_fabricacao || '';
-                infoVeiculoAnoCompra.value = user.veiculo_ano_compra || '';
+                userVeiculos = user.veiculos || [];
+                renderVeiculos();
             } else if (res.status === 401 || res.status === 403) {
                 Auth.logout();
             }
@@ -572,13 +662,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         nome: newName, 
-                        email: newEmail,
-                        possui_veiculo: infoPossuiVeiculo.checked,
-                        veiculo_tipo: infoVeiculoTipo.value,
-                        veiculo_marca: infoVeiculoMarca.value.trim(),
-                        veiculo_modelo: infoVeiculoModelo.value.trim(),
-                        veiculo_ano_fabricacao: infoVeiculoAnoFab.value,
-                        veiculo_ano_compra: infoVeiculoAnoCompra.value
+                        email: newEmail
                     })
                 });
 
