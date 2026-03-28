@@ -263,7 +263,7 @@ class AuthManager {
                             <span style="font-size: 12px; color: #94a3b8;">/pagamento único</span>
                         </div>
 
-                        <button id="btnPix" class="btn-cta" style="width: 100%; margin-top: 20px;">
+                        <button id="btnPix" class="btn-cta" style="width: 100%; margin-top: 20px; background: #32bcad; color: white; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; border: none; cursor: pointer; transition: opacity 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;">
                             <i class="fas fa-qrcode"></i> Pagar com PIX
                         </button>
                         <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: 10px;">Liberação imediata após pagamento</p>
