@@ -4,6 +4,7 @@ flask-jwt-extended
 flask-limiter
 passlib==1.7.4
 bcrypt==4.0.1
+beautifulsoup4
 pymysql
 python-dotenv
 pillow
