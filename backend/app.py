@@ -52,7 +52,14 @@ allowed_origins = [
     "http://127.0.0.1:3000",
 ]
 
-CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
+CORS(
+    app,
+    resources={
+        r"/api/*": {"origins": allowed_origins},
+        r"/pagamentos/*": {"origins": allowed_origins},
+    },
+    supports_credentials=True,
+)
 
 limiter = Limiter(
     app=app,

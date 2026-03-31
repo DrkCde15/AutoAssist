@@ -11,6 +11,7 @@ pillow
 fpdf
 gunicorn
 requests
+mercadopago==2.3.0
 cryptography
 flask-talisman
 bleach
