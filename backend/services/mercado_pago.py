@@ -190,6 +190,16 @@ class MercadoPagoService:
         except Exception as exc:
             return {"success": False, "status_code": 503, "error": str(exc)}
 
+    def consultar_order(self, order_id: str) -> dict:
+        try:
+            result = self.sdk.order().get(
+                order_id,
+                self._build_request_options(),
+            )
+            return self._normalize_sdk_result(result)
+        except Exception as exc:
+            return {"success": False, "status_code": 503, "error": str(exc)}
+
     def criar_preferencia(
         self,
         preference_data: dict,

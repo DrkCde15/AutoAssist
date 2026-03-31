@@ -232,6 +232,15 @@ class AuthManager {
                 failure: currentPageUrl,
                 pending: currentPageUrl
             },
+            payment_methods: {
+                excluded_payment_types: [
+                    { id: 'bank_transfer' },
+                    { id: 'ticket' },
+                    { id: 'debit_card' },
+                    { id: 'prepaid_card' },
+                    { id: 'atm' }
+                ]
+            },
             auto_return: 'approved'
         };
 
@@ -327,6 +336,7 @@ class AuthManager {
         const payment = result.data || {};
         const tx = payment?.point_of_interaction?.transaction_data || {};
         const paymentId = payment?.id;
+        const orderId = payment?.order_id || payment?.raw_order?.id || null;
         const qrCode = tx?.qr_code;
         const qrCodeBase64 = tx?.qr_code_base64;
         const ticketUrl = tx?.ticket_url;
@@ -335,7 +345,7 @@ class AuthManager {
             throw new Error('Mercado Pago não retornou dados suficientes do Pix.');
         }
 
-        return { paymentId, qrCode, qrCodeBase64, ticketUrl };
+        return { paymentId, orderId, qrCode, qrCodeBase64, ticketUrl };
     }
 
     _stopPixPolling() {
@@ -352,11 +362,11 @@ class AuthManager {
         statusEl.style.color = color;
     }
 
-    async _checkAndFinalizePixPayment(paymentId, modal, manualCheck = false) {
+    async _checkAndFinalizePixPayment(paymentId, modal, manualCheck = false, orderId = null) {
         const res = await this.authenticatedFetch('/api/pay/confirm', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ payment_id: paymentId })
+            body: JSON.stringify({ payment_id: paymentId, order_id: orderId })
         });
         const data = await res.json();
 
@@ -380,7 +390,7 @@ class AuthManager {
         throw new Error(details ? `${msg} (${details})` : msg);
     }
 
-    _startPixPolling(paymentId, modal) {
+    _startPixPolling(paymentId, modal, orderId = null) {
         this._stopPixPolling();
 
         const startedAt = Date.now();
@@ -389,7 +399,7 @@ class AuthManager {
             if (inFlight) return;
             inFlight = true;
             try {
-                const approved = await this._checkAndFinalizePixPayment(paymentId, modal, false);
+                const approved = await this._checkAndFinalizePixPayment(paymentId, modal, false, orderId);
                 if (approved) return;
 
                 const elapsedMs = Date.now() - startedAt;
@@ -397,7 +407,7 @@ class AuthManager {
                     this._stopPixPolling();
                     this._setPixStatus(
                         modal,
-                        'Ainda não confirmou. Clique em "Já paguei" após concluir no app do banco.',
+                        'Ainda nao confirmou. Mantenha o modal aberto e aguarde a confirmacao automatica.',
                         '#fbbf24'
                     );
                 }
@@ -422,8 +432,9 @@ class AuthManager {
                     <img alt="QR Pix" class="pix-qr-image" src="data:image/png;base64,${pixData.qrCodeBase64}" />
                </div>`
             : `<p class="pix-hint-warning">Imagem QR nao disponivel neste retorno de teste.</p>`;
-        const ticketUrlHtml = pixData.ticketUrl
-            ? `<a href="${pixData.ticketUrl}" target="_blank" rel="noopener noreferrer" class="pix-ticket-link">Abrir cobranca Pix no Mercado Pago</a>`
+        const safeTicketUrl = (pixData.ticketUrl || '').replace('/sandbox/payments/', '/payments/');
+        const ticketUrlHtml = safeTicketUrl
+            ? `<a href="${safeTicketUrl}" target="_blank" rel="noopener noreferrer" class="pix-ticket-link">Abrir cobranca Pix no Mercado Pago</a>`
             : '';
         const qrText = pixData.qrCode || '';
         const disableCopy = qrText ? '' : 'disabled';
@@ -437,9 +448,8 @@ class AuthManager {
                 ${ticketUrlHtml}
                 <div class="pix-actions">
                     <button id="copyPixCodeBtn" ${disableCopy} class="${copyClass}">Copiar codigo</button>
-                    <button id="checkPixStatusBtn" class="pix-check-btn">Ja paguei</button>
                 </div>
-                <p id="pixStatusText" class="pix-status">Aguardando pagamento via Pix...</p>
+                <p id="pixStatusText" class="pix-status">Aguardando confirmacao automatica do Pix...</p>
             </div>
         `;
 
@@ -452,22 +462,6 @@ class AuthManager {
                     this._setPixStatus(modal, 'Codigo Pix copiado com sucesso.', '#4ade80');
                 } catch (error) {
                     this._setPixStatus(modal, 'Nao foi possivel copiar automaticamente.', '#fbbf24');
-                }
-            });
-        }
-
-        const checkBtn = container.querySelector('#checkPixStatusBtn');
-        if (checkBtn) {
-            checkBtn.addEventListener('click', async () => {
-                checkBtn.disabled = true;
-                checkBtn.textContent = 'Verificando...';
-                try {
-                    await this._checkAndFinalizePixPayment(pixData.paymentId, modal, true);
-                } catch (error) {
-                    this._setPixStatus(modal, `Erro ao confirmar: ${error.message}`, '#f87171');
-                } finally {
-                    checkBtn.disabled = false;
-                    checkBtn.textContent = 'Ja paguei';
                 }
             });
         }
@@ -572,10 +566,10 @@ class AuthManager {
                             <span class="price-caption">/pagamento unico</span>
                         </div>
 
-                        <button id="btnPix" class="btn-cta">
-                            <i class="fas fa-qrcode"></i> Pagar com PIX
+                        <button id="btnCheckout" class="btn-cta">
+                            <i class="fas fa-credit-card"></i> Pagar com cartao
                         </button>
-                        <p class="premium-caption">Liberacao imediata apos pagamento</p>
+                        <p class="premium-caption">Pagamento seguro via Mercado Pago</p>
                     </div>
                 </div>
             `;
@@ -826,17 +820,6 @@ class AuthManager {
             document.head.appendChild(style);
         }
 
-        let pixFlowContainer = modal.querySelector('#pixFlowContainer');
-        if (!pixFlowContainer) {
-            const btnPix = modal.querySelector('#btnPix');
-            if (btnPix) {
-                pixFlowContainer = document.createElement('div');
-                pixFlowContainer.id = 'pixFlowContainer';
-                pixFlowContainer.style.display = 'none';
-                btnPix.insertAdjacentElement('afterend', pixFlowContainer);
-            }
-        }
-
         if (!modal.dataset.bound) {
             modal.addEventListener('click', (event) => {
                 if (event.target === modal) {
@@ -855,28 +838,29 @@ class AuthManager {
                 });
             }
 
-            const btnPix = modal.querySelector('#btnPix');
-            if (btnPix) {
-                btnPix.addEventListener('click', async () => {
+            const btnCheckout = modal.querySelector('#btnCheckout');
+            if (btnCheckout) {
+                btnCheckout.addEventListener('click', async () => {
                     if (!this.isAuthenticated()) {
                         window.location.href = 'login.html';
                         return;
                     }
 
-                    btnPix.disabled = true;
-                    btnPix.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+                    btnCheckout.disabled = true;
+                    btnCheckout.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Abrindo checkout...';
 
                     try {
-                        this._stopPixPolling();
-                        const pixData = await this.createPremiumPixPayment();
-                        this._renderPixFlow(modal, pixData);
-                        this._setPixStatus(modal, 'QR Pix gerado. Pague e aguarde confirmacao.', '#4ade80');
-                        this._startPixPolling(pixData.paymentId, modal);
+                        const preference = await this.createPremiumPreference();
+                        const checkoutUrl = preference.init_point || preference.sandbox_init_point;
+                        if (!checkoutUrl) {
+                            throw new Error('Mercado Pago nao retornou URL de checkout.');
+                        }
+                        window.location.href = checkoutUrl;
                     } catch (error) {
                         alert('Erro no pagamento: ' + (error?.message || 'falha ao processar.'));
                     } finally {
-                        btnPix.disabled = false;
-                        btnPix.innerHTML = '<i class="fas fa-qrcode"></i> Gerar novo QR Pix';
+                        btnCheckout.disabled = false;
+                        btnCheckout.innerHTML = '<i class="fas fa-credit-card"></i> Pagar com cartao';
                     }
                 });
             }
@@ -891,11 +875,6 @@ class AuthManager {
         const modal = this.ensurePremiumModal();
         this._stopPixPolling();
         modal.classList.remove('pix-flow-active');
-        const pixFlowContainer = modal.querySelector('#pixFlowContainer');
-        if (pixFlowContainer) {
-            pixFlowContainer.style.display = 'none';
-            pixFlowContainer.innerHTML = '';
-        }
         modal.style.display = 'flex';
     }
 

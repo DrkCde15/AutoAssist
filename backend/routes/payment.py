@@ -39,6 +39,29 @@ def _get_service_or_error():
         )
 
 
+def _extract_order_payment(order_data: dict) -> dict:
+    if not isinstance(order_data, dict):
+        return {}
+    transactions = order_data.get("transactions")
+    if not isinstance(transactions, dict):
+        return {}
+    payments = transactions.get("payments")
+    if not isinstance(payments, list) or not payments:
+        return {}
+    first = payments[0]
+    return first if isinstance(first, dict) else {}
+
+
+def _is_paid_status(status: str, status_detail: str) -> bool:
+    status = (status or "").strip().lower()
+    status_detail = (status_detail or "").strip().lower()
+    if status in {"approved", "processed"}:
+        return True
+    if status_detail in {"accredited", "partially_refunded"}:
+        return True
+    return False
+
+
 def _validar_items_preferencia(items) -> str | None:
     if not isinstance(items, list) or not items:
         return "Campo obrigatorio: items (lista nao vazia)."
@@ -146,41 +169,91 @@ def confirm_payment():
     user_id = get_jwt_identity()
     body = request.get_json(silent=True) or {}
     payment_id = body.get("payment_id")
+    order_id = body.get("order_id")
 
-    if not payment_id:
+    if not payment_id and not order_id:
         return jsonify(
             success=False,
-            error="Informe payment_id para confirmar pagamento no Mercado Pago.",
+            error="Informe payment_id (ou order_id) para confirmar pagamento no Mercado Pago.",
         ), 400
 
     service, error_response = _get_service_or_error()
     if error_response:
         return error_response
 
-    consulta = service.consultar_pagamento(str(payment_id))
-    if not consulta["success"]:
-        status_code = int(consulta.get("status_code") or 500)
-        if status_code == 404:
+    pagamento = None
+    consulta_status_code = None
+    if payment_id:
+        consulta = service.consultar_pagamento(str(payment_id))
+        if consulta["success"]:
+            pagamento = consulta["data"]
+        else:
+            consulta_status_code = int(consulta.get("status_code") or 500)
+            if consulta_status_code not in (404,):
+                return jsonify(
+                    success=False,
+                    error="Falha ao consultar pagamento no Mercado Pago.",
+                    details=consulta.get("error"),
+                ), consulta_status_code
+
+    if pagamento is None and order_id:
+        consulta_order = service.consultar_order(str(order_id))
+        if not consulta_order["success"]:
+            order_status_code = int(consulta_order.get("status_code") or 500)
+            if order_status_code in (404,) and consulta_status_code in (404, None):
+                return jsonify(
+                    success=False,
+                    error="Pagamento ainda em processamento.",
+                    payment_id=payment_id,
+                    order_id=order_id,
+                ), 409
+            return jsonify(
+                success=False,
+                error="Falha ao consultar order no Mercado Pago.",
+                details=consulta_order.get("error"),
+            ), order_status_code
+
+        order_data = consulta_order.get("data", {})
+        pagamento = _extract_order_payment(order_data)
+        if not pagamento:
             return jsonify(
                 success=False,
                 error="Pagamento ainda em processamento.",
                 payment_id=payment_id,
+                order_id=order_id,
             ), 409
+
+        pagamento = {
+            "id": pagamento.get("id") or payment_id,
+            "status": pagamento.get("status") or order_data.get("status"),
+            "status_detail": pagamento.get("status_detail") or order_data.get("status_detail"),
+            "external_reference": order_data.get("external_reference"),
+        }
+
+    if pagamento is None:
         return jsonify(
             success=False,
-            error="Falha ao consultar pagamento no Mercado Pago.",
-            details=consulta.get("error"),
-        ), status_code
+            error="Pagamento ainda em processamento.",
+            payment_id=payment_id,
+            order_id=order_id,
+        ), 409
 
-    pagamento = consulta["data"]
     status = str(pagamento.get("status", "")).lower()
-    if status != "approved":
+    status_detail = str(pagamento.get("status_detail", "")).lower()
+    logger.info(
+        "Confirmacao de pagamento | payment_id=%s order_id=%s status=%s status_detail=%s",
+        payment_id,
+        order_id,
+        status,
+        status_detail,
+    )
+    if not _is_paid_status(status, status_detail):
         return jsonify(
             success=False,
             error="Pagamento ainda nao aprovado.",
             payment_id=payment_id,
             payment_status=status,
-            status_detail=pagamento.get("status_detail"),
+            status_detail=status_detail,
         ), 409
 
     external_reference = str(pagamento.get("external_reference") or "")
