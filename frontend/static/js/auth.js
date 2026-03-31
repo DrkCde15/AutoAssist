@@ -851,7 +851,7 @@ class AuthManager {
 
                     try {
                         const preference = await this.createPremiumPreference();
-                        const checkoutUrl = preference.init_point || preference.sandbox_init_point;
+                        const checkoutUrl = preference.sandbox_init_point || preference.init_point;
                         if (!checkoutUrl) {
                             throw new Error('Mercado Pago nao retornou URL de checkout.');
                         }
