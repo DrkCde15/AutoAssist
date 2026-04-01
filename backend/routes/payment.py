@@ -102,7 +102,7 @@ def _normalizar_preference_payload(payload: dict) -> dict:
 
     auto_return = normalized.get("auto_return")
     success_url = str(back_urls.get("success") or "")
-    if auto_return and (not success_url or not success_url.startswith("https://")):
+    if auto_return and not success_url.startswith("http"):
         normalized.pop("auto_return", None)
 
     return normalized

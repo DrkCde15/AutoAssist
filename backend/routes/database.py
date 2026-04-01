@@ -181,6 +181,6 @@ def get_trial_days_remaining(user):
 
 def is_valid_email_domain(email):
     """Valida se o email pertence aos domínios permitidos."""
-    allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com"]
+    allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com", "@testuser.com", "@client.com"]
     email_lower = email.lower()
     return any(email_lower.endswith(domain) for domain in allowed_domains)
