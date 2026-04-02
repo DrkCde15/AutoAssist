@@ -12,6 +12,7 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+mercado_pago_pix_analise.md
 
 # --- Logs & Databases ---
 *.log

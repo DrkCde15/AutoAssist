@@ -569,7 +569,11 @@ class AuthManager {
                         <button id="btnCheckout" class="btn-cta">
                             <i class="fas fa-credit-card"></i> Pagar com cartao
                         </button>
+                        <button id="btnPixCheckout" class="btn-cta" style="background: linear-gradient(135deg, #059669, #10b981); margin-top: 10px;">
+                            <i class="fa-brands fa-pix"></i> Pagar com Pix
+                        </button>
                         <p class="premium-caption">Pagamento seguro via Mercado Pago</p>
+                        <div id="pixFlowContainer" style="display: none;"></div>
                     </div>
                 </div>
             `;
@@ -861,6 +865,30 @@ class AuthManager {
                     } finally {
                         btnCheckout.disabled = false;
                         btnCheckout.innerHTML = '<i class="fas fa-credit-card"></i> Pagar com cartao';
+                    }
+                });
+            }
+
+            const btnPixCheckout = modal.querySelector('#btnPixCheckout');
+            if (btnPixCheckout) {
+                btnPixCheckout.addEventListener('click', async () => {
+                    if (!this.isAuthenticated()) {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+
+                    btnPixCheckout.disabled = true;
+                    btnPixCheckout.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando Pix...';
+
+                    try {
+                        const pixData = await this.createPremiumPixPayment();
+                        this._renderPixFlow(modal, pixData);
+                        this._startPixPolling(pixData.paymentId, modal, pixData.orderId);
+                    } catch (error) {
+                        alert('Erro no pagamento Pix: ' + (error?.message || 'falha ao processar.'));
+                    } finally {
+                        btnPixCheckout.disabled = false;
+                        btnPixCheckout.innerHTML = '<i class="fa-brands fa-pix"></i> Pagar com Pix';
                     }
                 });
             }

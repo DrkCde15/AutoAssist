@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from services.mercado_pago import MercadoPagoService
+from .database import get_db
 
 gateway_bp = Blueprint("gateway", __name__, url_prefix="/pagamentos")
 logger = logging.getLogger(__name__)
@@ -81,6 +82,14 @@ def criar_pix():
 
     user_id = str(get_jwt_identity())
     body = request.get_json(silent=True) or {}
+    
+    with get_db() as (cursor, conn):
+        cursor.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+        user_db = cursor.fetchone()
+        
+    if user_db and user_db.get("email"):
+        body.setdefault("customer", {})
+        body["customer"]["email"] = user_db["email"]
     for campo in ("customer", "items", "valor_centavos"):
         if campo not in body:
             return _bad(f"Campo obrigatorio ausente: {campo}")
