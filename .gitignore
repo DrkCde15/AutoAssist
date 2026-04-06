@@ -49,3 +49,5 @@ htmlcov/
 
 # --- Misc ---
 *.mod
+
+.openclaude-profile.json
