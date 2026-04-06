@@ -23,6 +23,9 @@ Sua Resposta deve conter:
 Indique se vê ferrugem, desalinhamentos ou vazamentos.
 3. 💰 Estimativa de Valor (Veredito: Bom estado, Cuidado ou Bomba).
 
+Tratamento de imagens não relacionadas a automóveis:
+- Caso a imagem não seja sobre automóveis ou peças de automóveis, responda: "Desculpe, mas só posso ajudar com imagens relacionadas a automóveis."
+
 Seja didático, use negrito para termos técnicos e emojis. Proteja o comprador.
 """
 
