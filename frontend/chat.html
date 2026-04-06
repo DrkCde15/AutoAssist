@@ -244,34 +244,123 @@
 
       /* --- FOOTER --- */
       footer {
-        padding: 16px;
-        background: var(--header-bg);
+        padding: 16px 24px;
+        background: var(--bg-color);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: block;
+      }
+
+      .chat-input-wrapper {
+        background: var(--input-bg);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        display: flex;
+        flex-direction: column;
+        padding: 5px 10px;
+        box-shadow: var(--shadow);
+      }
+
+      .image-preview-container {
         display: flex;
         gap: 10px;
+        padding: 10px 10px 0 10px;
+      }
+
+      .image-preview-item {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      }
+
+      .image-preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 12px;
+        border: 2px solid var(--input-bg);
+      }
+
+      .image-preview-actions {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        display: flex;
+        gap: 4px;
+      }
+
+      .image-preview-btn {
+        width: 22px;
+        height: 22px;
+        background: #0f172a;
+        color: white;
+        border-radius: 50%;
+        display: flex;
         align-items: center;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        justify-content: center;
+        font-size: 10px;
+        cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: background 0.2s;
+      }
+      
+      .image-preview-btn:hover {
+        background: #1e293b;
+      }
+
+      .chat-input-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 0;
       }
 
       input#messageInput {
         flex: 1;
-        padding: 12px;
-        background: var(--input-bg);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 10px;
+        background: transparent;
+        border: none;
         color: white;
-        border-radius: var(--radius);
         outline: none;
+        font-size: 0.95rem;
       }
 
-      #send {
-        background: var(--primary);
-        color: white;
-        padding: 10px 20px;
+      input#messageInput::placeholder {
+        color: var(--text-muted);
       }
+
       .btn-icon {
         background: transparent;
         color: var(--text-muted);
         font-size: 1.2rem;
         padding: 10px;
+        margin: 0;
+        transition: color 0.2s;
+      }
+      
+      .btn-icon:hover {
+        color: white;
+      }
+      
+      .send-btn {
+        background: var(--primary) !important;
+        color: white !important;
+        border-radius: 50%;
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-size: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: transform 0.2s, background 0.2s;
+      }
+      
+      .send-btn:hover {
+        background: var(--primary-hover) !important;
+        transform: scale(1.05);
       }
 
       @keyframes slideIn {
@@ -327,18 +416,29 @@
         style="display: none"
         accept="image/*"
       />
-      <button id="attach" class="btn-icon" title="Anexar foto">
-        <i class="fas fa-camera"></i>
-      </button>
-      <input
-        id="messageInput"
-        placeholder="Digite sua mensagem..."
-        autocomplete="off"
-      />
-      <button id="btnVoice" class="btn-icon" style="display: none">
-        <i class="fas fa-microphone"></i>
-      </button>
-      <button id="send">Enviar</button>
+      
+      <div class="chat-input-wrapper">
+        <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
+          <!-- JavaScript vai popular a imagem aqui -->
+        </div>
+        
+        <div class="chat-input-row">
+          <button id="attach" class="btn-icon" title="Anexar foto">
+            <i class="fas fa-plus"></i>
+          </button>
+          <input
+            id="messageInput"
+            placeholder="Pergunte alguma coisa"
+            autocomplete="off"
+          />
+          <button id="btnVoice" class="btn-icon" style="display: none">
+            <i class="fas fa-microphone"></i>
+          </button>
+          <button id="send" class="btn-icon send-btn">
+            <i class="fas fa-arrow-up"></i>
+          </button>
+        </div>
+      </div>
     </footer>
 
     <script src="./static/js/config.js"></script>
@@ -597,7 +697,8 @@
         // UI Reset
         input.value = "";
         fileInput.value = "";
-        attachBtn.style.color = "";
+        document.getElementById("imagePreviewContainer").style.display = "none";
+        document.getElementById("imagePreviewContainer").innerHTML = "";
 
         const typingDiv = addMessage(
           '<div class="typing-indicator"><span></span><span></span><span></span></div>',
@@ -651,7 +752,40 @@
       });
       attachBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", () => {
-        if (fileInput.files[0]) attachBtn.style.color = "#3b82f6";
+        const container = document.getElementById("imagePreviewContainer");
+        if (fileInput.files[0]) {
+          const file = fileInput.files[0];
+          const reader = new FileReader();
+          
+          reader.onload = function(e) {
+            container.innerHTML = `
+              <div class="image-preview-item">
+                <img src="${e.target.result}" alt="Preview">
+                <div class="image-preview-actions">
+                  <div class="image-preview-btn" id="editImageBtn" title="Editar imagem" style="display: none;">
+                    <i class="fas fa-pencil-alt"></i>
+                  </div>
+                  <div class="image-preview-btn" id="removeImageBtn" title="Remover imagem">
+                    <i class="fas fa-times"></i>
+                  </div>
+                </div>
+              </div>
+            `;
+            container.style.display = "flex";
+            
+            document.getElementById("removeImageBtn").addEventListener("click", () => {
+              fileInput.value = "";
+              container.style.display = "none";
+              container.innerHTML = "";
+            });
+            // Opcional: Implementar document.getElementById("editImageBtn") futuramente
+          }
+          
+          reader.readAsDataURL(file);
+        } else {
+          container.style.display = "none";
+          container.innerHTML = "";
+        }
       });
 
       document
