@@ -73,14 +73,38 @@
 
       button {
         width: 100%;
-        padding: 14px;
+        padding: 16px;
         border: none;
-        border-radius: 12px;
-        background: #2563eb;
+        border-radius: 14px;
+        background: #3b82f6;
         color: #fff;
         font-size: 16px;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      button:not(#backBtn):hover:not(:disabled) {
+        background: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+      }
+
+      #backBtn:hover {
+        background: rgba(37, 99, 235, 0.1) !important;
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
 
       .links {
@@ -189,7 +213,7 @@
           <i class="fas fa-eye password-toggle" id="togglePassword"></i>
         </div>
 
-        <button type="submit">Entrar</button>
+        <button type="submit" id="btnEntrar">Entrar <i class="fas fa-arrow-right"></i></button>
       </form>
 
       <!-- NOVO: Form de 2FA -->
@@ -200,7 +224,7 @@
           <input type="password" id="twoFactorCode" placeholder="Sua senha de 2FA" />
           <i class="fas fa-eye password-toggle" id="toggle2FA"></i>
         </div>
-        <button type="submit">Confirmar e Entrar</button>
+        <button type="submit" id="btnConfirm2FA">Confirmar e Entrar <i class="fas fa-check"></i></button>
         <button type="button" id="backBtn" style="background: transparent; border: 1px solid #2563eb; margin-top: 10px; color: #2563eb;">Voltar</button>
       </form>
 
@@ -238,6 +262,11 @@
 
           const email = document.getElementById("email").value.trim().toLowerCase();
           const password = document.getElementById("password").value;
+          
+          const btnEntrar = document.getElementById("btnEntrar");
+          const originalBtnContent = btnEntrar.innerHTML;
+          btnEntrar.disabled = true;
+          btnEntrar.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
 
           try {
             const data = await Auth.login(email, password);
@@ -248,12 +277,16 @@
               twoFactorForm.style.display = "block";
               registerLinks.style.display = "none";
               document.querySelector("p").innerText = "Verificação de Segurança";
+              btnEntrar.disabled = false;
+              btnEntrar.innerHTML = originalBtnContent;
             } else {
               window.location.href = "index.html";
             }
           } catch (err) {
             errorBox.textContent = err.message;
             errorBox.style.display = "block";
+            btnEntrar.disabled = false;
+            btnEntrar.innerHTML = originalBtnContent;
           }
         });
 
@@ -264,12 +297,19 @@
           const code = document.getElementById("twoFactorCode").value;
           if (!code) return;
 
+          const btnConfirm2FA = document.getElementById("btnConfirm2FA");
+          const originalBtnContent = btnConfirm2FA.innerHTML;
+          btnConfirm2FA.disabled = true;
+          btnConfirm2FA.innerHTML = 'Processando... <i class="fas fa-circle-notch fa-spin"></i>';
+
           try {
             await Auth.verify2FA(pendingToken, code);
             window.location.href = "index.html";
           } catch (err) {
             errorBox.textContent = err.message;
             errorBox.style.display = "block";
+            btnConfirm2FA.disabled = false;
+            btnConfirm2FA.innerHTML = originalBtnContent;
           }
         });
 
