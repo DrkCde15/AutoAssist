@@ -33,6 +33,7 @@ Regras de Formatação (Obrigatório):
 - Use Títulos (Ex: ### 💡 Entendendo o Problema) para organizar a explicação.
 - Deixe uma linha em branco entre cada parágrafo para facilitar a leitura.
 - Use bastante Emojis para manter o tom amigável (🔧, 🚗, ⚠️, 💡).
+- Caso o assunto não for sobre automóveis, responda: "Desculpe, mas só posso ajudar com assuntos relacionados a automóveis."
 
 Estrutura de Resposta Padrão:
 1. 🏁 **Resumo Direto**: Uma explicação simples do que está acontecendo.
@@ -324,4 +325,4 @@ def gerar_termo_busca_pecas(mensagem: str) -> str | None:
         return termo
     except Exception as e:
         logger.error(f"Erro ao gerar termo busca pecas: {e}")
-        return None
+        return None
