@@ -1,20 +1,21 @@
 import os
 import uuid
 import logging
-from typing import Any
-
+from typing import Any, TYPE_CHECKING
 from dotenv import load_dotenv
 
 try:
     import mercadopago
-    from mercadopago.config import RequestOptions
+    from mercadopago.config import RequestOptions as MercadoPagoRequestOptions
 except ImportError:  # pragma: no cover - depende do ambiente
     mercadopago = None
-    RequestOptions = None
+    MercadoPagoRequestOptions = None
+
+if TYPE_CHECKING:
+    from mercadopago.config import RequestOptions
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-
 
 class MercadoPagoService:
     def __init__(self):
@@ -297,13 +298,18 @@ class MercadoPagoService:
         self,
         idempotency_key: str | None = None,
         with_idempotency: bool = False,
-    ) -> RequestOptions:
+    ) -> "RequestOptions":
+        if MercadoPagoRequestOptions is None:
+            raise ImportError(
+                "Pacote 'mercadopago' nao encontrado. "
+                "Instale com: pip install mercadopago"
+            )
         headers = {}
         if self.test_scope:
             headers["x-test-scope"] = self.test_scope
         if with_idempotency or idempotency_key:
             headers["x-idempotency-key"] = idempotency_key or str(uuid.uuid4())
-        return RequestOptions(
+        return MercadoPagoRequestOptions(
             access_token=self.token,
             connection_timeout=float(self.timeout),
             custom_headers=headers or None,
