@@ -524,7 +524,10 @@ class AuthManager {
     getUser() {
         try {
             const userStr = localStorage.getItem(this.USER_KEY);
-            return userStr ? JSON.parse(userStr) : null;
+            if (!userStr) return null;
+            const user = JSON.parse(userStr);
+            if (user) user.is_premium = true; // Always premium
+            return user;
         } catch {
             return null;
         }
@@ -921,7 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.pathname.endsWith('login.html') ||
         window.location.pathname.endsWith('cadastro.html');
 
-    if (!skipTrialBadge && navContainer && user && !user.is_premium && user.trial_days_remaining !== undefined) {
+    if (false) { // Disabled trial badge
         if (!document.getElementById('globalTrialBadge')) {
             const badge = document.createElement('div');
             badge.id = 'globalTrialBadge';

@@ -165,19 +165,10 @@ def enviar_email(destinatario, assunto, mensagem_html):
         print("Erro ao enviar email:", e)
 
 def is_trial_expired(user):
-    if user.get("is_premium"): return False
-    created_at = user["created_at"]
-    if isinstance(created_at, str): created_at = datetime.fromisoformat(created_at)
-    if created_at.tzinfo is None: created_at = created_at.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - created_at).days >= 30
+    return False
 
 def get_trial_days_remaining(user):
-    if user.get("is_premium"): return None
-    created_at = user["created_at"]
-    if isinstance(created_at, str): created_at = datetime.fromisoformat(created_at)
-    if created_at.tzinfo is None: created_at = created_at.replace(tzinfo=timezone.utc)
-    days_passed = (datetime.now(timezone.utc) - created_at).days
-    return max(0, 30 - days_passed)
+    return 9999
 
 def is_valid_email_domain(email):
     """Valida se o email pertence aos domínios permitidos."""

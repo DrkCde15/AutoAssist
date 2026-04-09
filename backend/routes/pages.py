@@ -24,10 +24,6 @@ def get_user_by_id(cursor, user_id):
     return cursor.fetchone()
 
 def ensure_premium_user(user):
-    if not user:
-        return jsonify(error="Usuário não encontrado"), 404
-    if not user.get("is_premium"):
-        return jsonify(error=PREMIUM_ONLY_ERROR), 403
     return None
 
 @pages_bp.route("/")
@@ -62,7 +58,7 @@ def get_user():
             **user,
             "trial_expired": is_trial_expired(user),
             "trial_days_remaining": get_trial_days_remaining(user),
-            "is_premium": bool(user["is_premium"]),
+            "is_premium": True,
             "possui_veiculo": len(veiculos) > 0,
             "veiculos": veiculos,
             "total_consultas": int(total["total"])
@@ -102,7 +98,7 @@ def update_user():
                 **user,
                 "trial_expired": is_trial_expired(user),
                 "trial_days_remaining": get_trial_days_remaining(user),
-                "is_premium": bool(user["is_premium"]),
+                "is_premium": True,
                 "total_consultas": int(total["total"]),
                 "success": True
             }), 200
@@ -199,7 +195,7 @@ def chat():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
-            if is_trial_expired(user): return jsonify(error="TRIAL_EXPIRED"), 402
+            # Trial check removed - everything is free
             
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
@@ -238,7 +234,7 @@ def chat():
                             VALUES (%s, %s, %s, %s)
                         """, (user_id, titulo, loja['url'], descricao))
 
-                if user.get("is_premium"):
+                if True: # User is always premium
                     termo_busca = gerar_termo_busca_youtube(msg, resposta)
                     if termo_busca:
                         yt_videos = buscar_videos_youtube(termo_busca)
@@ -318,7 +314,7 @@ def voice_to_text():
                         VALUES (%s, %s, %s, %s)
                     """, (user_id, titulo, loja['url'], descricao))
             
-            if user.get("is_premium"):
+            if True: # User is always premium
                 termo_busca = gerar_termo_busca_youtube(text, resposta)
                 if termo_busca:
                     yt_videos = buscar_videos_youtube(termo_busca)

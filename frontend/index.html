@@ -373,40 +373,26 @@
                     centralIcon.title = `Logado como ${userData.nome}`;
                     centralIcon.innerHTML = `<i class="fas fa-user"></i>`;
                     
-                    let trialBadge = '';
-                    if (!userData.is_premium && userData.trial_days_remaining !== undefined) {
-                        trialBadge = `<div style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; gap: 5px;"><i class="fas fa-clock"></i> Teste Grátis: ${userData.trial_days_remaining} dias</div>`;
-                    }
-                    
                     authLinks.innerHTML = `
-                        ${trialBadge}
-                        <a href="dashboard.html" data-premium-gate class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        <a href="dashboard.html" class="nav-link" style="color: #3b82f6; font-weight: bold;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link" style="color: #60a5fa;"><i class="fas fa-comments"></i> Chat</a>
                         <button id="btnLogout" class="nav-link" style="background:none; border:none; font-family:inherit;">SAIR</button>
                     `;
 
                     ctaContainer.innerHTML = `<a href="chat.html" class="btn-minimal">Acessar Consultor IA</a>`;
 
-                    document.getElementById('btnLogout').addEventListener('click', () => {
-                        Auth.logout();
-                    });
-
-                    // --- CHECK DE TRIAL ---
-                    if (userData.trial_expired) {
-                        Auth.showPremiumModal();
+                    const btnLogout = document.getElementById('btnLogout');
+                    if (btnLogout) {
+                        btnLogout.addEventListener('click', () => {
+                            Auth.logout();
+                        });
                     }
-
-                } else if (response.status === 401 || response.status === 403) {
-                    console.warn('Sessão inválida, fazendo logout.');
-                    Auth.logout(false);
-                    window.location.reload();
                 }
-
             } catch (error) {
                 console.error('Erro de conexão:', error);
             }
 
-            // --- LÓGICA DE SLIDESHOW DO HERO (ESTILO WIPE POWERPOINT) ---
+            // --- LÓGICA DE SLIDESHOW DO HERO ---
             const heroSection = document.querySelector('.hero');
             const images = [
                 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=1920',
@@ -416,7 +402,6 @@
                 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1920'
             ];
             
-            // Força o carregamento imediato de todas as imagens
             images.forEach(src => {
                 const img = new Image();
                 img.src = src;
@@ -431,31 +416,23 @@
                 const nextIndex = (currentImgIndex + 1) % images.length;
                 const nextBg = `linear-gradient(rgba(15, 23, 42, 0.8), rgba(30, 58, 138, 0.8)), url('${images[nextIndex]}')`;
 
-                // 1. Prepara a camada de wipe (invisível à direita)
                 wipeLayer.style.transition = 'none';
                 wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
                 wipeLayer.style.backgroundImage = nextBg;
-
-                // Força reflow para garantir que o CSS 'transition: none' seja aplicado
                 wipeLayer.offsetHeight;
 
-                // 2. Inicia a transição Wipe
                 wipeLayer.style.transition = 'clip-path 1.8s cubic-bezier(0.77, 0, 0.175, 1)';
                 wipeLayer.style.clipPath = 'inset(0 0 0 0)';
 
-                // 3. Quando a animação termina:
                 setTimeout(() => {
-                    // Torna a imagem do wipe o fundo principal
                     heroSection.style.backgroundImage = nextBg;
-                    // Reseta o wipe para a próxima vez (esconde ele)
                     wipeLayer.style.transition = 'none';
                     wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
                     currentImgIndex = nextIndex;
                 }, 1900);
                 
-            }, 3000); // 3 segundos para a transição
+            }, 3000);
         });
     </script>
 </body>
 </html>
-
