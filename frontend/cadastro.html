@@ -449,6 +449,14 @@
                 </div>
               </div>
             </div>
+
+            <div class="form-group">
+              <label>Kilometragem Atual (KM)</label>
+              <div class="input-wrapper">
+                <i class="fas fa-tachometer-alt"></i>
+                <input type="number" class="v-kilometragem" placeholder="Ex: 50000" />
+              </div>
+            </div>
           </div>
         `;
         vehiclesContainer.insertAdjacentHTML('beforeend', html);
@@ -524,7 +532,8 @@
                     marca,
                     modelo,
                     ano_fabricacao: block.querySelector('.v-ano-fab').value,
-                    ano_compra: block.querySelector('.v-ano-compra').value
+                    ano_compra: block.querySelector('.v-ano-compra').value,
+                    kilometragem: block.querySelector('.v-kilometragem').value
                 });
             }
           });

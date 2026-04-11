@@ -44,14 +44,14 @@ def get_user():
         cursor.execute("""
             SELECT nome, email, is_premium, created_at, possui_veiculo,
                    veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao,
-                   veiculo_ano_compra, veiculo_tipo, is_two_factor_enabled
+                   veiculo_ano_compra, veiculo_tipo, veiculo_kilometragem, is_two_factor_enabled
             FROM users WHERE id = %s
         """, (user_id,))
         user = cursor.fetchone()
         cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
         
-        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem FROM veiculos WHERE user_id = %s", (user_id,))
         veiculos = cursor.fetchall()
         
         return jsonify({
@@ -119,9 +119,9 @@ def add_veiculo():
             ano_compra = int(ano_compra) if ano_compra else None
             
             cursor.execute("""
-                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (user_id, data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra))
+                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, data.get("kilometragem")))
             v_id = cursor.lastrowid
             cursor.execute("UPDATE users SET possui_veiculo = TRUE WHERE id = %s", (user_id,))
             return jsonify(success=True, id=v_id), 201
@@ -147,9 +147,9 @@ def edit_veiculo(v_id):
             
             cursor.execute("""
                 UPDATE veiculos 
-                SET tipo = %s, marca = %s, modelo = %s, ano_fabricacao = %s, ano_compra = %s
+                SET tipo = %s, marca = %s, modelo = %s, ano_fabricacao = %s, ano_compra = %s, kilometragem = %s
                 WHERE id = %s AND user_id = %s
-            """, (data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, v_id, user_id))
+            """, (data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, data.get("kilometragem"), v_id, user_id))
             return jsonify(success=True), 200
     except Exception as e:
         logger.error(f"Erro ao editar veiculo: {e}")
@@ -197,7 +197,7 @@ def chat():
             user = get_user_by_id(cursor, user_id)
             # Trial check removed - everything is free
             
-            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
             if veiculos:
                 user['lista_veiculos'] = veiculos
@@ -278,7 +278,7 @@ def voice_to_text():
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
             
-            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
             if veiculos:
                 user['lista_veiculos'] = veiculos
@@ -384,7 +384,7 @@ def get_dashboard():
             if premium_error:
                 return premium_error
             
-            cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra FROM veiculos WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
             
             if not veiculos:
@@ -397,14 +397,23 @@ def get_dashboard():
                 ano_fab = v["ano_fabricacao"] or ano_atual
                 idade = ano_atual - ano_fab
                 
+                km = v.get("kilometragem") or 0
                 alertas = []
+
+                # Alertas baseados em Idade
                 if idade >= 5:
                     alertas.append({"item": "Suspensão", "status": "Atenção", "msg": "Revisar amortecedores e buchas."})
                 if idade >= 3:
                     alertas.append({"item": "Líquido Arrefecimento", "status": "Aviso", "msg": "Troca recomendada a cada 2-3 anos."})
                 
-                alertas.append({"item": "Pneus", "status": "Ok" if idade < 4 else "Atenção", "msg": "Verificar TWI e validade."})
-                alertas.append({"item": "Freios", "status": "Ok", "msg": "Monitorar espessura das pastilhas."})
+                # Alertas baseados em Kilometragem (Melhoria)
+                if km >= 50000:
+                    alertas.append({"item": "Correia Dentada", "status": "Atenção", "msg": "Verificar estado da correia dentada/tensor."})
+                if km >= 10000:
+                    alertas.append({"item": "Óleo do Motor", "status": "Aviso", "msg": "Próximo da revisão periódica (10k km)."})
+                
+                alertas.append({"item": "Pneus", "status": "Ok" if idade < 4 and km < 40000 else "Atenção", "msg": "Verificar TWI, validade e desgaste."})
+                alertas.append({"item": "Freios", "status": "Ok" if km < 20000 else "Atenção", "msg": "Monitorar pastilhas e discos."})
                 
                 tipo_map = {
                     "carro": "carros",
@@ -437,7 +446,8 @@ def get_dashboard():
                         "marca": v["marca"],
                         "modelo": v["modelo"],
                         "ano": ano_fab,
-                        "tipo": v_tipo
+                        "tipo": v_tipo,
+                        "kilometragem": km
                     },
                     "saude": alertas,
                     "fipe": {

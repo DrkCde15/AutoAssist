@@ -351,6 +351,10 @@
                             <input type="number" id="infoVeiculoAnoCompra" class="input-field">
                         </div>
                     </div>
+                    <div class="field-card">
+                        <div class="field-label">Kilometragem Atual (KM)</div>
+                        <input type="number" id="infoVeiculoKilometragem" class="input-field" placeholder="Ex: 50000">
+                    </div>
                     <button id="btnConfirmAddVehicle" class="btn btn-primary" style="margin-top: 10px;">Salvar Veículo</button>
                     <button id="btnCancelAddVehicle" class="btn" style="border-color: var(--danger); color: var(--danger);">Cancelar</button>
                 </div>
@@ -422,6 +426,7 @@
         const infoVeiculoModelo = document.getElementById('infoVeiculoModelo');
         const infoVeiculoAnoFab = document.getElementById('infoVeiculoAnoFab');
         const infoVeiculoAnoCompra = document.getElementById('infoVeiculoAnoCompra');
+        const infoVeiculoKilometragem = document.getElementById('infoVeiculoKilometragem');
         
         let userVeiculos = [];
         const btnSave = document.getElementById('btnSave');
@@ -453,6 +458,7 @@
             infoVeiculoModelo.value = '';
             infoVeiculoAnoFab.value = '';
             infoVeiculoAnoCompra.value = '';
+            infoVeiculoKilometragem.value = '';
         });
         
         btnConfirmAddVehicle.addEventListener('click', async () => {
@@ -470,7 +476,8 @@
                         marca,
                         modelo,
                         ano_fabricacao: infoVeiculoAnoFab.value,
-                        ano_compra: infoVeiculoAnoCompra.value
+                        ano_compra: infoVeiculoAnoCompra.value,
+                        kilometragem: infoVeiculoKilometragem.value
                     })
                 });
                 
@@ -518,7 +525,7 @@
                         <i class="fas ${icon}" style="color: var(--primary); font-size: 18px;"></i>
                         <div>
                             <div style="font-size: 14px; font-weight: 600;">${v.marca} ${v.modelo}</div>
-                            <div style="font-size: 12px; color: var(--text-muted);">${v.ano_fabricacao || ''}</div>
+                            <div style="font-size: 12px; color: var(--text-muted);">${v.ano_fabricacao || ''} • ${v.kilometragem ? v.kilometragem.toLocaleString() + ' km' : 'KM não informado'}</div>
                         </div>
                     </div>
                     <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="removerVeiculo(${v.id})"><i class="fas fa-trash"></i></button>
