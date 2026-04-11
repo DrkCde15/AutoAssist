@@ -21,7 +21,7 @@ auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
 def fetch_veiculos_user(cursor, user_id):
-    cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem FROM veiculos WHERE user_id = %s", (user_id,))
+    cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
     return cursor.fetchall()
 
 
@@ -211,11 +211,11 @@ def cadastro():
                 ano_compra = int(ano_compra) if ano_compra else None
                 
                 cursor.execute("""
-                    INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem)
+                    INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (
                     user_id, v.get("tipo"), v.get("marca"), v.get("modelo"),
-                    ano_fab, ano_compra, v.get("kilometragem")
+                    ano_fab, ano_compra, v.get("quilometragem")
                 ))
         return jsonify(success=True), 201
     except Exception as e:

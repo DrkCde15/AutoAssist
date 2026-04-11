@@ -59,7 +59,7 @@ def init_db():
                 veiculo_ano_fabricacao INT,
                 veiculo_ano_compra INT,
                 veiculo_tipo VARCHAR(50),
-                veiculo_kilometragem INT,
+                veiculo_quilometragem INT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -73,7 +73,7 @@ def init_db():
                 modelo VARCHAR(50),
                 ano_fabricacao INT,
                 ano_compra INT,
-                kilometragem INT,
+                quilometragem INT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -81,8 +81,8 @@ def init_db():
         # Migração de dados de veículos existentes da tabela users
         try:
             cursor.execute("""
-                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, kilometragem)
-                SELECT id, veiculo_tipo, veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, veiculo_ano_compra, veiculo_kilometragem
+                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
+                SELECT id, veiculo_tipo, veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, veiculo_ano_compra, veiculo_quilometragem
                 FROM users 
                 WHERE possui_veiculo = TRUE 
                 AND veiculo_marca IS NOT NULL
@@ -98,7 +98,7 @@ def init_db():
             ("veiculo_ano_fabricacao", "INT"),
             ("veiculo_ano_compra", "INT"),
             ("veiculo_tipo", "VARCHAR(50)"),
-            ("veiculo_kilometragem", "INT"),
+            ("veiculo_quilometragem", "INT"),
             ("two_factor_secret", "VARCHAR(255)"), 
             ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
             ("google_id", "VARCHAR(255)"),
