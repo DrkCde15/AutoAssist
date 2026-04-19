@@ -387,6 +387,10 @@
                             Auth.logout();
                         });
                     }
+                } else {
+                    // Se o token existe mas o backend rejeitou, limpamos a sessão
+                    console.warn(`Sessão inválida detectada (${response.status}). Deslogando...`);
+                    Auth.logout();
                 }
             } catch (error) {
                 console.error('Erro de conexão:', error);

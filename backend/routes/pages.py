@@ -48,6 +48,9 @@ def get_user():
             FROM users WHERE id = %s
         """, (user_id,))
         user = cursor.fetchone()
+        if not user:
+            return jsonify(error="Usuário não encontrado"), 404
+
         cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
         
@@ -90,6 +93,8 @@ def update_user():
             
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
             
             cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
             total = cursor.fetchone()
@@ -195,6 +200,9 @@ def chat():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             # Trial check removed - everything is free
             
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
@@ -277,6 +285,8 @@ def voice_to_text():
         
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
             
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
@@ -380,6 +390,9 @@ def get_dashboard():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             premium_error = ensure_premium_user(user)
             if premium_error:
                 return premium_error
@@ -474,6 +487,9 @@ def generate_report_endpoint():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             premium_error = ensure_premium_user(user)
             if premium_error:
                 return premium_error
@@ -499,6 +515,9 @@ def get_videos():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             premium_error = ensure_premium_user(user)
             if premium_error:
                 return premium_error
@@ -533,6 +552,9 @@ def add_video():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             premium_error = ensure_premium_user(user)
             if premium_error:
                 return premium_error
@@ -560,6 +582,9 @@ def delete_video(video_id):
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             premium_error = ensure_premium_user(user)
             if premium_error:
                 return premium_error

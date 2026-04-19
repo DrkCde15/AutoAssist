@@ -166,6 +166,12 @@ class AuthManager {
                     throw new Error('Sessão encerrada ou servidor indisponível.');
                 }
             }
+            
+            // Especial: Se /api/user retornar 404, a sessão é inválida (ID não existe no DB)
+            if (response.status === 404 && finalUrl.includes('/api/user')) {
+                console.warn('Usuário não encontrado no banco dados. Deslogando...');
+                this.logout();
+            }
 
             return response;
         } catch (error) {

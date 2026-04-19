@@ -78,18 +78,6 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
-        # Migração de dados de veículos existentes da tabela users
-        try:
-            cursor.execute("""
-                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
-                SELECT id, veiculo_tipo, veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, veiculo_ano_compra, veiculo_quilometragem
-                FROM users 
-                WHERE possui_veiculo = TRUE 
-                AND veiculo_marca IS NOT NULL
-                AND id NOT IN (SELECT DISTINCT user_id FROM veiculos)
-            """)
-        except Exception as e:
-            print(f"Aviso migração veículos: {e}")
         # Adiciona colunas para usuários existentes (ignora erros se já existirem)
         columns = [
             ("possui_veiculo", "BOOLEAN DEFAULT FALSE"),
@@ -109,7 +97,29 @@ def init_db():
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
             except Exception: 
                 pass
-        
+
+        # Garantir colunas na tabela veiculos
+        veiculos_columns = [
+            ("quilometragem", "INT")
+        ]
+        for col, dtype in veiculos_columns:
+            try:
+                cursor.execute(f"ALTER TABLE veiculos ADD COLUMN {col} {dtype}")
+            except Exception:
+                pass
+
+        # Migração de dados de veículos existentes da tabela users
+        try:
+            cursor.execute("""
+                INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
+                SELECT id, veiculo_tipo, veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, veiculo_ano_compra, veiculo_quilometragem
+                FROM users 
+                WHERE possui_veiculo = TRUE 
+                AND veiculo_marca IS NOT NULL
+                AND id NOT IN (SELECT DISTINCT user_id FROM veiculos)
+            """)
+        except Exception as e:
+            print(f"Aviso migração veículos: {e}")
         # Permitir senha NULA para usuários de Login Social
         try:
             cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")

@@ -358,6 +358,9 @@ def disable_2fa():
             cursor.execute("SELECT two_factor_secret FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+                
             if bcrypt.verify(password, user["two_factor_secret"]):
                 cursor.execute("UPDATE users SET is_two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = %s", (user_id,))
                 return jsonify(message="2FA desativado com sucesso"), 200
