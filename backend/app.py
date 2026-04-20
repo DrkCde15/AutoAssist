@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Importando as rotas e inicialização do banco
 from routes import auth_bp, pages_bp, payment_bp, init_db
 
-app = Flask(__name__, static_folder='../frontend', static_url_path='')
+app = Flask(__name__, static_folder='../frontend/public', static_url_path='')
 
 # [SEGURANÇA] Cabeçalhos HTTP Seguros
 is_production = os.getenv('FLASK_ENV') == 'production'

@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AutoAssist • Cadastro</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+    <style>
+      :root {
+        --bg-primary: #09090b;
+        --bg-secondary: #18181b;
+        --bg-card: #1c1c1f;
+        --border-color: #27272a;
+        --border-focus: #3b82f6;
+        --text-primary: #fafafa;
+        --text-secondary: #a1a1aa;
+        --text-muted: #71717a;
+        --accent: #3b82f6;
+        --accent-hover: #2563eb;
+        --accent-soft: rgba(59, 130, 246, 0.1);
+        --danger: #ef4444;
+        --success: #22c55e;
+        --radius: 12px;
+        --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: 
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(59, 130, 246, 0.08), transparent);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 480px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: var(--shadow-lg);
+      }
+
+      /* Logo */
+      .logo {
+        text-align: center;
+        margin-bottom: 32px;
+      }
+
+      .logo-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        height: auto;
+        background: transparent;
+        border-radius: 0;
+        margin-bottom: 16px;
+        box-shadow: none;
+      }
+
+      .logo-mark i {
+        font-size: 24px;
+        color: white;
+      }
+
+      .logo h1 {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        color: var(--text-primary);
+      }
+
+      .logo p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+      /* Google Button */
+      .google-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 20px;
+        background: var(--text-primary);
+        color: var(--bg-primary);
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+      }
+
+      .google-btn:hover {
+        background: #e4e4e7;
+        transform: translateY(-1px);
+      }
+
+      .google-btn img {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Divider */
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 24px 0;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border-color);
+      }
+
+      .divider span {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 500;
+      }
+
+      /* Alerts */
+      .alert {
+        display: none;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        margin-bottom: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid;
+      }
+
+      .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+      }
+
+      /* Form */
+      .form-group {
+        margin-bottom: 18px;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+
+      .input-wrapper {
+        position: relative;
+      }
+
+      .input-wrapper i.icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 14px;
+        pointer-events: none;
+      }
+
+      .input-wrapper i.password-toggle {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        transition: var(--transition);
+      }
+
+      .input-wrapper i.password-toggle:hover {
+        color: var(--text-primary);
+      }
+
+      input, select {
+        width: 100%;
+        padding: 14px 16px 14px 44px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-family: inherit;
+        transition: var(--transition);
+        outline: none;
+      }
+
+      input::placeholder {
+        color: var(--text-muted);
+      }
+
+      input:focus, select:focus {
+        border-color: var(--border-focus);
+        background: var(--bg-primary);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      select {
+        appearance: none;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2371717a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 16px;
+        padding-right: 44px;
+      }
+
+      select option {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+      }
+
+      /* Checkbox */
+      .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: var(--transition);
+        margin: 20px 0;
+      }
+
+      .checkbox-wrapper:hover {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+
+      .checkbox-wrapper input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+
+      .checkbox-wrapper label {
+        margin-bottom: 0;
+        cursor: pointer;
+        color: var(--text-primary);
+        font-size: 14px;
+      }
+
+      /* Vehicle Section */
+      .vehicle-section {
+        display: none;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 16px;
+        animation: slideDown 0.3s ease-out;
+      }
+
+      @keyframes slideDown {
+        from { 
+          opacity: 0; 
+          transform: translateY(-10px); 
+        }
+        to { 
+          opacity: 1; 
+          transform: translateY(0); 
+        }
+      }
+
+      .vehicle-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .vehicle-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-primary);
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .vehicle-title i {
+        color: var(--accent);
+      }
+
+      .btn-remove {
+        background: none;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        transition: var(--transition);
+      }
+
+      .btn-remove:hover {
+        background: rgba(239, 68, 68, 0.1);
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      /* Buttons */
+      .btn {
+        width: 100%;
+        padding: 14px 20px;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), #1d4ed8);
+        color: white;
+        box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
+        margin-top: 8px;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, var(--accent-hover), #1e40af);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-add {
+        background: transparent;
+        border: 1px dashed var(--border-color);
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        font-weight: 500;
+      }
+
+      .btn-add:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      /* Links */
+      .links {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+        transition: var(--transition);
+      }
+
+      .links a:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+      }
+
+      /* Responsive */
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+
+        .container {
+          padding: 28px 20px;
+        }
+
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+
+        input, select {
+          padding: 12px 12px 12px 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">
+        <div class="logo-mark">
+          <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
+        </div>
+        <h1>AutoAssist</h1>
+        <p>Crie sua conta gratuita</p>
+      </div>
+
+      <!-- Google Login -->
+      <a id="btnGoogleLogin" href="#" class="google-btn">
+        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google">
+        Cadastrar com Google
+      </a>
+
+      <div class="divider">
+        <span>ou com e-mail</span>
+      </div>
+
+      <div class="alert alert-error" id="alertError"></div>
+
+      <div class="form-group">
+        <label>Nome Completo</label>
+        <div class="input-wrapper">
+          <i class="fas fa-user icon"></i>
+          <input id="nome" placeholder="Como devemos te chamar?" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>E-mail</label>
+        <div class="input-wrapper">
+          <i class="fas fa-envelope icon"></i>
+          <input id="email" type="email" placeholder="seu@email.com" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Senha</label>
+        <div class="input-wrapper">
+          <i class="fas fa-lock icon"></i>
+          <input id="senha" type="password" placeholder="Mínimo 6 caracteres" style="padding-right: 44px;" />
+          <i class="fas fa-eye password-toggle" id="toggleSenha"></i>
+        </div>
+      </div>
+
+      <div class="checkbox-wrapper" id="checkContainer">
+        <input type="checkbox" id="possuiVeiculo" />
+        <label for="possuiVeiculo">Possuo um veículo para consultar</label>
+      </div>
+
+      <div id="vehiclesContainer"></div>
+      
+      <button type="button" id="btnAddVehicle" class="btn btn-add" style="display: none;">
+        <i class="fas fa-plus"></i> Adicionar outro veículo
+      </button>
+
+      <button class="btn btn-primary" id="btnCadastrar">
+        Criar Minha Conta
+        <i class="fas fa-arrow-right"></i>
+      </button>
+
+      <div class="links">
+        Já possui conta? <a href="login.html">Fazer Login</a>
+      </div>
+    </div>
+
+    <script src="./static/js/config.js"></script>
+    <script src="./static/js/auth.js"></script>
+    <script>
+      const btn = document.getElementById("btnCadastrar");
+      const alertError = document.getElementById("alertError");
+      const possuiVeiculoCheck = document.getElementById("possuiVeiculo");
+      const vehiclesContainer = document.getElementById("vehiclesContainer");
+      const btnAddVehicle = document.getElementById("btnAddVehicle");
+      const btnGoogleLogin = document.getElementById("btnGoogleLogin");
+      
+      let vehicleCount = 0;
+
+      function createVehicleForm() {
+        vehicleCount++;
+        const div = document.createElement('div');
+        div.className = 'vehicle-section';
+        div.style.display = 'block';
+        div.innerHTML = `
+          <div class="vehicle-header">
+            <div class="vehicle-title">
+              <i class="fas fa-car-side"></i>
+              Veículo ${vehicleCount}
+            </div>
+            ${vehicleCount > 1 ? `<button type="button" class="btn-remove" onclick="this.closest('.vehicle-section').remove()"><i class="fas fa-trash"></i> Remover</button>` : ''}
+          </div>
+
+          <div class="form-group">
+            <label>Tipo de Veículo</label>
+            <div class="input-wrapper">
+              <i class="fas fa-list icon"></i>
+              <select class="v-tipo">
+                <option value="carro">Carro</option>
+                <option value="moto">Moto</option>
+                <option value="caminhao">Caminhão</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Marca</label>
+              <div class="input-wrapper">
+                <i class="fas fa-tag icon"></i>
+                <input class="v-marca" placeholder="Ex: Honda" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Modelo</label>
+              <div class="input-wrapper">
+                <i class="fas fa-car icon"></i>
+                <input class="v-modelo" placeholder="Ex: Civic" />
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Ano Fabricação</label>
+              <div class="input-wrapper">
+                <i class="fas fa-calendar icon"></i>
+                <input type="number" class="v-ano-fab" placeholder="2022" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Ano Compra</label>
+              <div class="input-wrapper">
+                <i class="fas fa-shopping-cart icon"></i>
+                <input type="number" class="v-ano-compra" placeholder="2023" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>Quilometragem (KM)</label>
+            <div class="input-wrapper">
+              <i class="fas fa-tachometer-alt icon"></i>
+              <input type="number" class="v-quilometragem" placeholder="Ex: 50000" />
+            </div>
+          </div>
+        `;
+        vehiclesContainer.appendChild(div);
+      }
+      
+      btnAddVehicle.addEventListener('click', createVehicleForm);
+
+      // Configure Google link
+      if (btnGoogleLogin && typeof CONFIG !== 'undefined') {
+        btnGoogleLogin.href = `${CONFIG.API_URL}/api/auth/google/login`;
+      }
+
+      function showError(msg) {
+        alertError.textContent = msg;
+        alertError.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      const toggleSenha = document.getElementById("toggleSenha");
+      const senhaInput = document.getElementById("senha");
+
+      if (toggleSenha && senhaInput) {
+        toggleSenha.addEventListener("click", function() {
+          if (senhaInput.type === "password") {
+            senhaInput.type = "text";
+            this.classList.remove("fa-eye");
+            this.classList.add("fa-eye-slash");
+          } else {
+            senhaInput.type = "password";
+            this.classList.remove("fa-eye-slash");
+            this.classList.add("fa-eye");
+          }
+        });
+      }
+
+      possuiVeiculoCheck.addEventListener("change", () => {
+        if (possuiVeiculoCheck.checked) {
+          if (vehiclesContainer.children.length === 0) createVehicleForm();
+          vehiclesContainer.style.display = "block";
+          btnAddVehicle.style.display = "flex";
+        } else {
+          vehiclesContainer.style.display = "none";
+          btnAddVehicle.style.display = "none";
+        }
+      });
+
+      btn.addEventListener("click", async () => {
+        alertError.style.display = "none";
+
+        const nome = document.getElementById("nome").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const senha = document.getElementById("senha").value;
+
+        if (!nome || !email || !senha) {
+          showError("Por favor, preencha todos os campos obrigatórios.");
+          return;
+        }
+
+        if (senha.length < 6) {
+          showError("A senha deve ter pelo menos 6 caracteres.");
+          return;
+        }
+
+        let veiculos = [];
+        if (possuiVeiculoCheck.checked) {
+          const blocks = document.querySelectorAll('.vehicle-section');
+          blocks.forEach(block => {
+            const marca = block.querySelector('.v-marca').value.trim();
+            const modelo = block.querySelector('.v-modelo').value.trim();
+            if (marca || modelo) {
+              veiculos.push({
+                tipo: block.querySelector('.v-tipo').value,
+                marca,
+                modelo,
+                ano_fabricacao: block.querySelector('.v-ano-fab').value,
+                ano_compra: block.querySelector('.v-ano-compra').value,
+                quilometragem: block.querySelector('.v-quilometragem').value
+              });
+            }
+          });
+
+          if (veiculos.length === 0 || !veiculos[0].marca || !veiculos[0].modelo) {
+            showError("Preencha a marca e o modelo de pelo menos um veículo.");
+            return;
+          }
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Criando conta...';
+
+        try {
+          await Auth.register(nome, email, senha, veiculos);
+          alert("Conta criada com sucesso! Bem-vindo ao AutoAssist.");
+          window.location.href = "login.html";
+        } catch (err) {
+          showError(err.message || "Erro de conexão com o servidor.");
+          btn.disabled = false;
+          btn.innerHTML = 'Criar Minha Conta <i class="fas fa-arrow-right"></i>';
+        }
+      });
+    </script>
+  </body>
+</html>
+
+
+

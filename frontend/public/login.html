@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login • AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+    <style>
+      :root {
+        --bg-primary: #09090b;
+        --bg-secondary: #18181b;
+        --bg-card: #1c1c1f;
+        --border-color: #27272a;
+        --border-focus: #3b82f6;
+        --text-primary: #fafafa;
+        --text-secondary: #a1a1aa;
+        --text-muted: #71717a;
+        --accent: #3b82f6;
+        --accent-hover: #2563eb;
+        --accent-soft: rgba(59, 130, 246, 0.1);
+        --danger: #ef4444;
+        --success: #22c55e;
+        --radius: 12px;
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Background Pattern */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: 
+          radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.15), transparent),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(59, 130, 246, 0.08), transparent);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 420px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: var(--shadow-lg);
+      }
+
+      /* Logo */
+      .logo {
+        text-align: center;
+        margin-bottom: 32px;
+      }
+
+      .logo-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        height: auto;
+        background: transparent;
+        border-radius: 0;
+        margin-bottom: 16px;
+        box-shadow: none;
+      }
+
+      .logo-mark i {
+        font-size: 24px;
+        color: white;
+      }
+
+      .logo h1 {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        color: var(--text-primary);
+      }
+
+      .logo p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+      /* Alerts */
+      .alert {
+        display: none;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        margin-bottom: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid;
+      }
+
+      .alert-error {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+      }
+
+      /* Google Button */
+      .google-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 20px;
+        background: var(--text-primary);
+        color: var(--bg-primary);
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+      }
+
+      .google-btn:hover {
+        background: #e4e4e7;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .google-btn img {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Divider */
+      .divider {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 24px 0;
+      }
+
+      .divider::before,
+      .divider::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border-color);
+      }
+
+      .divider span {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 500;
+      }
+
+      /* Form */
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+
+      .input-wrapper {
+        position: relative;
+      }
+
+      input {
+        width: 100%;
+        padding: 14px 16px;
+        padding-right: 48px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-family: inherit;
+        transition: var(--transition);
+        outline: none;
+      }
+
+      input::placeholder {
+        color: var(--text-muted);
+      }
+
+      input:focus {
+        border-color: var(--border-focus);
+        background: var(--bg-primary);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      .password-toggle {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        transition: var(--transition);
+      }
+
+      .password-toggle:hover {
+        color: var(--text-primary);
+      }
+
+      /* Button */
+      .btn {
+        width: 100%;
+        padding: 14px 20px;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), #1d4ed8);
+        color: white;
+        box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, var(--accent-hover), #1e40af);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+      }
+
+      .btn-primary:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-secondary {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--border-color);
+        margin-top: 12px;
+      }
+
+      .btn-secondary:hover {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+
+      /* Links */
+      .links {
+        text-align: center;
+        margin-top: 28px;
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+        transition: var(--transition);
+      }
+
+      .links a:hover {
+        color: var(--accent-hover);
+        text-decoration: underline;
+      }
+
+      .forgot-link {
+        display: block;
+        margin-top: 12px;
+        font-size: 13px;
+      }
+
+      /* 2FA Form */
+      #twoFactorForm {
+        display: none;
+      }
+
+      #twoFactorForm p {
+        text-align: center;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      /* Spinner */
+      .fa-spin {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      /* Responsive */
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+
+        .container {
+          padding: 28px 20px;
+          border-radius: var(--radius);
+        }
+
+        .logo h1 {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">
+        <div class="logo-mark">
+          <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
+        </div>
+        <h1>AutoAssist</h1>
+        <p>Acesse sua conta</p>
+      </div>
+
+      <!-- Google Login -->
+      <a id="btnGoogleLogin" href="#" class="google-btn">
+        <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google">
+        Entrar com Google
+      </a>
+
+      <div class="divider">
+        <span>ou</span>
+      </div>
+
+      <div id="error" class="alert alert-error"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <div class="input-wrapper">
+            <input type="email" id="email" required placeholder="seu@email.com" autocomplete="email" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <div class="input-wrapper">
+            <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password" />
+            <i class="fas fa-eye password-toggle" id="togglePassword"></i>
+          </div>
+        </div>
+
+        <button type="submit" id="btnEntrar" class="btn btn-primary">
+          Entrar
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </form>
+
+      <!-- 2FA Form -->
+      <form id="twoFactorForm">
+        <p>Digite sua senha secundária para verificação de segurança.</p>
+        
+        <div class="form-group">
+          <label for="twoFactorCode">Código de Verificação</label>
+          <div class="input-wrapper">
+            <input type="password" id="twoFactorCode" placeholder="Sua senha de 2FA" />
+            <i class="fas fa-eye password-toggle" id="toggle2FA"></i>
+          </div>
+        </div>
+
+        <button type="submit" id="btnConfirm2FA" class="btn btn-primary">
+          Confirmar
+          <i class="fas fa-check"></i>
+        </button>
+        
+        <button type="button" id="backBtn" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Voltar
+        </button>
+      </form>
+
+      <div class="links" id="registerLinks">
+        Não tem conta? <a href="cadastro.html">Criar conta</a>
+        <a href="esqueci-senha.html" class="forgot-link">Esqueci minha senha</a>
+      </div>
+    </div>
+
+    <script src="./static/js/config.js"></script>
+    <script src="./static/js/auth.js"></script>
+    <script>
+      // Redirect if already logged in
+      if (Auth.isAuthenticated()) {
+        window.location.href = "index.html";
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("loginForm");
+        const twoFactorForm = document.getElementById("twoFactorForm");
+        const errorBox = document.getElementById("error");
+        const registerLinks = document.getElementById("registerLinks");
+        const btnGoogleLogin = document.getElementById("btnGoogleLogin");
+        const logoText = document.querySelector(".logo p");
+
+        // Configure Google login link
+        if (btnGoogleLogin && typeof CONFIG !== 'undefined') {
+          btnGoogleLogin.href = `${CONFIG.API_URL}/api/auth/google/login`;
+        }
+        
+        let pendingToken = null;
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errorBox.style.display = "none";
+
+          const email = document.getElementById("email").value.trim().toLowerCase();
+          const password = document.getElementById("password").value;
+          
+          const btnEntrar = document.getElementById("btnEntrar");
+          const originalBtnContent = btnEntrar.innerHTML;
+          btnEntrar.disabled = true;
+          btnEntrar.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Entrando...';
+
+          try {
+            const data = await Auth.login(email, password);
+            
+            if (data.two_factor_required) {
+              pendingToken = data.pending_token;
+              form.style.display = "none";
+              twoFactorForm.style.display = "block";
+              registerLinks.style.display = "none";
+              logoText.textContent = "Verificação de Segurança";
+              btnEntrar.disabled = false;
+              btnEntrar.innerHTML = originalBtnContent;
+            } else {
+              window.location.href = "index.html";
+            }
+          } catch (err) {
+            errorBox.textContent = err.message;
+            errorBox.style.display = "block";
+            btnEntrar.disabled = false;
+            btnEntrar.innerHTML = originalBtnContent;
+          }
+        });
+
+        twoFactorForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errorBox.style.display = "none";
+          
+          const code = document.getElementById("twoFactorCode").value;
+          if (!code) return;
+
+          const btnConfirm2FA = document.getElementById("btnConfirm2FA");
+          const originalBtnContent = btnConfirm2FA.innerHTML;
+          btnConfirm2FA.disabled = true;
+          btnConfirm2FA.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verificando...';
+
+          try {
+            await Auth.verify2FA(pendingToken, code);
+            window.location.href = "index.html";
+          } catch (err) {
+            errorBox.textContent = err.message;
+            errorBox.style.display = "block";
+            btnConfirm2FA.disabled = false;
+            btnConfirm2FA.innerHTML = originalBtnContent;
+          }
+        });
+
+        document.getElementById("backBtn").addEventListener("click", () => {
+          twoFactorForm.style.display = "none";
+          form.style.display = "block";
+          registerLinks.style.display = "block";
+          logoText.textContent = "Acesse sua conta";
+          errorBox.style.display = "none";
+        });
+
+        // Password visibility toggle
+        const toggleVisibility = (toggleId, inputId) => {
+          const toggleBtn = document.getElementById(toggleId);
+          const inputField = document.getElementById(inputId);
+          if (toggleBtn && inputField) {
+            toggleBtn.addEventListener("click", function() {
+              if (inputField.type === "password") {
+                inputField.type = "text";
+                this.classList.remove("fa-eye");
+                this.classList.add("fa-eye-slash");
+              } else {
+                inputField.type = "password";
+                this.classList.remove("fa-eye-slash");
+                this.classList.add("fa-eye");
+              }
+            });
+          }
+        };
+
+        toggleVisibility("togglePassword", "password");
+        toggleVisibility("toggle2FA", "twoFactorCode");
+      });
+    </script>
+  </body>
+</html>
+
+
+

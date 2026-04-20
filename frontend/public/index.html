@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoAssist - Consultoria Automotiva com IA</title>
+    <link rel="icon" type="image/png" href="static/logo2.png">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-card: #1c1c1f;
+            --border-color: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-soft: rgba(59, 130, 246, 0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Navbar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 40px;
+            z-index: 100;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: var(--transition);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .nav-logo-icon {
+            width: auto;
+            height: auto;
+            background: transparent;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-logo-icon i {
+            font-size: 18px;
+            color: white;
+        }
+
+        .nav-logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .nav-btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .nav-btn-outline:hover {
+            background: var(--bg-card);
+            border-color: var(--text-muted);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-carousel-layer {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .hero-wipe-layer {
+            clip-path: inset(0 0 0 100%);
+        }
+
+        .hero-carousel-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(6, 10, 20, 0.68);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse 100% 80% at 50% -30%, rgba(59, 130, 246, 0.2), transparent 60%),
+                radial-gradient(ellipse 80% 60% at 80% 50%, rgba(59, 130, 246, 0.1), transparent 50%),
+                radial-gradient(ellipse 60% 40% at 20% 80%, rgba(59, 130, 246, 0.08), transparent 40%);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        /* Grid Pattern */
+        .hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 64px 64px;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 900px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--accent-soft);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 28px;
+        }
+
+        .hero-badge i {
+            font-size: 12px;
+        }
+
+        .hero h1 {
+            font-size: clamp(48px, 8vw, 80px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent), #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-description {
+            font-size: 18px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-hero {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-hero-primary {
+            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            color: white;
+            box-shadow: 0 4px 24px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-hero-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-hero-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-hero-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-muted);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 24px;
+            background: var(--bg-secondary);
+            position: relative;
+        }
+
+        .features::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+        }
+
+        .section-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-tag {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-soft);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .feature-icon i {
+            font-size: 20px;
+            color: var(--accent);
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .feature-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 100px 24px;
+            text-align: center;
+            position: relative;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(59, 130, 246, 0.1), transparent);
+            pointer-events: none;
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta h2 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .cta p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-bottom: 32px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 32px 24px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 16px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 100px 20px 60px;
+            }
+
+            .hero h1 {
+                font-size: 40px;
+                letter-spacing: -1px;
+            }
+
+            .hero-description {
+                font-size: 16px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .btn-hero {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .features {
+                padding: 60px 20px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .cta {
+                padding: 60px 20px;
+            }
+
+            .cta h2 {
+                font-size: 28px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-content {
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .feature-card {
+            animation: fadeInUp 0.6s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0.1s; }
+        .feature-card:nth-child(2) { animation-delay: 0.2s; }
+        .feature-card:nth-child(3) { animation-delay: 0.3s; }
+        .feature-card:nth-child(4) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <div class="nav-logo-icon">
+                    <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
+                </div>
+                <span class="nav-logo-text">AutoAssist</span>
+            </a>
+
+            <div class="nav-links" id="authLinks">
+                <a href="#features" class="nav-link">Recursos</a>
+                <a href="login.html" class="nav-btn nav-btn-outline">Entrar</a>
+                <a href="cadastro.html" class="nav-btn">Criar Conta</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-bolt"></i>
+                Powered by Google Gemini
+            </div>
+            <h1>Seu consultor<br><span>automotivo</span> com IA</h1>
+            <p class="hero-description">
+                Diagnósticos precisos, avaliação de mercado e consultoria especializada para seu veículo. 
+                Tudo potencializado por inteligência artificial avançada.
+            </p>
+            <div class="hero-buttons" id="ctaContainer">
+                <a href="cadastro.html" class="btn-hero btn-hero-primary">
+                    Começar Gratuitamente
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+                <a href="#features" class="btn-hero btn-hero-secondary">
+                    Saiba Mais
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="section-container">
+            <div class="section-header">
+                <div class="section-tag">Recursos</div>
+                <h2 class="section-title">Tecnologia a serviço do seu veículo</h2>
+                <p class="section-subtitle">
+                    Ferramentas inteligentes para você entender e cuidar melhor do seu carro.
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="feature-title">IA Avançada</h3>
+                    <p class="feature-description">
+                        Análise inteligente baseada em modelos de linguagem de última geração para respostas precisas.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-wrench"></i>
+                    </div>
+                    <h3 class="feature-title">Diagnóstico Técnico</h3>
+                    <p class="feature-description">
+                        Identifique problemas mecânicos e receba orientações detalhadas sobre manutenção preventiva.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h3 class="feature-title">Análise Visual</h3>
+                    <p class="feature-description">
+                        Envie fotos do problema e nossa IA identifica possíveis causas e soluções.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="feature-title">Avaliação de Mercado</h3>
+                    <p class="feature-description">
+                        Consulte valores FIPE atualizados e acompanhe a valorização do seu patrimônio.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <div class="cta-content">
+            <h2>Pronto para começar?</h2>
+            <p>
+                Junte-se a milhares de motoristas que já usam o AutoAssist para cuidar dos seus veículos.
+            </p>
+            <a href="cadastro.html" class="btn-hero btn-hero-primary">
+                Criar Conta Gratuita
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 AutoAssist IA. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/auth.js"></script>
+    <script>
+        // --- LÓGICA DE SLIDESHOW DO HERO ---
+        const heroSection = document.querySelector('.hero');
+        const images = [
+            'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=1920',
+            'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1920',
+            'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1920',
+            'https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=1920',
+            'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1920'
+        ];
+
+        if (heroSection && images.length > 0) {
+            images.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+
+            let currentImgIndex = 0;
+            const getHeroBackground = (index) => `url('${images[index]}')`;
+
+            const baseLayer = document.createElement('div');
+            baseLayer.className = 'hero-carousel-layer';
+            baseLayer.style.backgroundImage = getHeroBackground(0);
+            heroSection.appendChild(baseLayer);
+
+            const wipeLayer = document.createElement('div');
+            wipeLayer.className = 'hero-carousel-layer hero-wipe-layer';
+            heroSection.appendChild(wipeLayer);
+
+            const darkOverlay = document.createElement('div');
+            darkOverlay.className = 'hero-carousel-overlay';
+            heroSection.appendChild(darkOverlay);
+
+            setInterval(() => {
+                const nextIndex = (currentImgIndex + 1) % images.length;
+                const nextBg = getHeroBackground(nextIndex);
+
+                wipeLayer.style.transition = 'none';
+                wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
+                wipeLayer.style.backgroundImage = nextBg;
+                wipeLayer.offsetHeight;
+
+                wipeLayer.style.transition = 'clip-path 1.8s cubic-bezier(0.77, 0, 0.175, 1)';
+                wipeLayer.style.clipPath = 'inset(0 0 0 0)';
+
+                setTimeout(() => {
+                    baseLayer.style.backgroundImage = nextBg;
+                    wipeLayer.style.transition = 'none';
+                    wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
+                    currentImgIndex = nextIndex;
+                }, 1900);
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const authLinks = document.getElementById('authLinks');
+            const ctaContainer = document.getElementById('ctaContainer');
+            
+            if (typeof Auth !== 'undefined' && Auth.ensurePremiumModal) {
+                Auth.ensurePremiumModal();
+            }
+
+            // Handle Google OAuth callback
+            // Auth.js já processa os tokens do OAuth callback automaticamente
+            // (via processOAuthCallback() que roda na inicialização do módulo).
+
+            // If not logged in, keep default state
+            if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
+                return;
+            }
+
+            // Validate token with backend
+            try {
+                const response = await Auth.authenticatedFetch('/api/user', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    localStorage.setItem('autoassist_user', JSON.stringify(userData));
+                    
+                    // Update navbar for logged in user
+                    authLinks.innerHTML = `
+                        <a href="dashboard.html" class="nav-link" style="color: var(--accent);"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+                        <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
+                        <button id="btnLogout" class="nav-btn nav-btn-outline">Sair</button>
+                    `;
+
+                    ctaContainer.innerHTML = `
+                        <a href="chat.html" class="btn-hero btn-hero-primary">
+                            Acessar Consultor IA
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <a href="dashboard.html" class="btn-hero btn-hero-secondary">
+                            Ver Dashboard
+                        </a>
+                    `;
+
+                    const btnLogout = document.getElementById('btnLogout');
+                    if (btnLogout) {
+                        btnLogout.addEventListener('click', () => Auth.logout());
+                    }
+                } else {
+                    console.warn(`Invalid session (${response.status}). Logging out...`);
+                    Auth.logout();
+                }
+            } catch (error) {
+                console.error('Connection error:', error);
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+

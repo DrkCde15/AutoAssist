@@ -20,6 +20,15 @@ from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_em
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
+
+def get_frontend_url() -> str:
+    """Retorna a URL do frontend baseada no ambiente (FLASK_ENV)."""
+    is_production = os.getenv("FLASK_ENV") == "production"
+    if is_production:
+        return os.getenv("FRONTEND_URL_PROD", "https://drkcde15.github.io/AutoAssist/")
+    return os.getenv("FRONTEND_URL_DEV", "http://localhost:3000/")
+
+
 def fetch_veiculos_user(cursor, user_id):
     cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
     return cursor.fetchall()
@@ -141,7 +150,7 @@ def google_callback():
         refresh_token = create_refresh_token(identity=str(user["id"]))
         
         # Obter a URL do frontend do .env
-        frontend_base = os.getenv("FRONTEND_URL", "http://localhost:5500/")
+        frontend_base = get_frontend_url()
         
         # Preparar dados do usuário para o frontend
         user_payload = {
@@ -400,7 +409,7 @@ def forgot_password():
                 VALUES (%s,%s,%s)
             """, (user["id"], token, expiracao))
 
-            frontend_url = os.getenv("FRONTEND_URL", request.host_url)
+            frontend_url = get_frontend_url()
             if not frontend_url.endswith("/"):
                 frontend_url += "/"
             

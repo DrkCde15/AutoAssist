@@ -1,13 +1,21 @@
 name: Deploy Frontend to Pages
 
 on:
+  workflow_dispatch:
   push:
     branches: ["main"]
+    paths:
+      - "frontend/public/**"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -15,19 +23,22 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout 🛎️
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages ⚙️
+      - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact 📁
+      - name: Disable Jekyll
+        run: touch frontend/public/.nojekyll
+
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Define que apenas o conteúdo da pasta frontend será o site
-          path: './frontend'
+          path: "./frontend/public"
 
-      - name: Deploy to GitHub Pages 🚀
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

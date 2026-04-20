@@ -6,6 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from services.mercado_pago import MercadoPagoService
 from .database import get_db
+from .auth import get_frontend_url
 
 payment_bp = Blueprint("payment", __name__)
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ def _normalizar_preference_payload(payload: dict) -> dict:
 
     default_back_url = (
         os.getenv("MERCADO_PAGO_BACK_URL_SUCCESS")
-        or os.getenv("FRONTEND_URL")
+        or get_frontend_url()
         or ""
     ).strip()
 
