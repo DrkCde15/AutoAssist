@@ -4,7 +4,7 @@ import smtplib
 import logging
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente procurando o .env na pasta pai (backend/)
+# Carrega variÃ¡veis de ambiente procurando o .env na pasta pai (backend/)
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '..', '.env'))
 from datetime import datetime, timezone
@@ -13,13 +13,13 @@ from pymysql.cursors import DictCursor
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# Configurações de Email
+# ConfiguraÃ§Ãµes de Email
 EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
 EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-# Configuração do Banco
+# ConfiguraÃ§Ã£o do Banco
 MYSQL_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': int(os.getenv('DB_PORT', 3306)),
@@ -63,7 +63,7 @@ def init_db():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # Criação da tabela de múltiplos veículos
+        # CriaÃ§Ã£o da tabela de mÃºltiplos veÃ­culos
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS veiculos (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -78,7 +78,7 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
-        # Adiciona colunas para usuários existentes (ignora erros se já existirem)
+        # Adiciona colunas para usuÃ¡rios existentes (ignora erros se jÃ¡ existirem)
         columns = [
             ("possui_veiculo", "BOOLEAN DEFAULT FALSE"),
             ("veiculo_marca", "VARCHAR(50)"),
@@ -90,7 +90,9 @@ def init_db():
             ("two_factor_secret", "VARCHAR(255)"), 
             ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
             ("google_id", "VARCHAR(255)"),
-            ("profile_pic", "VARCHAR(500)")
+            ("profile_pic", "VARCHAR(500)"),
+            ("maintenance_email_enabled", "BOOLEAN DEFAULT TRUE"),
+            ("maintenance_email_last_sent", "DATETIME NULL")
         ]
         for col, dtype in columns:
             try:
@@ -108,7 +110,7 @@ def init_db():
             except Exception:
                 pass
 
-        # Migração de dados de veículos existentes da tabela users
+        # MigraÃ§Ã£o de dados de veÃ­culos existentes da tabela users
         try:
             cursor.execute("""
                 INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
@@ -119,8 +121,8 @@ def init_db():
                 AND id NOT IN (SELECT DISTINCT user_id FROM veiculos)
             """)
         except Exception as e:
-            print(f"Aviso migração veículos: {e}")
-        # Permitir senha NULA para usuários de Login Social
+            print(f"Aviso migraÃ§Ã£o veÃ­culos: {e}")
+        # Permitir senha NULA para usuÃ¡rios de Login Social
         try:
             cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")
         except Exception as e:
@@ -159,7 +161,53 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
-        print("✅ Banco de dados inicializado com sucesso!")
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS maintenance_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                vehicle_id INT NULL,
+                description TEXT NOT NULL,
+                maintenance_type VARCHAR(60) NOT NULL DEFAULT 'manutencao_geral',
+                maintenance_label VARCHAR(100) NOT NULL DEFAULT 'Manutencao geral',
+                service_date DATE NOT NULL,
+                service_km INT NULL,
+                cost DECIMAL(10,2) NULL,
+                currency VARCHAR(10) NOT NULL DEFAULT 'BRL',
+                interval_days INT NULL,
+                interval_km INT NULL,
+                next_due_date DATE NULL,
+                next_due_km INT NULL,
+                parser_metadata JSON NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_maintenance_user_date (user_id, service_date),
+                INDEX idx_maintenance_vehicle (vehicle_id),
+                INDEX idx_maintenance_due_date (next_due_date),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (vehicle_id) REFERENCES veiculos(id) ON DELETE SET NULL
+            )
+        """)
+        maintenance_columns = [
+            ("vehicle_id", "INT NULL"),
+            ("description", "TEXT"),
+            ("maintenance_type", "VARCHAR(60) NOT NULL DEFAULT 'manutencao_geral'"),
+            ("maintenance_label", "VARCHAR(100) NOT NULL DEFAULT 'Manutencao geral'"),
+            ("service_date", "DATE"),
+            ("service_km", "INT NULL"),
+            ("cost", "DECIMAL(10,2) NULL"),
+            ("currency", "VARCHAR(10) NOT NULL DEFAULT 'BRL'"),
+            ("interval_days", "INT NULL"),
+            ("interval_km", "INT NULL"),
+            ("next_due_date", "DATE NULL"),
+            ("next_due_km", "INT NULL"),
+            ("parser_metadata", "JSON NULL"),
+            ("created_at", "DATETIME DEFAULT CURRENT_TIMESTAMP")
+        ]
+        for col, dtype in maintenance_columns:
+            try:
+                cursor.execute(f"ALTER TABLE maintenance_history ADD COLUMN {col} {dtype}")
+            except Exception:
+                pass
+        print("âœ… Banco de dados inicializado com sucesso!")
 
 def enviar_email(destinatario, assunto, mensagem_html):
     msg = MIMEMultipart()
@@ -173,9 +221,11 @@ def enviar_email(destinatario, assunto, mensagem_html):
         servidor.login(EMAIL_REMETENTE, EMAIL_SENHA_APP)
         servidor.sendmail(EMAIL_REMETENTE, destinatario, msg.as_string())
         servidor.quit()
-        print("📧 Email enviado com sucesso!")
+        print("Email enviado com sucesso!")
+        return True
     except Exception as e:
         print("Erro ao enviar email:", e)
+        return False
 
 def is_trial_expired(user):
     return False
@@ -184,7 +234,7 @@ def get_trial_days_remaining(user):
     return 9999
 
 def is_valid_email_domain(email):
-    """Valida se o email pertence aos domínios permitidos."""
+    """Valida se o email pertence aos domÃ­nios permitidos."""
     allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com", "@testuser.com", "@client.com"]
     email_lower = email.lower()
     return any(email_lower.endswith(domain) for domain in allowed_domains)

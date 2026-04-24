@@ -1,5 +1,6 @@
 import os
 import io
+import html
 import logging
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app
@@ -12,7 +13,14 @@ from services.youtube_service import buscar_videos_youtube
 from services.web_scraping import WebScraper
 from services.vision_ai import analisar_imagem
 from services.report_generator import criar_relatorio_pdf
-from .database import get_db, is_trial_expired, get_trial_days_remaining
+from services.maintenance_service import (
+    parse_maintenance_entry,
+    apply_manual_overrides,
+    serialize_maintenance_row,
+    consolidate_active_maintenance_records,
+    build_maintenance_alerts,
+)
+from .database import get_db, is_trial_expired, get_trial_days_remaining, enviar_email
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -25,6 +33,174 @@ def get_user_by_id(cursor, user_id):
 
 def ensure_premium_user(user):
     return None
+
+
+def build_spending_summary(history_rows):
+    total_cost = 0.0
+    by_type = {}
+
+    for row in history_rows:
+        cost = row.get("cost")
+        if cost is None:
+            continue
+
+        value = float(cost)
+        total_cost += value
+        label = row.get("maintenance_label") or "Manutencao geral"
+        by_type[label] = by_type.get(label, 0.0) + value
+
+    gastos_por_tipo = [
+        {"tipo": label, "valor": round(amount, 2)}
+        for label, amount in sorted(by_type.items(), key=lambda item: item[1], reverse=True)
+    ]
+    return {
+        "total_gastos": round(total_cost, 2),
+        "quantidade_registros": len(history_rows),
+        "gastos_por_tipo": gastos_por_tipo,
+    }
+
+
+def serialize_datetime_field(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=None, only_actionable=False):
+    vehicle_filter = ""
+    vehicle_params = [user_id]
+    history_params = [user_id]
+    if vehicle_id is not None:
+        vehicle_filter = " AND id = %s"
+        vehicle_params.append(vehicle_id)
+        history_params.append(vehicle_id)
+
+    cursor.execute(
+        f"SELECT id, quilometragem FROM veiculos WHERE user_id = %s{vehicle_filter}",
+        tuple(vehicle_params)
+    )
+    vehicles = cursor.fetchall()
+    vehicle_km_map = {item["id"]: item.get("quilometragem") for item in vehicles}
+
+    cursor.execute(
+        f"""
+        SELECT *
+        FROM maintenance_history
+        WHERE user_id = %s {'AND vehicle_id = %s' if vehicle_id is not None else ''}
+        ORDER BY service_date DESC, created_at DESC
+        """,
+        tuple(history_params)
+    )
+    history_rows = cursor.fetchall()
+    active_records = consolidate_active_maintenance_records(history_rows)
+    alerts = build_maintenance_alerts(active_records, vehicle_km_map=vehicle_km_map)
+
+    if only_actionable:
+        alerts = [a for a in alerts if a.get("status_code") in ("overdue", "due_soon")]
+    return alerts
+
+
+def should_send_maintenance_email(user_row, force=False):
+    if force:
+        return True
+    if not user_row.get("maintenance_email_enabled", True):
+        return False
+
+    last_sent = user_row.get("maintenance_email_last_sent")
+    if not last_sent:
+        return True
+
+    if isinstance(last_sent, datetime):
+        last_date = last_sent.date()
+    elif isinstance(last_sent, str):
+        try:
+            last_date = datetime.fromisoformat(last_sent).date()
+        except ValueError:
+            return True
+    else:
+        return True
+    return last_date < datetime.now().date()
+
+
+def render_maintenance_email_html(user_name, alerts):
+    safe_name = html.escape(user_name or "usuario")
+    generated_at = datetime.now().strftime("%d/%m/%Y %H:%M")
+    rows = []
+    for alert in alerts:
+        item = html.escape(str(alert.get("item") or "Manutencao"))
+        msg = html.escape(str(alert.get("msg") or ""))
+        status_code = alert.get("status_code")
+        if status_code == "overdue":
+            badge_color = "#b91c1c"
+            badge_bg = "#fee2e2"
+        elif status_code == "due_soon":
+            badge_color = "#b45309"
+            badge_bg = "#fef3c7"
+        else:
+            badge_color = "#166534"
+            badge_bg = "#dcfce7"
+        status = html.escape(str(alert.get("status") or "Aviso"))
+        rows.append(
+            f"""
+            <tr>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;">
+                    <strong>{item}</strong><br>
+                    <span style="color:#4b5563;">{msg}</span>
+                </td>
+                <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;">
+                    <span style="display:inline-block;padding:4px 10px;border-radius:999px;background:{badge_bg};color:{badge_color};font-size:12px;font-weight:700;">
+                        {status}
+                    </span>
+                </td>
+            </tr>
+            """
+        )
+
+    rows_html = "".join(rows) if rows else """
+        <tr><td style="padding:12px;color:#4b5563;">Sem alertas no momento.</td></tr>
+    """
+
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;color:#111827;">
+        <h2 style="margin-bottom:4px;">AutoAssist - Alertas de manutencao</h2>
+        <p style="margin-top:0;color:#4b5563;">Ola, {safe_name}. Aqui esta o resumo automatico de hoje ({generated_at}).</p>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+            {rows_html}
+        </table>
+        <p style="margin-top:16px;color:#6b7280;font-size:12px;">
+            Este e um envio automatico de alertas de manutencao do AutoAssist.
+        </p>
+    </div>
+    """
+
+
+def send_maintenance_alert_email_for_user(cursor, user_row, force=False):
+    if not user_row.get("email"):
+        return {"sent": False, "reason": "missing_email", "alerts_count": 0}
+    if not user_row.get("maintenance_email_enabled", True) and not force:
+        return {"sent": False, "reason": "disabled", "alerts_count": 0}
+    if not should_send_maintenance_email(user_row, force=force):
+        return {"sent": False, "reason": "already_sent_today", "alerts_count": 0}
+
+    alerts = fetch_user_maintenance_alerts(
+        cursor,
+        user_id=user_row["id"],
+        only_actionable=True
+    )
+    if not alerts:
+        return {"sent": False, "reason": "no_actionable_alerts", "alerts_count": 0}
+
+    subject = f"AutoAssist: {len(alerts)} alerta(s) de manutencao para revisar"
+    html_body = render_maintenance_email_html(user_row.get("nome"), alerts)
+    sent_ok = enviar_email(user_row["email"], subject, html_body)
+    if not sent_ok:
+        return {"sent": False, "reason": "send_failed", "alerts_count": len(alerts)}
+
+    cursor.execute(
+        "UPDATE users SET maintenance_email_last_sent = NOW() WHERE id = %s",
+        (user_row["id"],)
+    )
+    return {"sent": True, "reason": "sent", "alerts_count": len(alerts)}
 
 @pages_bp.route("/")
 def index():
@@ -44,12 +220,14 @@ def get_user():
         cursor.execute("""
             SELECT nome, email, is_premium, created_at, possui_veiculo,
                    veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao,
-                   veiculo_ano_compra, veiculo_tipo, veiculo_quilometragem, is_two_factor_enabled
+                   veiculo_ano_compra, veiculo_tipo, veiculo_quilometragem, is_two_factor_enabled,
+                   maintenance_email_enabled, maintenance_email_last_sent
             FROM users WHERE id = %s
         """, (user_id,))
         user = cursor.fetchone()
         if not user:
             return jsonify(error="Usuário não encontrado"), 404
+        user["maintenance_email_last_sent"] = serialize_datetime_field(user.get("maintenance_email_last_sent"))
 
         cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
@@ -178,6 +356,333 @@ def delete_veiculo(v_id):
     except Exception as e:
         logger.error(f"Erro ao excluir veiculo: {e}")
         return jsonify(error="Erro interno"), 500
+
+
+@pages_bp.route("/api/maintenance/history", methods=["POST"])
+@jwt_required()
+def register_maintenance_history():
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    description = (data.get("descricao") or data.get("texto") or "").strip()
+    currency = (data.get("moeda") or "BRL").upper()
+
+    if not description:
+        return jsonify(error="Descricao da manutencao e obrigatoria"), 400
+
+    raw_vehicle_id = data.get("veiculo_id")
+    vehicle_id = None
+    fallback_vehicle_km = None
+
+    try:
+        with get_db() as (cursor, conn):
+            if raw_vehicle_id is not None:
+                try:
+                    vehicle_id = int(raw_vehicle_id)
+                except (TypeError, ValueError):
+                    return jsonify(error="veiculo_id invalido"), 400
+
+                cursor.execute(
+                    "SELECT id, quilometragem FROM veiculos WHERE id = %s AND user_id = %s",
+                    (vehicle_id, user_id)
+                )
+                vehicle = cursor.fetchone()
+                if not vehicle:
+                    return jsonify(error="Veiculo nao encontrado"), 404
+                fallback_vehicle_km = vehicle.get("quilometragem")
+            else:
+                cursor.execute("SELECT id, quilometragem FROM veiculos WHERE user_id = %s ORDER BY id ASC", (user_id,))
+                vehicles = cursor.fetchall()
+                if len(vehicles) == 1:
+                    vehicle_id = vehicles[0]["id"]
+                    fallback_vehicle_km = vehicles[0].get("quilometragem")
+
+            parsed = parse_maintenance_entry(description)
+            parsed = apply_manual_overrides(parsed, data, fallback_service_km=fallback_vehicle_km)
+            parser_metadata = dict(parsed.get("parser_metadata") or {})
+            parser_metadata["auto_linked_vehicle"] = raw_vehicle_id is None and vehicle_id is not None
+
+            cursor.execute(
+                """
+                INSERT INTO maintenance_history (
+                    user_id, vehicle_id, description, maintenance_type, maintenance_label,
+                    service_date, service_km, cost, currency, interval_days, interval_km,
+                    next_due_date, next_due_km, parser_metadata
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    user_id,
+                    vehicle_id,
+                    parsed["description"],
+                    parsed["maintenance_type"],
+                    parsed["maintenance_label"],
+                    parsed["service_date"],
+                    parsed["service_km"],
+                    parsed["cost"],
+                    currency,
+                    parsed["interval_days"],
+                    parsed["interval_km"],
+                    parsed["next_due_date"],
+                    parsed["next_due_km"],
+                    json.dumps(parser_metadata, ensure_ascii=False),
+                )
+            )
+            maintenance_id = cursor.lastrowid
+
+            cursor.execute(
+                """
+                SELECT mh.*, v.marca AS vehicle_marca, v.modelo AS vehicle_modelo
+                FROM maintenance_history mh
+                LEFT JOIN veiculos v ON v.id = mh.vehicle_id
+                WHERE mh.id = %s AND mh.user_id = %s
+                """,
+                (maintenance_id, user_id)
+            )
+            created_row = cursor.fetchone()
+
+            return jsonify(
+                success=True,
+                registro=serialize_maintenance_row(created_row),
+                observacao=None if vehicle_id is not None else "Registro salvo sem vinculo de veiculo."
+            ), 201
+    except Exception as e:
+        logger.error(f"Erro ao registrar historico de manutencao: {e}")
+        return jsonify(error="Erro interno ao registrar manutencao"), 500
+
+
+@pages_bp.route("/api/maintenance/history", methods=["GET"])
+@jwt_required()
+def list_maintenance_history():
+    user_id = get_jwt_identity()
+    vehicle_id = request.args.get("veiculo_id")
+
+    try:
+        with get_db() as (cursor, conn):
+            params = [user_id]
+            vehicle_filter = ""
+            if vehicle_id is not None:
+                try:
+                    vehicle_id = int(vehicle_id)
+                except (TypeError, ValueError):
+                    return jsonify(error="veiculo_id invalido"), 400
+                vehicle_filter = " AND mh.vehicle_id = %s"
+                params.append(vehicle_id)
+
+            cursor.execute(
+                f"""
+                SELECT mh.*, v.marca AS vehicle_marca, v.modelo AS vehicle_modelo
+                FROM maintenance_history mh
+                LEFT JOIN veiculos v ON v.id = mh.vehicle_id
+                WHERE mh.user_id = %s {vehicle_filter}
+                ORDER BY mh.service_date DESC, mh.created_at DESC
+                """,
+                tuple(params)
+            )
+            history_rows = cursor.fetchall()
+            serialized = [serialize_maintenance_row(row) for row in history_rows]
+
+            return jsonify(
+                historico=serialized,
+                resumo=build_spending_summary(serialized)
+            ), 200
+    except Exception as e:
+        logger.error(f"Erro ao listar historico de manutencao: {e}")
+        return jsonify(error="Erro ao carregar historico de manutencao"), 500
+
+
+@pages_bp.route("/api/maintenance/alerts", methods=["GET"])
+@jwt_required()
+def get_maintenance_alerts():
+    user_id = get_jwt_identity()
+    vehicle_id = request.args.get("veiculo_id")
+
+    try:
+        with get_db() as (cursor, conn):
+            vehicle_filter = ""
+            params = [user_id]
+            vehicle_params = [user_id]
+
+            if vehicle_id is not None:
+                try:
+                    vehicle_id = int(vehicle_id)
+                except (TypeError, ValueError):
+                    return jsonify(error="veiculo_id invalido"), 400
+
+                vehicle_filter = " AND vehicle_id = %s"
+                params.append(vehicle_id)
+                vehicle_params.append(vehicle_id)
+
+            cursor.execute(
+                f"SELECT id, quilometragem FROM veiculos WHERE user_id = %s{' AND id = %s' if vehicle_id is not None else ''}",
+                tuple(vehicle_params)
+            )
+            vehicles = cursor.fetchall()
+            vehicle_km_map = {item["id"]: item.get("quilometragem") for item in vehicles}
+
+            cursor.execute(
+                f"""
+                SELECT *
+                FROM maintenance_history
+                WHERE user_id = %s {vehicle_filter}
+                ORDER BY service_date DESC, created_at DESC
+                """,
+                tuple(params)
+            )
+            history_rows = cursor.fetchall()
+            active_records = consolidate_active_maintenance_records(history_rows)
+            alerts = build_maintenance_alerts(active_records, vehicle_km_map=vehicle_km_map)
+
+            return jsonify(
+                alertas=alerts,
+                total_alertas=len(alerts),
+                total_atrasados=len([a for a in alerts if a.get("status_code") == "overdue"])
+            ), 200
+    except Exception as e:
+        logger.error(f"Erro ao gerar alertas de manutencao: {e}")
+        return jsonify(error="Erro ao gerar alertas de manutencao"), 500
+
+
+@pages_bp.route("/api/maintenance/email-settings", methods=["GET"])
+@jwt_required()
+def get_maintenance_email_settings():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                """
+                SELECT maintenance_email_enabled, maintenance_email_last_sent
+                FROM users
+                WHERE id = %s
+                """,
+                (user_id,)
+            )
+            settings = cursor.fetchone()
+            if not settings:
+                return jsonify(error="Usuario nao encontrado"), 404
+
+            return jsonify(
+                maintenance_email_enabled=bool(settings.get("maintenance_email_enabled", True)),
+                maintenance_email_last_sent=serialize_datetime_field(settings.get("maintenance_email_last_sent"))
+            ), 200
+    except Exception as e:
+        logger.error(f"Erro ao buscar configuracao de email automatico: {e}")
+        return jsonify(error="Erro ao buscar configuracao de email"), 500
+
+
+@pages_bp.route("/api/maintenance/email-settings", methods=["PUT"])
+@jwt_required()
+def update_maintenance_email_settings():
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    enabled = data.get("enabled")
+    if not isinstance(enabled, bool):
+        return jsonify(error="Campo 'enabled' deve ser booleano"), 400
+
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                "UPDATE users SET maintenance_email_enabled = %s WHERE id = %s",
+                (enabled, user_id)
+            )
+            return jsonify(success=True, maintenance_email_enabled=enabled), 200
+    except Exception as e:
+        logger.error(f"Erro ao atualizar configuracao de email automatico: {e}")
+        return jsonify(error="Erro ao atualizar configuracao de email"), 500
+
+
+@pages_bp.route("/api/maintenance/email/send-now", methods=["POST"])
+@jwt_required()
+def send_maintenance_email_now():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                """
+                SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent
+                FROM users
+                WHERE id = %s
+                """,
+                (user_id,)
+            )
+            user = cursor.fetchone()
+            if not user:
+                return jsonify(error="Usuario nao encontrado"), 404
+
+            result = send_maintenance_alert_email_for_user(cursor, user, force=True)
+            return jsonify(
+                success=result["sent"],
+                reason=result["reason"],
+                alerts_count=result["alerts_count"]
+            ), (200 if result["sent"] else 202)
+    except Exception as e:
+        logger.error(f"Erro no envio manual de email de manutencao: {e}")
+        return jsonify(error="Erro ao enviar email de manutencao"), 500
+
+
+@pages_bp.route("/api/maintenance/email/dispatch", methods=["POST"])
+def dispatch_maintenance_email_batch():
+    cron_secret = os.getenv("MAINTENANCE_EMAIL_CRON_SECRET", "").strip()
+    sent_secret = (request.headers.get("X-Cron-Secret") or "").strip()
+    auth_header = request.headers.get("Authorization", "").strip()
+    bearer_secret = ""
+    if auth_header.lower().startswith("bearer "):
+        bearer_secret = auth_header[7:].strip()
+
+    if not cron_secret:
+        return jsonify(error="MAINTENANCE_EMAIL_CRON_SECRET nao configurado"), 500
+    if cron_secret not in (sent_secret, bearer_secret):
+        return jsonify(error="Nao autorizado"), 401
+
+    payload = request.get_json(silent=True) or {}
+    force = bool(payload.get("force", False))
+    limit = payload.get("limit", 500)
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 500
+    limit = max(1, min(limit, 2000))
+
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                """
+                SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent
+                FROM users
+                WHERE email IS NOT NULL
+                  AND email <> ''
+                  AND maintenance_email_enabled = TRUE
+                ORDER BY id ASC
+                LIMIT %s
+                """,
+                (limit,)
+            )
+            users = cursor.fetchall()
+
+            summary = {
+                "processed": 0,
+                "sent": 0,
+                "no_actionable_alerts": 0,
+                "already_sent_today": 0,
+                "failed": 0
+            }
+
+            for user in users:
+                summary["processed"] += 1
+                result = send_maintenance_alert_email_for_user(cursor, user, force=force)
+                if result["sent"]:
+                    summary["sent"] += 1
+                elif result["reason"] == "no_actionable_alerts":
+                    summary["no_actionable_alerts"] += 1
+                elif result["reason"] == "already_sent_today":
+                    summary["already_sent_today"] += 1
+                else:
+                    summary["failed"] += 1
+
+            return jsonify(success=True, force=force, resumo=summary), 200
+    except Exception as e:
+        logger.error(f"Erro no dispatch automatico de emails de manutencao: {e}")
+        return jsonify(error="Erro ao executar dispatch de emails"), 500
+
 
 @pages_bp.route("/api/user", methods=["DELETE"])
 @jwt_required()
@@ -392,42 +897,65 @@ def get_dashboard():
             user = get_user_by_id(cursor, user_id)
             if not user:
                 return jsonify(error="Usuário não encontrado"), 404
-                
+
             premium_error = ensure_premium_user(user)
             if premium_error:
                 return premium_error
-            
+
             cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
-            
+
             if not veiculos:
                 return jsonify(error="VEHICLE_NOT_FOUND"), 404
-                
+
+            cursor.execute("""
+                SELECT *
+                FROM maintenance_history
+                WHERE user_id = %s
+                ORDER BY service_date DESC, created_at DESC
+            """, (user_id,))
+            maintenance_history_rows = cursor.fetchall()
+            vehicle_km_map = {v["id"]: v.get("quilometragem") for v in veiculos}
+            active_maintenance = consolidate_active_maintenance_records(maintenance_history_rows)
+            intelligent_alerts = build_maintenance_alerts(active_maintenance, vehicle_km_map=vehicle_km_map)
+            intelligent_alerts_by_vehicle = {}
+            for alert in intelligent_alerts:
+                v_id = alert.get("vehicle_id")
+                if v_id is None:
+                    continue
+                intelligent_alerts_by_vehicle.setdefault(v_id, []).append(alert)
+
             resultados = []
-            
+
             for v in veiculos:
                 ano_atual = datetime.now().year
                 ano_fab = v["ano_fabricacao"] or ano_atual
                 idade = ano_atual - ano_fab
-                
+
                 km = v.get("quilometragem") or 0
                 alertas = []
 
-                # Alertas baseados em Idade
                 if idade >= 5:
                     alertas.append({"item": "Suspensão", "status": "Atenção", "msg": "Revisar amortecedores e buchas."})
                 if idade >= 3:
                     alertas.append({"item": "Líquido Arrefecimento", "status": "Aviso", "msg": "Troca recomendada a cada 2-3 anos."})
-                
-                # Alertas baseados em Quilometragem (Melhoria)
+
                 if km >= 50000:
                     alertas.append({"item": "Correia Dentada", "status": "Atenção", "msg": "Verificar estado da correia dentada/tensor."})
                 if km >= 10000:
                     alertas.append({"item": "Óleo do Motor", "status": "Aviso", "msg": "Próximo da revisão periódica (10k km)."})
-                
+
                 alertas.append({"item": "Pneus", "status": "Ok" if idade < 4 and km < 40000 else "Atenção", "msg": "Verificar TWI, validade e desgaste."})
                 alertas.append({"item": "Freios", "status": "Ok" if km < 20000 else "Atenção", "msg": "Monitorar pastilhas e discos."})
-                
+
+                vehicle_intelligent_alerts = intelligent_alerts_by_vehicle.get(v["id"], [])
+                for ia in vehicle_intelligent_alerts:
+                    alertas.append({
+                        "item": ia.get("item"),
+                        "status": ia.get("status"),
+                        "msg": ia.get("msg")
+                    })
+
                 tipo_map = {
                     "carro": "carros",
                     "moto": "motos",
@@ -436,14 +964,14 @@ def get_dashboard():
                 }
                 v_tipo = v.get("tipo") or "carro"
                 tipo_fipe = tipo_map.get(v_tipo.lower(), "carros")
-                
+
                 dados_fipe = get_fipe_value(
-                    tipo_fipe, 
-                    v["marca"], 
-                    v["modelo"], 
+                    tipo_fipe,
+                    v["marca"],
+                    v["modelo"],
                     ano_fab
                 )
-                
+
                 if dados_fipe:
                     preco_fipe = dados_fipe.get("Valor", "N/A")
                     mes_fipe = dados_fipe.get("MesReferencia", datetime.now().strftime("%B %Y"))
@@ -452,7 +980,7 @@ def get_dashboard():
                     valor_estimado = valor_base * (0.92 ** idade)
                     preco_fipe = f"R$ {valor_estimado:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                     mes_fipe = f"{datetime.now().strftime('%B %Y')} (Estimado)"
-                
+
                 resultados.append({
                     "id": v["id"],
                     "veiculo": {
@@ -463,12 +991,13 @@ def get_dashboard():
                         "quilometragem": km
                     },
                     "saude": alertas,
+                    "manutencao_inteligente": vehicle_intelligent_alerts,
                     "fipe": {
                         "preco": preco_fipe,
                         "mes": mes_fipe
                     }
                 })
-            
+
             return jsonify(resultados), 200
     except Exception as e:
         logger.error(f"❌ Erro no dashboard: {e}")

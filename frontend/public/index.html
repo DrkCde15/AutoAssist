@@ -91,6 +91,7 @@
             display: flex;
             align-items: center;
             gap: 32px;
+            position: relative;
         }
 
         .nav-link {
@@ -103,6 +104,139 @@
 
         .nav-link:hover {
             color: var(--text-primary);
+        }
+
+        .nav-bell-btn {
+            position: relative;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .nav-bell-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--text-muted);
+            transform: translateY(-1px);
+        }
+
+        .nav-bell-dot {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: var(--accent);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--bg-secondary);
+            padding: 0 5px;
+        }
+
+        .notification-panel {
+            position: absolute;
+            top: calc(100% + 12px);
+            right: 0;
+            width: 340px;
+            max-height: 380px;
+            overflow: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: 0 20px 38px rgba(0, 0, 0, 0.45);
+            padding: 10px;
+            display: none;
+            z-index: 120;
+        }
+
+        .notification-panel.open {
+            display: block;
+        }
+
+        .notif-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .notif-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .notif-item {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
+            background: var(--bg-secondary);
+        }
+
+        .notif-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .notif-item-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.45;
+        }
+
+        .notif-badge {
+            border-radius: 999px;
+            font-size: 10px;
+            padding: 3px 7px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .notif-badge.overdue {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+        }
+
+        .notif-badge.due_soon {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fbbf24;
+        }
+
+        .notif-badge.on_track {
+            background: rgba(34, 197, 94, 0.18);
+            color: #4ade80;
+        }
+
+        .notif-empty {
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            padding: 14px;
         }
 
         .nav-btn {
@@ -704,12 +838,64 @@
                 if (response.ok) {
                     const userData = await response.json();
                     localStorage.setItem('autoassist_user', JSON.stringify(userData));
+
+                    const escapeHtml = (text) => String(text ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+
+                    const getBadgeClass = (code) => {
+                        const normalized = String(code || '').toLowerCase();
+                        if (normalized === 'overdue') return 'overdue';
+                        if (normalized === 'due_soon') return 'due_soon';
+                        return 'on_track';
+                    };
+
+                    let maintenanceAlerts = [];
+                    try {
+                        const alertsRes = await Auth.authenticatedFetch('/api/maintenance/alerts');
+                        if (alertsRes.ok) {
+                            const alertsData = await alertsRes.json();
+                            maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
+                        }
+                    } catch (error) {
+                        console.warn('Nao foi possivel carregar notificacoes:', error);
+                    }
+                    const actionableAlerts = maintenanceAlerts.filter(a => {
+                        const code = String(a.status_code || '').toLowerCase();
+                        return code === 'overdue' || code === 'due_soon';
+                    });
+                    const badgeCount = actionableAlerts.length > 9 ? '9+' : String(actionableAlerts.length);
+                    const notificationsHtml = actionableAlerts.length
+                        ? actionableAlerts.slice(0, 6).map(alert => `
+                            <div class="notif-item">
+                                <div class="notif-item-title">
+                                    <span>${escapeHtml(alert.item || 'Manutencao')}</span>
+                                    <span class="notif-badge ${getBadgeClass(alert.status_code)}">${escapeHtml(alert.status || 'Aviso')}</span>
+                                </div>
+                                <div class="notif-item-text">${escapeHtml(alert.msg || '')}</div>
+                            </div>
+                        `).join('')
+                        : '<div class="notif-empty">Sem notificacoes de manutencao no momento.</div>';
                     
                     // Update navbar for logged in user
                     authLinks.innerHTML = `
                         <a href="dashboard.html" class="nav-link" style="color: var(--accent);"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
                         <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
+                        <button id="btnNotifications" class="nav-bell-btn" title="Notificacoes">
+                            <i class="fas fa-bell"></i>
+                            ${actionableAlerts.length ? `<span class="nav-bell-dot">${badgeCount}</span>` : ''}
+                        </button>
+                        <div id="notificationPanel" class="notification-panel">
+                            <div class="notif-header">
+                                <strong>Notificacoes</strong>
+                                <a href="maintenance_history.html" class="nav-link" style="font-size:12px;">Ver todas</a>
+                            </div>
+                            <div class="notif-list">${notificationsHtml}</div>
+                        </div>
                         <button id="btnLogout" class="nav-btn nav-btn-outline">Sair</button>
                     `;
 
@@ -726,6 +912,20 @@
                     const btnLogout = document.getElementById('btnLogout');
                     if (btnLogout) {
                         btnLogout.addEventListener('click', () => Auth.logout());
+                    }
+
+                    const btnNotifications = document.getElementById('btnNotifications');
+                    const notificationPanel = document.getElementById('notificationPanel');
+                    if (btnNotifications && notificationPanel) {
+                        btnNotifications.addEventListener('click', (event) => {
+                            event.stopPropagation();
+                            notificationPanel.classList.toggle('open');
+                        });
+                        document.addEventListener('click', (event) => {
+                            if (!notificationPanel.contains(event.target) && event.target !== btnNotifications) {
+                                notificationPanel.classList.remove('open');
+                            }
+                        });
                     }
                 } else {
                     console.warn(`Invalid session (${response.status}). Logging out...`);
