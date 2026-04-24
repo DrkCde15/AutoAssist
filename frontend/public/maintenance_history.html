@@ -258,6 +258,29 @@
             border-color: #3f3f46;
         }
 
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .form-actions .btn-primary {
+            margin-top: 0;
+            flex: 1;
+        }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+
+        .btn-danger-outline:hover {
+            border-color: #ef4444;
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.08);
+        }
+
         .email-row {
             display: flex;
             align-items: center;
@@ -391,8 +414,49 @@
             margin-bottom: 14px;
         }
 
+        .card-head-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .small-select {
             width: 230px;
+        }
+
+        .actions-inline {
+            display: inline-flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            color: var(--text-primary);
+            border-color: #3f3f46;
+        }
+
+        .icon-btn.delete:hover {
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.35);
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .badge-no-plan {
+            background: rgba(113, 113, 122, 0.25);
+            color: #d4d4d8;
         }
 
         .empty {
@@ -436,8 +500,17 @@
                 align-items: flex-start;
             }
 
+            .card-head-controls {
+                width: 100%;
+                flex-direction: column;
+            }
+
             .small-select {
                 width: 100%;
+            }
+
+            .form-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -487,7 +560,9 @@
             </div>
             <div class="field">
                 <label for="veiculoSelect">Veiculo (opcional)</label>
-                <select id="veiculoSelect"></select>
+                <select id="veiculoSelect" disabled>
+                    <option value="">Carregando veiculos...</option>
+                </select>
             </div>
             <div class="field-row">
                 <div class="field">
@@ -513,10 +588,16 @@
                     <input id="intervaloKm" type="number" placeholder="Ex: 10000">
                 </div>
             </div>
-            <button class="btn btn-primary" id="btnSalvarRegistro">
-                <i class="fas fa-plus"></i>
-                Salvar no historico
-            </button>
+            <div class="form-actions">
+                <button class="btn btn-primary" id="btnSalvarRegistro">
+                    <i class="fas fa-plus"></i>
+                    Salvar no historico
+                </button>
+                <button class="btn btn-ghost" id="btnCancelarEdicao" style="display:none;">
+                    <i class="fas fa-xmark"></i>
+                    Cancelar
+                </button>
+            </div>
         </article>
 
         <article class="card">
@@ -538,7 +619,16 @@
     <section class="card history-card">
         <div class="card-head">
             <h2 class="card-title" style="margin:0;"><i class="fas fa-clock-rotate-left"></i> Registros salvos</h2>
-            <select id="vehicleFilter" class="small-select"></select>
+            <div class="card-head-controls">
+                <select id="sortFilter" class="small-select">
+                    <option value="recent">Mais recentes</option>
+                    <option value="cost_desc">Maior gasto</option>
+                    <option value="urgency">Mais urgente</option>
+                </select>
+                <select id="vehicleFilter" class="small-select" disabled>
+                    <option value="">Carregando veiculos...</option>
+                </select>
+            </div>
         </div>
         <div class="history-list" id="historyList"></div>
     </section>
@@ -548,12 +638,12 @@
 <script src="static/js/auth.js"></script>
 <script>
     const state = {
-        user: null,
         vehicles: [],
         history: [],
         resumo: null,
         alerts: [],
-        emailSettings: null
+        emailSettings: null,
+        editingId: null
     };
 
     function escapeHtml(text) {
@@ -587,6 +677,15 @@
         return map;
     }
 
+    function getVehicleInfoMap() {
+        const map = new Map();
+        state.vehicles.forEach((v) => {
+            const label = [v.marca, v.modelo].filter(Boolean).join(" ").trim() || ("Veiculo #" + v.id);
+            map.set(Number(v.id), { label, km: Number(v.quilometragem || 0) });
+        });
+        return map;
+    }
+
     function getBadgeClass(statusCode, statusLabel) {
         const normalized = (statusCode || statusLabel || "").toString().toLowerCase();
         if (normalized.includes("overdue") || normalized.includes("atencao") || normalized.includes("aten")) return "badge badge-overdue";
@@ -600,11 +699,11 @@
         return "?veiculo_id=" + encodeURIComponent(raw);
     }
 
-    async function fetchUser() {
-        const res = await Auth.authenticatedFetch("/api/user");
-        if (!res.ok) throw new Error("Falha ao carregar usuario");
-        state.user = await res.json();
-        state.vehicles = Array.isArray(state.user.veiculos) ? state.user.veiculos : [];
+    async function fetchVehicles() {
+        const res = await Auth.authenticatedFetch("/api/veiculos");
+        if (!res.ok) throw new Error("Falha ao carregar veiculos");
+        const data = await res.json();
+        state.vehicles = Array.isArray(data.veiculos) ? data.veiculos : [];
     }
 
     async function fetchHistory() {
@@ -640,6 +739,7 @@
             .join("");
 
         document.getElementById("veiculoSelect").innerHTML = options;
+        document.getElementById("veiculoSelect").disabled = false;
 
         const filterOptions = ['<option value="">Todos os veiculos</option>']
             .concat(state.vehicles.map((v) => {
@@ -648,6 +748,7 @@
             }))
             .join("");
         document.getElementById("vehicleFilter").innerHTML = filterOptions;
+        document.getElementById("vehicleFilter").disabled = false;
     }
 
     function renderStats() {
@@ -688,30 +789,122 @@
             return;
         }
 
+        const sortMode = document.getElementById("sortFilter").value;
         const vehicleMap = getVehicleMap();
-        container.innerHTML = state.history.map((item) => {
+        const vehicleInfoMap = getVehicleInfoMap();
+        const sortedHistory = [...state.history].sort((a, b) => sortHistoryComparator(a, b, sortMode, vehicleInfoMap));
+
+        container.innerHTML = sortedHistory.map((item) => {
             const vehicleId = item.vehicle_id !== null && item.vehicle_id !== undefined ? Number(item.vehicle_id) : null;
             const vehicleLabel = vehicleId !== null ? (vehicleMap.get(vehicleId) || ("Veiculo #" + vehicleId)) : "Sem vinculo";
             const nextDate = item.next_due_date ? formatDate(item.next_due_date) : "-";
             const nextKm = item.next_due_km ? (Number(item.next_due_km).toLocaleString("pt-BR") + " km") : "-";
             const costLabel = item.cost !== null && item.cost !== undefined ? formatCurrency(item.cost) : "-";
+            const hasNoPlan = !item.next_due_date && (item.next_due_km === null || item.next_due_km === undefined);
+            const rightBadge = hasNoPlan
+                ? '<span class="badge badge-no-plan">Sem previsao</span>'
+                : `<span class="badge badge-on_track">${formatDate(item.service_date)}</span>`;
 
             return `
                 <div class="history-item">
                     <div class="item-top">
                         <div class="item-title">${escapeHtml(item.maintenance_label || "Manutencao geral")}</div>
-                        <span class="badge badge-on_track">${formatDate(item.service_date)}</span>
+                        <div class="actions-inline">
+                            ${rightBadge}
+                            <button class="icon-btn" title="Editar" onclick="startEditMaintenance(${Number(item.id)})">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="icon-btn delete" title="Excluir" onclick="deleteMaintenance(${Number(item.id)})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="item-text">${escapeHtml(item.description || "")}</div>
                     <div class="item-meta">
                         <span><i class="fas fa-car"></i> ${escapeHtml(vehicleLabel)}</span>
                         <span><i class="fas fa-money-bill-wave"></i> ${escapeHtml(costLabel)}</span>
-                        <span><i class="fas fa-calendar-check"></i> Proxima data: ${escapeHtml(nextDate)}</span>
-                        <span><i class="fas fa-gauge-high"></i> Proximo km: ${escapeHtml(nextKm)}</span>
+                        ${item.next_due_date ? `<span><i class="fas fa-calendar-check"></i> Proxima data: ${escapeHtml(nextDate)}</span>` : ""}
+                        ${item.next_due_km ? `<span><i class="fas fa-gauge-high"></i> Proximo km: ${escapeHtml(nextKm)}</span>` : ""}
                     </div>
                 </div>
             `;
         }).join("");
+    }
+
+    function safeDateForInput(value) {
+        if (!value) return "";
+        const dt = new Date(value);
+        if (Number.isNaN(dt.getTime())) return "";
+        return dt.toISOString().slice(0, 10);
+    }
+
+    function normalizeMetric(value, fallback = Number.MAX_SAFE_INTEGER) {
+        if (value === null || value === undefined || Number.isNaN(Number(value))) return fallback;
+        return Number(value);
+    }
+
+    function computeUrgencyRank(item, vehicleInfoMap) {
+        const now = new Date();
+        const nextDate = item.next_due_date ? new Date(item.next_due_date) : null;
+        const vehicleId = item.vehicle_id !== null && item.vehicle_id !== undefined ? Number(item.vehicle_id) : null;
+        const currentKm = vehicleId !== null && vehicleInfoMap.get(vehicleId) ? Number(vehicleInfoMap.get(vehicleId).km || 0) : null;
+        const nextKm = item.next_due_km !== null && item.next_due_km !== undefined ? Number(item.next_due_km) : null;
+
+        let category = 3;
+        let metric = Number.MAX_SAFE_INTEGER;
+
+        if (nextDate && !Number.isNaN(nextDate.getTime())) {
+            const dayMs = 24 * 60 * 60 * 1000;
+            const daysRemaining = Math.floor((nextDate.getTime() - now.getTime()) / dayMs);
+            if (daysRemaining < 0) {
+                category = 0;
+                metric = Math.min(metric, daysRemaining);
+            } else if (daysRemaining <= 15) {
+                category = Math.min(category, 1);
+                metric = Math.min(metric, daysRemaining);
+            } else {
+                category = Math.min(category, 2);
+                metric = Math.min(metric, daysRemaining);
+            }
+        }
+
+        if (nextKm !== null) {
+            if (currentKm !== null) {
+                const kmRemaining = nextKm - currentKm;
+                if (kmRemaining < 0) {
+                    category = Math.min(category, 0);
+                    metric = Math.min(metric, kmRemaining);
+                } else if (kmRemaining <= 1000) {
+                    category = Math.min(category, 1);
+                    metric = Math.min(metric, kmRemaining);
+                } else {
+                    category = Math.min(category, 2);
+                    metric = Math.min(metric, kmRemaining);
+                }
+            } else {
+                category = Math.min(category, 2);
+                metric = Math.min(metric, nextKm);
+            }
+        }
+
+        return { category, metric };
+    }
+
+    function sortHistoryComparator(a, b, sortMode, vehicleInfoMap) {
+        if (sortMode === "cost_desc") {
+            const costA = normalizeMetric(a.cost, -1);
+            const costB = normalizeMetric(b.cost, -1);
+            if (costB !== costA) return costB - costA;
+        } else if (sortMode === "urgency") {
+            const rankA = computeUrgencyRank(a, vehicleInfoMap);
+            const rankB = computeUrgencyRank(b, vehicleInfoMap);
+            if (rankA.category !== rankB.category) return rankA.category - rankB.category;
+            if (rankA.metric !== rankB.metric) return rankA.metric - rankB.metric;
+        }
+
+        const dateA = new Date(a.service_date || a.created_at || 0).getTime();
+        const dateB = new Date(b.service_date || b.created_at || 0).getTime();
+        return dateB - dateA;
     }
 
     function renderEmailSettings() {
@@ -759,20 +952,19 @@
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Salvando...';
 
         try {
-            const res = await Auth.authenticatedFetch("/api/maintenance/history", {
-                method: "POST",
+            const isEditing = state.editingId !== null;
+            if (!vehicleId && isEditing) payload.veiculo_id = "";
+            const endpoint = isEditing
+                ? "/api/maintenance/history/" + encodeURIComponent(state.editingId)
+                : "/api/maintenance/history";
+            const res = await Auth.authenticatedFetch(endpoint, {
+                method: isEditing ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Erro ao salvar manutencao");
-
-            document.getElementById("descricao").value = "";
-            document.getElementById("custo").value = "";
-            document.getElementById("kmServico").value = "";
-            document.getElementById("dataServico").value = "";
-            document.getElementById("intervaloDias").value = "";
-            document.getElementById("intervaloKm").value = "";
+            resetFormState();
 
             await Promise.all([fetchHistory(), fetchAlerts(), fetchEmailSettings()]);
             renderStats();
@@ -787,29 +979,58 @@
         }
     }
 
-    async function sendEmailNow() {
-        const btn = document.getElementById("btnSendNow");
-        const original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Enviando...';
+    function resetFormState() {
+        state.editingId = null;
+        document.getElementById("descricao").value = "";
+        document.getElementById("custo").value = "";
+        document.getElementById("kmServico").value = "";
+        document.getElementById("dataServico").value = "";
+        document.getElementById("intervaloDias").value = "";
+        document.getElementById("intervaloKm").value = "";
+        document.getElementById("veiculoSelect").value = "";
+        document.getElementById("btnSalvarRegistro").innerHTML = '<i class="fas fa-plus"></i> Salvar no historico';
+        document.getElementById("btnCancelarEdicao").style.display = "none";
+    }
+
+    function startEditMaintenance(id) {
+        const item = state.history.find((entry) => Number(entry.id) === Number(id));
+        if (!item) return;
+
+        state.editingId = Number(id);
+        document.getElementById("descricao").value = item.description || "";
+        document.getElementById("custo").value = (item.cost !== null && item.cost !== undefined) ? String(item.cost).replace(".", ",") : "";
+        document.getElementById("kmServico").value = item.service_km || "";
+        document.getElementById("dataServico").value = safeDateForInput(item.service_date);
+        document.getElementById("intervaloDias").value = item.interval_days || "";
+        document.getElementById("intervaloKm").value = item.interval_km || "";
+        document.getElementById("veiculoSelect").value = (item.vehicle_id !== null && item.vehicle_id !== undefined) ? String(item.vehicle_id) : "";
+        document.getElementById("btnSalvarRegistro").innerHTML = '<i class="fas fa-floppy-disk"></i> Salvar alteracoes';
+        document.getElementById("btnCancelarEdicao").style.display = "inline-flex";
+        document.getElementById("descricao").focus();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function deleteMaintenance(id) {
+        const confirmed = window.confirm("Deseja excluir este registro de manutencao?");
+        if (!confirmed) return;
+
         try {
-            const res = await Auth.authenticatedFetch("/api/maintenance/email/send-now", {
-                method: "POST"
+            const res = await Auth.authenticatedFetch("/api/maintenance/history/" + encodeURIComponent(id), {
+                method: "DELETE"
             });
             const data = await res.json();
-            if (!res.ok && res.status !== 202) throw new Error(data.error || "Falha no envio");
-            if (data.success) {
-                alert("Email enviado com sucesso.");
-            } else {
-                alert("Sem envio agora: " + (data.reason || "sem alertas"));
+            if (!res.ok) throw new Error(data.error || "Erro ao excluir registro");
+
+            if (state.editingId === Number(id)) {
+                resetFormState();
             }
-            await fetchEmailSettings();
+            await Promise.all([fetchHistory(), fetchAlerts(), fetchEmailSettings()]);
+            renderStats();
+            renderAlerts();
+            renderHistory();
             renderEmailSettings();
         } catch (err) {
-            alert(err.message || "Erro ao enviar email.");
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = original;
+            alert(err.message || "Erro ao excluir manutencao.");
         }
     }
 
@@ -828,7 +1049,7 @@
         }
 
         try {
-            await fetchUser();
+            await fetchVehicles();
             renderVehicleSelects();
             await refreshData();
         } catch (err) {
@@ -839,7 +1060,8 @@
 
     document.getElementById("btnSalvarRegistro").addEventListener("click", submitMaintenance);
     document.getElementById("vehicleFilter").addEventListener("change", refreshData);
-    document.getElementById("btnSendNow").addEventListener("click", sendEmailNow);
+    document.getElementById("sortFilter").addEventListener("change", renderHistory);
+    document.getElementById("btnCancelarEdicao").addEventListener("click", resetFormState);
     document.getElementById("btnLogout").addEventListener("click", () => Auth.logout());
     document.getElementById("emailToggle").addEventListener("change", async (event) => {
         const checked = event.target.checked;
@@ -850,6 +1072,9 @@
             alert(err.message || "Erro ao atualizar configuracao de email.");
         }
     });
+
+    window.startEditMaintenance = startEditMaintenance;
+    window.deleteMaintenance = deleteMaintenance;
 
     init();
 </script>

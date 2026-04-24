@@ -26,7 +26,14 @@ def get_frontend_url() -> str:
     is_production = os.getenv("FLASK_ENV") == "production"
     if is_production:
         return os.getenv("FRONTEND_URL_PROD", "https://drkcde15.github.io/AutoAssist/")
-    return os.getenv("FRONTEND_URL_DEV", "http://localhost:3000/")
+
+    # Em desenvolvimento, usa FRONTEND_URL_DEV quando configurada.
+    # Caso contrário, usa a própria origem da requisição (ex.: localhost:5000),
+    # evitando redirecionamento para porta inexistente.
+    frontend_dev = (os.getenv("FRONTEND_URL_DEV") or "").strip()
+    if frontend_dev:
+        return frontend_dev
+    return request.host_url
 
 
 def fetch_veiculos_user(cursor, user_id):
@@ -34,7 +41,7 @@ def fetch_veiculos_user(cursor, user_id):
     return cursor.fetchall()
 
 
-# Configuração Google OAuth2
+# ConfiguraÃ§Ã£o Google OAuth2
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
@@ -66,8 +73,8 @@ def get_google_oauth_hosts():
 def google_login():
     hosts = get_google_oauth_hosts()
     if not hosts or not google_client:
-        logger.error("Configuração Google OAuth2 ausente ou incompleta")
-        return jsonify(error="Configuração do Google OAuth2 incompleta"), 500
+        logger.error("ConfiguraÃ§Ã£o Google OAuth2 ausente ou incompleta")
+        return jsonify(error="ConfiguraÃ§Ã£o do Google OAuth2 incompleta"), 500
     
     authorization_url = google_client.prepare_request_uri(
         uri=hosts.authorization_endpoint,
@@ -82,10 +89,10 @@ def google_callback():
     hosts = get_google_oauth_hosts()
     
     if not hosts or not google_client or not code:
-        return jsonify(error="Dados de callback inválidos"), 400
+        return jsonify(error="Dados de callback invÃ¡lidos"), 400
 
     try:
-        # Trocar código por token
+        # Trocar cÃ³digo por token
         token_url, headers, body = google_client.prepare_token_request(
             token_url=hosts.token_endpoint,
             authorization_response=request.url.replace("http://", "https://") if os.getenv('FLASK_ENV') == 'production' else request.url,
@@ -102,20 +109,20 @@ def google_callback():
 
         if token_response.status_code != 200:
             logger.error(f"Erro ao trocar token: {token_response.text}")
-            return jsonify(error="Falha na autenticação com Google"), 400
+            return jsonify(error="Falha na autenticaÃ§Ã£o com Google"), 400
 
         google_client.parse_request_body_response(json.dumps(token_response.json()))
 
-        # Pegar dados do usuário
+        # Pegar dados do usuÃ¡rio
         uri, headers, body = google_client.add_token(hosts.userinfo_endpoint)
         user_info_response = requests.get(uri, headers=headers, data=body)
         
         if user_info_response.status_code != 200:
-            return jsonify(error="Falha ao obter dados do usuário"), 400
+            return jsonify(error="Falha ao obter dados do usuÃ¡rio"), 400
 
         user_info = user_info_response.json()
         if not user_info.get("email_verified"):
-            return jsonify(error="Email Google não verificado"), 400
+            return jsonify(error="Email Google nÃ£o verificado"), 400
 
         google_id = user_info["sub"]
         email = user_info["email"].lower()
@@ -128,14 +135,14 @@ def google_callback():
             user = cursor.fetchone()
 
             if user:
-                # Atualiza usuário existente com info do Google
+                # Atualiza usuÃ¡rio existente com info do Google
                 cursor.execute("""
                     UPDATE users 
                     SET google_id = %s, profile_pic = %s 
                     WHERE email = %s
                 """, (google_id, picture, email))
             else:
-                # Cria novo usuário sem senha (Login Social)
+                # Cria novo usuÃ¡rio sem senha (Login Social)
                 cursor.execute("""
                     INSERT INTO users (nome, email, google_id, profile_pic) 
                     VALUES (%s, %s, %s, %s)
@@ -152,7 +159,7 @@ def google_callback():
         # Obter a URL do frontend do .env
         frontend_base = get_frontend_url()
         
-        # Preparar dados do usuário para o frontend
+        # Preparar dados do usuÃ¡rio para o frontend
         user_payload = {
             "nome": user["nome"], 
             "is_premium": True, 
@@ -198,10 +205,10 @@ def cadastro():
     
     possui_veiculo = len(veiculos) > 0
     
-    if not nome or not email or len(password) < 6: return jsonify(error="Dados inválidos"), 400
+    if not nome or not email or len(password) < 6: return jsonify(error="Dados invÃ¡lidos"), 400
     
     if not is_valid_email_domain(email):
-        return jsonify(error="Insira um endereço de email valido"), 400
+        return jsonify(error="Insira um endereÃ§o de email valido"), 400
     try:
         with get_db() as (cursor, conn):
             cursor.execute("""
@@ -228,28 +235,37 @@ def cadastro():
                 ))
         return jsonify(success=True), 201
     except Exception as e:
-        logger.error(f"❌ Erro no cadastro: {e}")
-        return jsonify(error="Erro ao processar cadastro ou email já existe"), 409
+        logger.error(f"âŒ Erro no cadastro: {e}")
+        return jsonify(error="Erro ao processar cadastro ou email jÃ¡ existe"), 409
 
 @auth_bp.route("/api/login", methods=["POST"])
 def login():
-    data = request.get_json()
+    data = request.get_json() or {}
     email, password = data.get("email"), data.get("password")
-    
+
     if not email or not is_valid_email_domain(email):
         return jsonify(error="Insira um endereço de email valido"), 401
+    if not password or not isinstance(password, str):
+        return jsonify(error="Credenciais inválidas"), 401
 
     try:
         with get_db() as (cursor, conn):
             cursor.execute("SELECT * FROM users WHERE email = %s", (email.lower(),))
             user = cursor.fetchone()
-            
-            if not user or not bcrypt.verify(password, user["password"]):
+
+            if not user:
                 return jsonify(error="Credenciais inválidas"), 401
-                
+
+            password_hash = user.get("password")
+            if not password_hash:
+                return jsonify(error="Esta conta usa login social. Entre com Google."), 401
+
+            if not bcrypt.verify(password, password_hash):
+                return jsonify(error="Credenciais inválidas"), 401
+
             if user.get("is_two_factor_enabled"):
                 pending_token = create_access_token(
-                    identity=str(user['id']), 
+                    identity=str(user['id']),
                     expires_delta=timedelta(minutes=5),
                     additional_claims={"2fa_pending": True}
                 )
@@ -263,8 +279,8 @@ def login():
                 access_token=create_access_token(identity=str(user["id"])),
                 refresh_token=create_refresh_token(identity=str(user["id"])),
                 user={
-                    "nome": user["nome"], 
-                    "is_premium": True, 
+                    "nome": user["nome"],
+                    "is_premium": True,
                     "trial_expired": False,
                     "trial_days_remaining": 9999,
                     "possui_veiculo": len(veiculos) > 0,
@@ -282,13 +298,13 @@ def verify_2fa_login():
     code = data.get("code")
     
     if not pending_token or not code:
-        return jsonify(error="Token e código são obrigatórios"), 400
+        return jsonify(error="Token e cÃ³digo sÃ£o obrigatÃ³rios"), 400
         
     try:
         decoded = decode_token(pending_token)
         
         if not decoded.get("sub") or not decoded.get("2fa_pending"):
-            return jsonify(error="Token inválido ou expirado"), 401
+            return jsonify(error="Token invÃ¡lido ou expirado"), 401
             
         user_id = decoded["sub"]
         with get_db() as (cursor, conn):
@@ -296,12 +312,12 @@ def verify_2fa_login():
             user = cursor.fetchone()
             
             if not user or not user["is_two_factor_enabled"]:
-                return jsonify(error="2FA não configurado"), 400
+                return jsonify(error="2FA nÃ£o configurado"), 400
                 
             try:
                 secret_hash = user.get("two_factor_secret")
                 if not secret_hash or not bcrypt.verify(code, secret_hash):
-                    return jsonify(error="Senha secundária incorreta"), 401
+                    return jsonify(error="Senha secundÃ¡ria incorreta"), 401
                 
                 veiculos = fetch_veiculos_user(cursor, user_id)
                 return jsonify(
@@ -318,10 +334,10 @@ def verify_2fa_login():
                 ), 200
             except Exception as e:
                 logger.error(f"Erro ao verificar hash de 2FA: {e}")
-                return jsonify(error="Erro de compatibilidade no 2FA. Por favor, desative e reative sua senha secundária."), 401
+                return jsonify(error="Erro de compatibilidade no 2FA. Por favor, desative e reative sua senha secundÃ¡ria."), 401
     except Exception as e:
-        logger.error(f"Erro na verificação 2FA: {e}")
-        return jsonify(error="Erro interno na verificação"), 500
+        logger.error(f"Erro na verificaÃ§Ã£o 2FA: {e}")
+        return jsonify(error="Erro interno na verificaÃ§Ã£o"), 500
 
 @auth_bp.route("/api/refresh", methods=["POST"])
 @jwt_required(refresh=True)
@@ -337,7 +353,7 @@ def enable_2fa():
     secondary_password = data.get("password")
     
     if not secondary_password or len(secondary_password) < 4:
-        return jsonify(error="A senha secundária deve ter pelo menos 4 caracteres"), 400
+        return jsonify(error="A senha secundÃ¡ria deve ter pelo menos 4 caracteres"), 400
         
     try:
         with get_db() as (cursor, conn):
@@ -347,7 +363,7 @@ def enable_2fa():
                 SET is_two_factor_enabled = TRUE, two_factor_secret = %s 
                 WHERE id = %s
             """, (hashed_password, user_id))
-            return jsonify(message="Senha secundária (2FA) ativada com sucesso"), 200
+            return jsonify(message="Senha secundÃ¡ria (2FA) ativada com sucesso"), 200
     except Exception as e:
         logger.error(f"Erro ao ativar 2FA: {e}")
         return jsonify(error="Erro ao ativar 2FA"), 500
@@ -360,7 +376,7 @@ def disable_2fa():
     password = data.get("password")
     
     if not password:
-        return jsonify(error="Senha secundária é necessária para desativar"), 400
+        return jsonify(error="Senha secundÃ¡ria Ã© necessÃ¡ria para desativar"), 400
         
     try:
         with get_db() as (cursor, conn):
@@ -368,13 +384,13 @@ def disable_2fa():
             user = cursor.fetchone()
             
             if not user:
-                return jsonify(error="Usuário não encontrado"), 404
+                return jsonify(error="UsuÃ¡rio nÃ£o encontrado"), 404
                 
             if bcrypt.verify(password, user["two_factor_secret"]):
                 cursor.execute("UPDATE users SET is_two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = %s", (user_id,))
                 return jsonify(message="2FA desativado com sucesso"), 200
             else:
-                return jsonify(error="Senha secundária incorreta"), 400
+                return jsonify(error="Senha secundÃ¡ria incorreta"), 400
     except Exception as e:
         logger.error(f"Erro ao desativar 2FA: {e}")
         return jsonify(error="Erro ao desativar 2FA"), 500
@@ -385,7 +401,7 @@ def forgot_password():
     email = data.get("email")
 
     if not email:
-        return jsonify({"error": "Email é obrigatório"}), 400
+        return jsonify({"error": "Email Ã© obrigatÃ³rio"}), 400
 
     try:
         with get_db() as (cursor, conn):
@@ -397,7 +413,7 @@ def forgot_password():
 
             if not user:
                 return jsonify({
-                    "message": "Se o email existir, um link será enviado."
+                    "message": "Se o email existir, um link serÃ¡ enviado."
                 }), 200
 
             token = secrets.token_urlsafe(32)
@@ -416,18 +432,18 @@ def forgot_password():
             reset_link = f"{frontend_url}redefinir-senha.html?token={token}"
 
             mensagem = f"""
-<h2>Redefinição de senha</h2>
-<p>Você solicitou redefinir sua senha.</p>
+<h2>RedefiniÃ§Ã£o de senha</h2>
+<p>VocÃª solicitou redefinir sua senha.</p>
 <p>Clique no link abaixo:</p>
 <a href="{reset_link}">Redefinir senha</a>
 <p>Este link expira em 15 minutos.</p>
-<p>Se você não solicitou isso, ignore este email.</p>
+<p>Se vocÃª nÃ£o solicitou isso, ignore este email.</p>
 """
-            enviar_email(email, "Redefinição de senha", mensagem)
-            logger.info(f"Email de redefinição enviado para {email}")
+            enviar_email(email, "RedefiniÃ§Ã£o de senha", mensagem)
+            logger.info(f"Email de redefiniÃ§Ã£o enviado para {email}")
 
             return jsonify({
-                "message": "Se o email existir, um link será enviado."
+                "message": "Se o email existir, um link serÃ¡ enviado."
             }), 200
     except Exception as e:
         logger.error(f"Erro em forgot-password: {e}")
@@ -440,7 +456,7 @@ def reset_password():
     new_password = data.get("password")
 
     if not token or not new_password or len(new_password) < 6:
-        return jsonify(error="Senha inválida"), 400
+        return jsonify(error="Senha invÃ¡lida"), 400
 
     try:
         with get_db() as (cursor, conn):
@@ -453,7 +469,7 @@ def reset_password():
             registro = cursor.fetchone()
 
             if not registro:
-                return jsonify(error="Token inválido ou expirado"), 400
+                return jsonify(error="Token invÃ¡lido ou expirado"), 400
 
             hashed = bcrypt.hash(new_password)
             cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, registro["usuario_id"]))

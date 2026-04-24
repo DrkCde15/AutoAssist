@@ -312,6 +312,27 @@ def add_veiculo():
         logger.error(f"Erro ao adicionar veiculo: {e}")
         return jsonify(error="Erro interno ao adicionar veículo"), 500
 
+@pages_bp.route("/api/veiculos", methods=["GET"])
+@jwt_required()
+def list_veiculos():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                """
+                SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem
+                FROM veiculos
+                WHERE user_id = %s
+                ORDER BY created_at DESC, id DESC
+                """,
+                (user_id,)
+            )
+            veiculos = cursor.fetchall()
+            return jsonify(veiculos=veiculos), 200
+    except Exception as e:
+        logger.error(f"Erro ao listar veiculos: {e}")
+        return jsonify(error="Erro ao listar veiculos"), 500
+
 @pages_bp.route("/api/veiculos/<int:v_id>", methods=["PUT"])
 @jwt_required()
 def edit_veiculo(v_id):
@@ -488,6 +509,133 @@ def list_maintenance_history():
     except Exception as e:
         logger.error(f"Erro ao listar historico de manutencao: {e}")
         return jsonify(error="Erro ao carregar historico de manutencao"), 500
+
+
+@pages_bp.route("/api/maintenance/history/<int:maintenance_id>", methods=["PUT"])
+@jwt_required()
+def update_maintenance_history(maintenance_id):
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                """
+                SELECT *
+                FROM maintenance_history
+                WHERE id = %s AND user_id = %s
+                """,
+                (maintenance_id, user_id)
+            )
+            existing = cursor.fetchone()
+            if not existing:
+                return jsonify(error="Registro de manutencao nao encontrado"), 404
+
+            current_description = (existing.get("description") or "").strip()
+            new_description = (data.get("descricao") or data.get("texto") or current_description).strip()
+            if not new_description:
+                return jsonify(error="Descricao da manutencao e obrigatoria"), 400
+
+            # Decide veiculo alvo (permite limpar com null/"")
+            raw_vehicle = data.get("veiculo_id", "__UNCHANGED__")
+            vehicle_id = existing.get("vehicle_id")
+            fallback_vehicle_km = None
+
+            if raw_vehicle != "__UNCHANGED__":
+                if raw_vehicle in ("", None):
+                    vehicle_id = None
+                else:
+                    try:
+                        vehicle_id = int(raw_vehicle)
+                    except (TypeError, ValueError):
+                        return jsonify(error="veiculo_id invalido"), 400
+
+            if vehicle_id is not None:
+                cursor.execute(
+                    "SELECT id, quilometragem FROM veiculos WHERE id = %s AND user_id = %s",
+                    (vehicle_id, user_id)
+                )
+                vehicle = cursor.fetchone()
+                if not vehicle:
+                    return jsonify(error="Veiculo nao encontrado"), 404
+                fallback_vehicle_km = vehicle.get("quilometragem")
+
+            parsed = parse_maintenance_entry(new_description)
+            parsed = apply_manual_overrides(parsed, data, fallback_service_km=fallback_vehicle_km)
+            parser_metadata = dict(parsed.get("parser_metadata") or {})
+            parser_metadata["updated_from_record_id"] = maintenance_id
+
+            currency = (data.get("moeda") or existing.get("currency") or "BRL").upper()
+
+            cursor.execute(
+                """
+                UPDATE maintenance_history
+                SET vehicle_id = %s,
+                    description = %s,
+                    maintenance_type = %s,
+                    maintenance_label = %s,
+                    service_date = %s,
+                    service_km = %s,
+                    cost = %s,
+                    currency = %s,
+                    interval_days = %s,
+                    interval_km = %s,
+                    next_due_date = %s,
+                    next_due_km = %s,
+                    parser_metadata = %s
+                WHERE id = %s AND user_id = %s
+                """,
+                (
+                    vehicle_id,
+                    parsed["description"],
+                    parsed["maintenance_type"],
+                    parsed["maintenance_label"],
+                    parsed["service_date"],
+                    parsed["service_km"],
+                    parsed["cost"],
+                    currency,
+                    parsed["interval_days"],
+                    parsed["interval_km"],
+                    parsed["next_due_date"],
+                    parsed["next_due_km"],
+                    json.dumps(parser_metadata, ensure_ascii=False),
+                    maintenance_id,
+                    user_id
+                )
+            )
+
+            cursor.execute(
+                """
+                SELECT mh.*, v.marca AS vehicle_marca, v.modelo AS vehicle_modelo
+                FROM maintenance_history mh
+                LEFT JOIN veiculos v ON v.id = mh.vehicle_id
+                WHERE mh.id = %s AND mh.user_id = %s
+                """,
+                (maintenance_id, user_id)
+            )
+            updated_row = cursor.fetchone()
+            return jsonify(success=True, registro=serialize_maintenance_row(updated_row)), 200
+    except Exception as e:
+        logger.error(f"Erro ao atualizar historico de manutencao: {e}")
+        return jsonify(error="Erro ao atualizar manutencao"), 500
+
+
+@pages_bp.route("/api/maintenance/history/<int:maintenance_id>", methods=["DELETE"])
+@jwt_required()
+def delete_maintenance_history(maintenance_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                "DELETE FROM maintenance_history WHERE id = %s AND user_id = %s",
+                (maintenance_id, user_id)
+            )
+            if cursor.rowcount == 0:
+                return jsonify(error="Registro de manutencao nao encontrado"), 404
+            return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"Erro ao excluir historico de manutencao: {e}")
+        return jsonify(error="Erro ao excluir manutencao"), 500
 
 
 @pages_bp.route("/api/maintenance/alerts", methods=["GET"])
