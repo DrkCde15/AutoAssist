@@ -801,9 +801,10 @@
             const nextKm = item.next_due_km ? (Number(item.next_due_km).toLocaleString("pt-BR") + " km") : "-";
             const costLabel = item.cost !== null && item.cost !== undefined ? formatCurrency(item.cost) : "-";
             const hasNoPlan = !item.next_due_date && (item.next_due_km === null || item.next_due_km === undefined);
+            const isAiEnhanced = item.parser_metadata?.ai_enhanced === true;
             const rightBadge = hasNoPlan
                 ? '<span class="badge badge-no-plan">Sem previsao</span>'
-                : `<span class="badge badge-on_track">${formatDate(item.service_date)}</span>`;
+                : `<span class="badge badge-on_track">${isAiEnhanced ? '<i class="fas fa-robot"></i> Previsao IA' : formatDate(item.service_date)}</span>`;
 
             return `
                 <div class="history-item">
@@ -825,6 +826,7 @@
                         <span><i class="fas fa-money-bill-wave"></i> ${escapeHtml(costLabel)}</span>
                         ${item.next_due_date ? `<span><i class="fas fa-calendar-check"></i> Proxima data: ${escapeHtml(nextDate)}</span>` : ""}
                         ${item.next_due_km ? `<span><i class="fas fa-gauge-high"></i> Proximo km: ${escapeHtml(nextKm)}</span>` : ""}
+                        ${isAiEnhanced && item.parser_metadata?.ai_justificativa ? `<div style="width:100%; margin-top:6px; font-style:italic; color:var(--text-muted);"><i class="fas fa-info-circle"></i> IA: ${escapeHtml(item.parser_metadata.ai_justificativa)}</div>` : ""}
                     </div>
                 </div>
             `;

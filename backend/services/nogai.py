@@ -9,6 +9,7 @@ import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+import json
 
 load_dotenv()
 
@@ -326,3 +327,52 @@ def gerar_termo_busca_pecas(mensagem: str) -> str | None:
     except Exception as e:
         logger.error(f"Erro ao gerar termo busca pecas: {e}")
         return None
+
+def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
+    """
+    Usa IA para prever o intervalo de manutenção (dias e km) com base na descrição.
+    Retorna um dicionário com 'intervalo_dias' e 'intervalo_km'.
+    """
+    try:
+        prompt = f"""
+        Você é um especialista em manutenção automotiva.
+        Analise a seguinte descrição de um serviço realizado e preveja quando deve ser o próximo retorno (intervalo em dias e quilometragem).
+        
+        Considere as melhores práticas do mercado brasileiro.
+        Se a descrição não der pistas suficientes, use padrões comuns para o tipo de serviço detectado.
+        
+        Descrição: "{descricao}"
+        {f"Veículo: {veiculo_info}" if veiculo_info else ""}
+        
+        Retorne APENAS um JSON no formato:
+        {{
+          "intervalo_dias": int ou null,
+          "intervalo_km": int ou null,
+          "justificativa": "breve explicação"
+        }}
+        """
+        
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+                contents=prompt
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            logger.warning(f"Falha na previsão de intervalo com Gemini 2.0: {e}")
+            # Fallback para 1.5 se o 2.0 falhar
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+                contents=prompt
+            )
+            return json.loads(response.text)
+            
+    except Exception as e:
+        logger.error(f"Erro ao prever intervalo com IA: {e}")
+        return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}

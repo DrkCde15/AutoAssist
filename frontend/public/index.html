@@ -927,7 +927,7 @@
                             }
                         });
                     }
-                } else {
+                } else if (response.status === 401) {
                     console.warn(`Invalid session (${response.status}). Logging out...`);
                     Auth.logout();
                 }

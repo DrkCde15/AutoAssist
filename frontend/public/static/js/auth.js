@@ -188,7 +188,7 @@ const Auth = (() => {
     if (accessToken) {
       let user = null;
       try {
-        user = userRaw ? JSON.parse(decodeURIComponent(userRaw)) : null;
+        user = userRaw ? JSON.parse(userRaw) : null;
       } catch {
         user = null;
       }
