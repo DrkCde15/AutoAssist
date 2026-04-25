@@ -1,9 +1,4 @@
-# AutoAssist IA • Consultor Automotivo Inteligente 🚗🤖
-
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini_AI-blue?style=for-the-badge&logo=google&logoColor=white)
+# AutoAssist IA 🚗💨
 
 O **AutoAssist IA** é um ecossistema de inteligência artificial de última geração, desenvolvido especificamente para o mercado automotivo brasileiro. A plataforma integra Processamento de Linguagem Natural (NLP) e Visão Computacional para fornecer diagnósticos precisos, avaliações de mercado e consultoria técnica especializada, operando com alta performance através da integração com a API do **Google Gemini**.
 
@@ -11,21 +6,25 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ## ✨ Funcionalidades
 
-### **Recursos Principais**
+### **Recursos Inteligentes (NOG IA)**
 
-- **Consultoria Especializada (NOG):** O assistente "NOG" utiliza o modelo **Gemini 2.5 Flash** para oferecer respostas focadas no mercado brasileiro, analisando modelos, versões, manutenção e custo-benefício.
-- **Raio-X Mecânico:** Análise visual avançada alimentada por **Gemini Vision** para identificação de ferrugem, desalinhamentos e vazamentos em fotos.
-- **Dashboard de Veículo:** Painel centralizado que monitora a saúde das principais peças do seu veículo e fornece cotação em tempo real da Tabela FIPE.
-- **Biblioteca de Vídeos Automática:** Integração com YouTube que recomenda tutoriais baseados na conversa e os salva automaticamente na biblioteca do usuário ("Meus Vídeos").
-- **Tabela FIPE Real-Time:** Integração com a API FIPE (via Parallelum) para fornecer valores de mercado precisos e atualizados.
-- **Viva-Voz Inteligente:** Interação por voz em modo "mãos livres" com detecção automática de silêncio (Voice Activity Detection).
+- **Consultoria Especializada:** O assistente "NOG" utiliza o modelo **Gemini** para oferecer respostas focadas no mercado brasileiro, analisando modelos, manutenção e custo-benefício.
+- **IA de Previsão de Manutenção:** Sistema que analisa descrições (ex: "Troquei o óleo hoje") e utiliza IA para prever a data e quilometragem da próxima revisão, mesmo quando não há dados manuais.
+- **Raio-X Mecânico:** Análise visual avançada alimentada pelo **Gemini Vision** para identificação de ferrugem, desalinhamentos e vazamentos em fotos.
+
+### **Dashboard e Gestão**
+
+- **Histórico Proativo:** Painel que monitora a saúde das peças e indica o status de cada manutenção (Ok, Aviso ou Atrasado).
+- **Notificações Instantâneas:** Sistema de e-mail que alerta o usuário **no mesmo dia** em que uma manutenção atinge o status crítico ou vence.
+- **Tabela FIPE Real-Time:** Integração com a API FIPE para fornecer valores de mercado precisos e atualizados.
+- **Biblioteca de Vídeos:** Recomendação automática de tutoriais baseados na conversa, salvos na galeria do usuário.
 
 ### **Segurança e Cloud**
 
-- **Autenticação em Duas Etapas (2FA):** Camada de segurança adicional utilizando uma senha secundária escolhida pelo usuário.
-- **Performance Cloud:** Respostas rápidas e precisas via infraestrutura do Google Gemini 2.5 Flash.
-- **Autenticação JWT:** Sistema robusto com tokens de acesso e refresh tokens.
-- **Trial Control:** Gestão automatizada de período de teste (30 dias) e benefícios para usuários **Premium**.
+- **Google OAuth 2.0:** Login simplificado e seguro utilizando contas Google.
+- **Autenticação em Duas Etapas (2FA):** Camada de segurança adicional para proteção de dados sensíveis.
+- **Cloud Resiliency:** Conectividade reforçada com suporte a SSL e timeouts otimizados para bancos de dados em nuvem (Aiven, RDS, etc).
+- **Viva-Voz Inteligente:** Interação por voz nativa com detecção de silêncio (VAD).
 
 ---
 
@@ -33,23 +32,21 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ### **Backend & Inteligência Artificial**
 
-| Tecnologia                | Função                                                            |
-| :------------------------ | :---------------------------------------------------------------- |
-| **Flask**                 | Servidor robusto e orquestração de APIs REST.                     |
-| **Gemini AI SDK**         | Novo SDK (`google-genai`) para texto e visão multimodal.          |
-| **MySQL**                 | Armazenamento persistente de usuários, histórico e vídeos.        |
-| **YouTube Search Python** | Motor de recomendação visual de tutoriais e manutenção.           |
-| **FPDF**                  | Motor de geração de laudos técnicos em formato PDF.               |
-| **SpeechRecognition**     | Processamento de áudio e transcrição de comandos de voz.          |
+| Tecnologia            | Função                                                 |
+| :-------------------- | :----------------------------------------------------- |
+| **Flask**             | Servidor robusto e orquestração de APIs REST.          |
+| **Google Gemini SDK** | Integração com Gemini 2.0 Flash (Texto e Visão).       |
+| **PyMySQL + SSL**     | Conexão segura e resiliente com o banco de dados.      |
+| **SMTP / Gmail**      | Motor de disparo de notificações proativas por e-mail. |
+| **JWT**               | Autenticação moderna com Tokens de Acesso e Refresh.   |
 
 ### **Frontend**
 
-| Tecnologia         | Função                                                        |
-| :----------------- | :------------------------------------------------------------ |
-| **UX/UI Premium**  | Design moderno com Glassmorphism e animações dinâmicas.       |
-| **Vanilla JS**     | Lógica de estado e consumo de API (Consumo de JWT).           |
-| **Web Speech API** | Captura de áudio nativa com integração ao backend.            |
-| **Marked.js**      | Renderização dinâmica de Markdown nas respostas da IA.        |
+| Tecnologia           | Função                                                     |
+| :------------------- | :--------------------------------------------------------- |
+| **Vanilla JS**       | Lógica de estado e consumo de APIs sem frameworks pesados. |
+| **Glassmorphism UI** | Design moderno com transparências e animações dinâmicas.   |
+| **Web Speech API**   | Captura e processamento de voz nativo no navegador.        |
 
 ---
 
@@ -59,16 +56,14 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 AutoAssist/
 ├── backend/
 │   ├── app.py                  # Entry-point (Servidor Flask)
-│   ├── routes/                 # Módulos de API (Auth, Pages, Database, Payment)
-│   ├── services/               # Lógica de Integração (Gemini, Vision, YouTube, PDF)
-│   └── requirements.txt        # Dependências do projeto
+│   ├── routes/                 # Módulos de API (Auth, Pages, Database)
+│   ├── services/               # IA e Logica (NOG IA, Vision, Maintenance)
+│   └── .env                    # Variáveis de ambiente
 ├── frontend/
-│   ├── index.html              # Landing Page
-│   ├── chat.html               # Consultor NOG com Video Cards
-│   ├── dashboard.html          # Diagnóstico e Tabela FIPE
-│   ├── videos.html             # Biblioteca Pessoal de Vídeos Salvos
-│   ├── perfil.html             # Gestão de Perfil e Veículo
-│   └── static/                 # CSS, assets e lógica global (auth.js)
+│   ├── index.html              # Landing Page / Dashboard
+│   ├── chat.html               # Consultor NOG IA
+│   ├── maintenance_history.html # Gestão de Manutenções
+│   └── static/                 # CSS, JS (auth.js, config.js)
 └── README.md
 ```
 
@@ -79,7 +74,7 @@ AutoAssist/
 ### 1. Pré-requisitos
 
 - Python 3.10 ou superior
-- Servidor MySQL ativo
+- Servidor MySQL (Local ou Nuvem)
 - Chave de API do Google Gemini
 
 ### 2. Configuração do Ambiente
@@ -92,7 +87,9 @@ DB_HOST=seu_host
 DB_USER=seu_usuario
 DB_PASSWORD=sua_senha
 DB_NAME=seu_banco
-JWT_SECRET_KEY=sua_chave_jwt
+GOOGLE_CLIENT_ID=seu_client_id_google
+EMAIL_REMETENTE=seu_email@gmail.com
+EMAIL_SENHA_APP=sua_senha_app_gmail
 ```
 
 ### 3. Instalação e Execução
@@ -107,37 +104,18 @@ pip install -r requirements.txt
 # Execute o servidor
 python app.py
 ```
-### 3.1 Criando um ambiente virtual
-
-```bash
-# Entre na pasta do backend
-cd backend
-
-# Instale as dependências
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Execute o servidor
-python app.py
-```
-
-A plataforma estará acessível em `http://localhost:5000`
 
 ---
 
 ## 🔒 Segurança e Boas Práticas
 
-- **Monkey Patching**: Gerenciamento cirúrgico de compatibilidade entre o SDK do Gemini e a biblioteca de vídeos.
-- **Bcrypt**: Todas as senhas (primárias e secundárias) são armazenadas como hashes seguros.
-- **JWT Protection**: Todos os endpoints `/api/` (exceto login/cadastro) exigem token válido.
-- **Rate Limiting**: Proteção contra abusos na API.
-- **CSP & Talisman**: Implementação de cabeçalhos de segurança HTTP.
+- **Bcrypt Hashing**: Proteção de senhas com algoritmos de derivação de chave.
+- **SSL Enforcement**: Todas as conexões de banco de dados utilizam criptografia SSL.
+- **JWT Protection**: Endpoints protegidos garantem que apenas usuários autenticados acessem dados sensíveis.
 
 ---
 
 ## 📝 Licença e Autoria
 
 Ideia original de **Clara Francisco**.
-
-Sistema desenvolvido por **Júlio César**, **Caio Lima**, **Eduardo Nishida** e **Caio Yugo** com o suporte de **Google Gemini API**.
+Desenvolvido por **Júlio César**, **Caio Lima**, **Eduardo Nishida** e **Caio Yugo** com suporte de **Antigravity AI**.
