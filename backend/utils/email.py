@@ -1,23 +1,22 @@
 import os
-import resend
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
 # Carrega variáveis de ambiente
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '..', '.env'))
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE") or "onboarding@resend.dev"
-
-resend.api_key = RESEND_API_KEY
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
+EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
 
 def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     """
-    Envia um e-mail utilizando a API da Resend com um layout premium.
+    Envia um e-mail utilizando SMTP (Gmail) com o layout premium do AutoAssist.
     """
     try:
-        # Template base premium inspirado no Mintify
-        # Usamos uma string normal e .replace para evitar conflitos de f-string com as chaves {} do HTML
+        # Template base premium (Mantido do padrão anterior)
         template = """
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background-color: #f3f4f6; min-height: 100%;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -44,23 +43,23 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
         
         html_final = template.replace("{{CONTENT}}", mensagem_html)
 
-        # --- TRAVA DE SEGURANÇA PARA MODO SANDBOX (TESTES) ---
-        # Remova ou comente estas linhas quando tiver um domínio verificado na Resend
-        # Se você quiser garantir que chegue sempre no seu e-mail de teste:
-        destinatario_final = ["jcesarsantana215@gmail.com"] 
-        # -----------------------------------------------------
+        # Configuração da Mensagem MIME
+        msg = MIMEMultipart()
+        msg['From'] = f"AutoAssist <{EMAIL_REMETENTE}>"
+        msg['To'] = destinatario
+        msg['Subject'] = assunto
+        msg.attach(MIMEText(html_final, 'html'))
 
-        params = {
-            "from": f"AutoAssist <{EMAIL_REMETENTE}>",
-            "to": destinatario_final,
-            "subject": assunto,
-            "html": html_final,
-        }
+        # Envio via SMTP Gmail
+        print(f"--- Tentando enviar email via SMTP para: {destinatario} ---")
         
-        print(f"--- Tentando enviar email para: {destinatario_final} (Original: {destinatario}) ---")
-        response = resend.Emails.send(params)
-        print(f"✅ E-mail enviado com sucesso! ID: {response.get('id')}")
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(EMAIL_REMETENTE, EMAIL_SENHA_APP)
+            server.send_message(msg)
+            
+        print(f"✅ E-mail enviado com sucesso via SMTP!")
         return True
     except Exception as e:
-        print(f"❌ Erro crítico ao enviar e-mail: {e}")
+        print(f"❌ Erro ao enviar e-mail via SMTP: {e}")
         return False
