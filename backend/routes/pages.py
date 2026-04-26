@@ -514,7 +514,7 @@ def register_maintenance_history():
                     threading.Thread(
                         target=send_maintenance_alert_email_for_user,
                         args=(None, user_row),
-                        kwargs={"force": False}
+                        kwargs={"force": True} # Forçamos o envio para dar feedback imediato ao usuário
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")

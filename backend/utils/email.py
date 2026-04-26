@@ -7,7 +7,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '..', '.env'))
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE") or "onboarding@resend.dev"
 
 resend.api_key = RESEND_API_KEY
 
@@ -17,7 +17,8 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     """
     try:
         # Template base premium inspirado no Mintify
-        html_final = f"""
+        # Usamos uma string normal e .replace para evitar conflitos de f-string com as chaves {} do HTML
+        template = """
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background-color: #f3f4f6; min-height: 100%;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                 <!-- Header -->
@@ -27,7 +28,7 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
                 
                 <!-- Content -->
                 <div style="padding: 40px 30px; line-height: 1.6; color: #374151;">
-                    {mensagem_html}
+                    {{CONTENT}}
                 </div>
                 
                 <!-- Footer -->
@@ -40,17 +41,26 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
             </div>
         </div>
         """
+        
+        html_final = template.replace("{{CONTENT}}", mensagem_html)
+
+        # --- TRAVA DE SEGURANÇA PARA MODO SANDBOX (TESTES) ---
+        # Remova ou comente estas linhas quando tiver um domínio verificado na Resend
+        # Se você quiser garantir que chegue sempre no seu e-mail de teste:
+        destinatario_final = ["jcesarsantana215@gmail.com"] 
+        # -----------------------------------------------------
 
         params = {
             "from": f"AutoAssist <{EMAIL_REMETENTE}>",
-            "to": [destinatario],
+            "to": destinatario_final,
             "subject": assunto,
             "html": html_final,
         }
         
+        print(f"--- Tentando enviar email para: {destinatario_final} (Original: {destinatario}) ---")
         response = resend.Emails.send(params)
         print(f"✅ E-mail enviado com sucesso! ID: {response.get('id')}")
         return True
     except Exception as e:
-        print(f"❌ Erro ao enviar e-mail via Resend: {e}")
+        print(f"❌ Erro crítico ao enviar e-mail: {e}")
         return False
