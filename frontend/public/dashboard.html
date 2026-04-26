@@ -1,193 +1,165 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - AutoAssist</title>
-    <link rel="icon" type="image/png" href="static/logo2.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>AutoAssist - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
     <style>
         :root {
-            --bg-primary: #09090b;
-            --bg-secondary: #18181b;
-            --bg-card: #1c1c1f;
-            --border-color: #27272a;
-            --text-primary: #fafafa;
-            --text-secondary: #a1a1aa;
-            --text-muted: #71717a;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --accent-soft: rgba(59, 130, 246, 0.1);
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --radius: 12px;
-            --radius-lg: 16px;
-            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            --primary: #1a1a1a;
+            --accent: #007aff;
+            --bg-dark: #0f0f0f;
+            --card-bg: #1c1c1e;
+            --text: #ffffff;
+            --text-dim: #a1a1a6;
+            --success: #34c759;
+            --warning: #ffcc00;
+            --danger: #ff3b30;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
+            background-color: var(--bg-dark);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
         }
 
         /* Navbar */
         .navbar {
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-            padding: 16px 24px;
-            position: sticky;
+            background: rgba(28, 28, 30, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
             top: 0;
-            z-index: 100;
+            width: 100%;
+            z-index: 1000;
+            height: 96px;
         }
 
         .nav-container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            height: 100%;
+            padding: 0 2rem;
         }
 
-        .nav-logo {
+        .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--text);
+            text-decoration: none;
             display: flex;
             align-items: center;
             gap: 12px;
-            text-decoration: none;
-            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .nav-logo-icon {
+        .logo img {
+            height: 64px !important;
             width: auto;
-            height: auto;
-            background: transparent;
-            border-radius: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .nav-logo-icon i {
-            font-size: 18px;
-            color: white;
-        }
-
-        .nav-logo-text {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
         }
 
         .nav-links {
             display: flex;
+            gap: 24px;
             align-items: center;
-            gap: 16px;
         }
 
         .nav-link {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 16px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            color: var(--text-secondary);
-            font-size: 13px;
-            font-weight: 500;
-            text-decoration: none;
+            background: transparent;
+            border: none;
             cursor: pointer;
-            transition: var(--transition);
-            font-family: inherit;
+            padding: 4px 8px;
+            border-radius: 0;
         }
 
         .nav-link:hover {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            border-color: var(--text-muted);
+            color: var(--text);
+            transform: translateY(-1px);
         }
 
-        /* Dashboard Content */
+        .nav-link.active {
+            color: var(--accent);
+        }
+
+        /* Content Area */
         .dashboard-content {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 40px 24px 80px;
+            max-width: 1000px;
+            margin: 100px auto 40px;
+            padding: 0 2rem;
         }
 
         .dashboard-header {
-            margin-bottom: 40px;
+            margin-bottom: 2.5rem;
+            animation: fadeInUp 0.8s ease-out;
         }
 
         .dashboard-header h1 {
-            font-size: 32px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            margin-bottom: 8px;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
         }
 
         .dashboard-header h1 span {
-            background: linear-gradient(135deg, var(--accent), #60a5fa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--accent);
         }
 
         .dashboard-header p {
-            color: var(--text-secondary);
-            font-size: 15px;
+            color: var(--text-dim);
+            font-size: 1.1rem;
         }
 
         /* Vehicle Card */
         .vehicle-card {
-            background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 32px;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2rem;
             display: flex;
             align-items: center;
-            gap: 24px;
-            margin-bottom: 32px;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
         }
 
         .vehicle-icon {
             width: 80px;
             height: 80px;
-            background: var(--accent-soft);
-            border: 1px solid rgba(59, 130, 246, 0.2);
-            border-radius: 50%;
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .vehicle-icon i {
-            font-size: 32px;
+            font-size: 2.5rem;
             color: var(--accent);
         }
 
         .vehicle-info h2 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 8px;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.8rem;
         }
 
         .vehicle-meta {
             display: flex;
-            gap: 16px;
-            color: var(--text-secondary);
-            font-size: 14px;
+            gap: 1.5rem;
+            color: var(--text-dim);
         }
 
         .vehicle-meta span {
@@ -199,304 +171,177 @@
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
-            margin-bottom: 48px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
         }
 
         .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 28px;
-            transition: var(--transition);
-        }
-
-        .stat-card:hover {
-            border-color: var(--accent);
-        }
-
-        .stat-card.fipe {
-            border-left: 4px solid var(--accent);
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 1.5rem;
         }
 
         .stat-card-header {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 1rem;
         }
 
         .stat-card-icon {
             width: 40px;
             height: 40px;
-            background: var(--accent-soft);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .stat-card-icon i {
-            font-size: 16px;
             color: var(--accent);
         }
 
         .stat-card-title {
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            font-weight: 500;
         }
 
         .stat-value {
-            font-size: 36px;
+            font-size: 2rem;
             font-weight: 700;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin-bottom: 0.25rem;
         }
 
         .stat-subtitle {
-            font-size: 13px;
-            color: var(--text-muted);
+            color: var(--text-dim);
+            font-size: 0.85rem;
         }
 
-        /* Alerts */
+        /* State of Health Section */
         .alert-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 12px 16px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 16px;
-            padding: 16px 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .alert-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .alert-item:first-child {
-            padding-top: 0;
-        }
-
-        .alert-content {
-            flex: 1;
+            margin-bottom: 8px;
         }
 
         .alert-title {
-            font-size: 14px;
             font-weight: 600;
-            margin-bottom: 4px;
+            font-size: 0.95rem;
         }
 
         .alert-desc {
-            font-size: 13px;
-            color: var(--text-secondary);
+            font-size: 0.85rem;
+            color: var(--text-dim);
         }
 
         .alert-badge {
-            font-size: 11px;
-            padding: 6px 12px;
-            border-radius: 100px;
-            text-transform: uppercase;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
 
-        .badge-atencao {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-        }
+        .badge-crítico { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
+        .badge-atenção { background: rgba(255, 204, 0, 0.15); color: var(--warning); }
+        .badge-ok { background: rgba(52, 199, 89, 0.15); color: var(--success); }
 
-        .badge-aviso {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-        }
-
-        .badge-ok {
-            background: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
-        }
-
-        /* Action Button */
         .btn-action {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            gap: 8px;
+            margin-top: 1.5rem;
             width: 100%;
-            margin-top: 24px;
-            padding: 14px 24px;
-            background: linear-gradient(135deg, var(--accent), #1d4ed8);
-            color: white;
-            text-decoration: none;
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-weight: 600;
-            transition: var(--transition);
+            justify-content: center;
+            transition: all 0.3s ease;
         }
 
         .btn-action:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+            filter: brightness(1.1);
         }
 
-        /* Divider */
-        .section-divider {
-            border: none;
-            height: 1px;
-            background: var(--border-color);
-            margin: 48px 0;
-        }
-
-        /* Loading */
         .loading {
-            text-align: center;
-            padding: 100px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            color: var(--text-dim);
         }
 
         .loading i {
-            font-size: 40px;
+            font-size: 3rem;
             color: var(--accent);
-            margin-bottom: 16px;
+            margin-bottom: 1rem;
         }
 
-        .loading p {
-            color: var(--text-secondary);
-        }
-
-        /* No Vehicle */
         .no-vehicle {
             text-align: center;
-            padding: 80px 20px;
+            padding: 4rem 2rem;
+            background: var(--card-bg);
+            border-radius: 32px;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
         }
 
         .no-vehicle-icon {
-            width: 100px;
-            height: 100px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
+            font-size: 4rem;
+            color: var(--text-dim);
+            margin-bottom: 1.5rem;
         }
 
-        .no-vehicle-icon i {
-            font-size: 40px;
-            color: var(--text-muted);
+        .section-divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 4rem 0;
         }
 
-        .no-vehicle h2 {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 12px;
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .no-vehicle p {
-            color: var(--text-secondary);
-            margin-bottom: 32px;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* Responsive */
         @media (max-width: 768px) {
-            .navbar {
-                padding: 12px 16px;
-            }
-
-            .nav-logo-text {
-                display: none;
-            }
-
-            .nav-links {
-                gap: 8px;
-            }
-
-            .nav-link span {
-                display: none;
-            }
-
-            .nav-link {
-                padding: 10px 12px;
-            }
-
-            .dashboard-content {
-                padding: 24px 16px 60px;
-            }
-
-            .dashboard-header h1 {
-                font-size: 26px;
-            }
-
-            .vehicle-card {
-                flex-direction: column;
-                text-align: center;
-                padding: 24px;
-            }
-
-            .vehicle-meta {
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stat-card {
-                padding: 24px;
-            }
-
-            .stat-value {
-                font-size: 28px;
-            }
+            .nav-container { padding: 0 1rem; }
+            .nav-links span { display: none; }
+            .vehicle-card { flex-direction: column; text-align: center; gap: 1rem; }
+            .vehicle-meta { justify-content: center; flex-wrap: wrap; }
+            .dashboard-header h1 { font-size: 2rem; }
         }
-
-        /* Animation */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .vehicle-card,
-        .stat-card {
-            animation: fadeIn 0.5s ease-out;
-            animation-fill-mode: both;
-        }
-
-        .stat-card:nth-child(1) { animation-delay: 0.1s; }
-        .stat-card:nth-child(2) { animation-delay: 0.2s; }
     </style>
 </head>
 <body>
-
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">
-                <div class="nav-logo-icon">
-                    <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
-                </div>
-                <span class="nav-logo-text">AutoAssist</span>
+            <a href="index.html" class="logo">
+                <img src="logo.png" alt="AutoAssist">
+                AutoAssist
             </a>
-            
             <div class="nav-links">
+                <a href="dashboard.html" class="nav-link active">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="maintenance_history.html" class="nav-link">
+                    <i class="fas fa-history"></i>
+                    <span>Histórico</span>
+                </a>
                 <a href="chat.html" class="nav-link">
                     <i class="fas fa-comments"></i>
-                    <span>Chat</span>
+                    <span>Chat IA</span>
                 </a>
                 <a href="videos.html" id="premiumVideosLink" class="nav-link" style="display: none;">
                     <i class="fas fa-video"></i>
@@ -538,121 +383,84 @@
             document.getElementById('premiumVideosLink').style.display = 'flex';
 
             const content = document.getElementById('dashboardContent');
+            
+            // Exibição instantânea via Cache
+            const cachedDash = Auth.Cache.get('autoassist_dashboard_cache');
+            if (cachedDash) renderDashboard(cachedDash);
 
             try {
                 const res = await Auth.authenticatedFetch('/api/dashboard');
-                
                 if (res.status === 404) {
-                    content.innerHTML = `
-                        <div class="no-vehicle">
-                            <div class="no-vehicle-icon">
-                                <i class="fas fa-car-crash"></i>
-                            </div>
-                            <h2>Nenhum veículo cadastrado</h2>
-                            <p>Você ainda não cadastrou seu carro ou moto para receber análises personalizadas.</p>
-                            <a href="perfil.html" class="btn-action" style="max-width: 280px; margin: 0 auto;">
-                                <i class="fas fa-plus"></i>
-                                Cadastrar Veículo
-                            </a>
-                        </div>
-                    `;
+                    content.innerHTML = `<div class="no-vehicle"><div class="no-vehicle-icon"><i class="fas fa-car-crash"></i></div><h2>Nenhum veículo cadastrado</h2><p>Vá ao perfil para cadastrar seu veículo.</p></div>`;
                     return;
                 }
 
                 if (res.ok) {
                     const data = await res.json();
-                    
-                    const icons = {
-                        'moto': 'fa-motorcycle',
-                        'caminhao': 'fa-truck',
-                        'aviao': 'fa-plane',
-                        'navio': 'fa-ship',
-                        'geral': 'fa-car'
-                    };
-                    
-                    let htmlBuilder = `
-                        <div class="dashboard-header">
-                            <h1>Seu <span>Dashboard</span></h1>
-                            <p>Acompanhe a saúde e o valor do seu patrimônio em tempo real.</p>
-                        </div>
-                    `;
-
-                    data.forEach((item, index) => {
-                        const iconClass = icons[item.veiculo.tipo] || 'fa-car';
-                        htmlBuilder += `
-                        <div class="vehicle-card">
-                            <div class="vehicle-icon">
-                                <i class="fas ${iconClass}"></i>
-                            </div>
-                            <div class="vehicle-info">
-                                <h2>${item.veiculo.marca} ${item.veiculo.modelo}</h2>
-                                <div class="vehicle-meta">
-                                    <span><i class="fas fa-calendar"></i> Ano: ${item.veiculo.ano}</span>
-                                    <span><i class="fas fa-tachometer-alt"></i> ${item.veiculo.quilometragem ? item.veiculo.quilometragem.toLocaleString() + ' km' : '---'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="stats-grid">
-                            <div class="stat-card fipe">
-                                <div class="stat-card-header">
-                                    <div class="stat-card-icon">
-                                        <i class="fas fa-chart-line"></i>
-                                    </div>
-                                    <div class="stat-card-title">Valor de Mercado (FIPE)</div>
-                                </div>
-                                <div class="stat-value">${item.fipe.preco}</div>
-                                <p class="stat-subtitle">Referência: ${item.fipe.mes}</p>
-                            </div>
-
-                            <div class="stat-card">
-                                <div class="stat-card-header">
-                                    <div class="stat-card-icon">
-                                        <i class="fas fa-shield-alt"></i>
-                                    </div>
-                                    <div class="stat-card-title">Estado de Conservação</div>
-                                </div>
-                                <div id="alertsList">
-                                    ${item.saude.map(alert => `
-                                        <div class="alert-item">
-                                            <div class="alert-content">
-                                                <div class="alert-title">${alert.item}</div>
-                                                <div class="alert-desc">${alert.msg}</div>
-                                            </div>
-                                            <span class="alert-badge badge-${alert.status.toLowerCase()}">${alert.status}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                <a href="chat.html" class="btn-action">
-                                    <i class="fas fa-comments"></i>
-                                    Consultar sobre estes itens
-                                </a>
-                            </div>
-                        </div>
-                        ${index < data.length - 1 ? '<hr class="section-divider">' : ''}
-                        `;
-                    });
-                    
-                    content.innerHTML = htmlBuilder;
-                } else {
-                    throw new Error('Erro ao buscar dados');
+                    Auth.Cache.set('autoassist_dashboard_cache', data);
+                    renderDashboard(data);
                 }
-            } catch (e) {
-                console.error(e);
-                content.innerHTML = `
-                    <div class="no-vehicle">
-                        <div class="no-vehicle-icon">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <h2>Erro ao carregar</h2>
-                        <p>Não foi possível carregar os dados do dashboard. Tente novamente mais tarde.</p>
-                    </div>
-                `;
+            } catch (error) {
+                console.warn('Erro ao atualizar dashboard:', error);
+                if (!cachedDash) {
+                    content.innerHTML = '<div class="no-vehicle"><h2>Erro de conexão</h2><p>Tente novamente mais tarde.</p></div>';
+                }
             }
         });
+
+        function renderDashboard(data) {
+            const content = document.getElementById('dashboardContent');
+            const icons = {'moto': 'fa-motorcycle', 'caminhao': 'fa-truck', 'aviao': 'fa-plane', 'navio': 'fa-ship', 'geral': 'fa-car'};
+            let htmlBuilder = `<div class="dashboard-header"><h1>Seu <span>Dashboard</span></h1><p>Acompanhe a saúde e o valor do seu patrimônio em tempo real.</p></div>`;
+
+            data.forEach((item, index) => {
+                const iconClass = icons[item.veiculo.tipo] || 'fa-car';
+                htmlBuilder += `
+                <div class="vehicle-card">
+                    <div class="vehicle-icon"><i class="fas ${iconClass}"></i></div>
+                    <div class="vehicle-info">
+                        <h2>${item.veiculo.marca} ${item.veiculo.modelo}</h2>
+                        <div class="vehicle-meta">
+                            <span><i class="fas fa-calendar"></i> Ano: ${item.veiculo.ano_fabricacao || item.veiculo.ano || '---'}</span>
+                            <span><i class="fas fa-tachometer-alt"></i> ${item.veiculo.quilometragem ? item.veiculo.quilometragem.toLocaleString() + ' km' : '---'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card fipe">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="stat-card-title">Valor de Mercado (FIPE)</div>
+                        </div>
+                        <div class="stat-value">${item.fipe ? (item.fipe.Valor || item.fipe.preco || '---') : '---'}</div>
+                        <p class="stat-subtitle">Referência: ${item.fipe ? (item.fipe.MesReferencia || item.fipe.mes || '---') : '---'}</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="fas fa-shield-alt"></i></div>
+                            <div class="stat-card-title">Estado de Conservação</div>
+                        </div>
+                        <div id="alertsList">
+                            ${item.saude.map(alert => `
+                                <div class="alert-item">
+                                    <div class="alert-content">
+                                        <div class="alert-title">${alert.item}</div>
+                                        <div class="alert-desc">${alert.msg}</div>
+                                    </div>
+                                    <span class="alert-badge badge-${alert.status.toLowerCase()}">${alert.status}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <a href="chat.html" class="btn-action"><i class="fas fa-comments"></i> Consultar sobre estes itens</a>
+                    </div>
+                </div>
+                ${index < data.length - 1 ? '<hr class="section-divider">' : ''}
+                `;
+            });
+            content.innerHTML = htmlBuilder;
+        }
     </script>
 </body>
 </html>
-
-
-

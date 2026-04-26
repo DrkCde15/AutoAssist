@@ -42,21 +42,21 @@
         }
 
         .navbar {
-            background: var(--bg-secondary);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
-            padding: 16px 24px;
+            padding: 12px 24px;
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
         .nav-container {
-            max-width: 1120px;
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
         }
 
         .nav-logo {
@@ -65,35 +65,46 @@
             gap: 12px;
             text-decoration: none;
             color: var(--text-primary);
-            font-weight: 700;
+            font-weight: 800;
             font-size: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-logo img {
+            height: 64px !important;
+            width: auto;
         }
 
         .nav-links {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 24px;
+            align-items: center;
         }
 
         .nav-link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
+            padding: 4px 8px;
+            border-radius: 0;
+            border: none;
+            background: transparent;
             color: var(--text-secondary);
             text-decoration: none;
-            font-size: 13px;
+            font-size: 14px;
             cursor: pointer;
-            transition: var(--transition);
+            transition: all 0.2s ease;
             font-family: inherit;
         }
 
         .nav-link:hover {
             color: var(--text-primary);
-            border-color: #3f3f46;
+            transform: translateY(-1px);
+        }
+
+        .nav-link.active {
+            color: var(--accent);
         }
 
         .container {
@@ -519,13 +530,16 @@
 <nav class="navbar">
     <div class="nav-container">
         <a href="index.html" class="nav-logo">
-            <img src="logo.png" alt="AutoAssist IA" style="height:56px;width:auto;">
-            <span>AutoAssist</span>
+            <img src="logo.png" alt="AutoAssist">
+            AutoAssist
         </a>
         <div class="nav-links">
+            <a href="dashboard.html" id="navDashboard" class="nav-link" style="display: none;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+            <a href="maintenance_history.html" class="nav-link active"><i class="fas fa-history"></i> Histórico</a>
+            <a href="videos.html" id="btnMyVideos" class="nav-link" style="display: none;"><i class="fas fa-video"></i> Vídeos</a>
             <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
-            <button class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+            <a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i> Sair</a>
         </div>
     </div>
 </nav>
@@ -704,6 +718,7 @@
         if (!res.ok) throw new Error("Falha ao carregar veiculos");
         const data = await res.json();
         state.vehicles = Array.isArray(data.veiculos) ? data.veiculos : [];
+        Auth.Cache.set('autoassist_veiculos_cache', state.vehicles);
     }
 
     async function fetchHistory() {
@@ -712,6 +727,10 @@
         const data = await res.json();
         state.history = Array.isArray(data.historico) ? data.historico : [];
         state.resumo = data.resumo || { total_gastos: 0, quantidade_registros: 0 };
+        // Salva no cache se não houver filtro de veículo selecionado
+        if (!document.getElementById("vehicleFilter").value) {
+            Auth.Cache.set('autoassist_history_cache', state.history);
+        }
     }
 
     async function fetchAlerts() {
@@ -719,6 +738,8 @@
         if (!res.ok) throw new Error("Falha ao carregar alertas");
         const data = await res.json();
         state.alerts = Array.isArray(data.alertas) ? data.alertas : [];
+        // Salva no cache global de alertas
+        Auth.Cache.set('autoassist_alerts_cache', state.alerts);
     }
 
     async function fetchEmailSettings() {
@@ -1050,13 +1071,33 @@
             return;
         }
 
+        const user = Auth.getUser();
+        if (user && user.is_premium) {
+            document.getElementById('navDashboard').style.display = 'inline-flex';
+            document.getElementById('btnMyVideos').style.display = 'inline-flex';
+        }
+
+        // Carregamento instantâneo via Cache
+        const cachedVehicles = Auth.Cache.get('autoassist_veiculos_cache');
+        const cachedHistory = Auth.Cache.get('autoassist_history_cache');
+        
+        if (cachedVehicles) {
+            state.vehicles = cachedVehicles;
+            renderVehicleSelects();
+        }
+        if (cachedHistory) {
+            state.history = cachedHistory;
+            renderStats();
+            renderHistory();
+        }
+
         try {
             await fetchVehicles();
             renderVehicleSelects();
             await refreshData();
         } catch (err) {
             console.error(err);
-            alert("Nao foi possivel carregar o historico de manutencao.");
+            if (!cachedHistory) alert("Nao foi possivel carregar o historico de manutencao.");
         }
     }
 

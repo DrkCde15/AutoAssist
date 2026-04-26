@@ -87,10 +87,15 @@
             letter-spacing: -0.5px;
         }
 
+        .nav-logo img {
+            height: 64px !important;
+            width: auto;
+        }
+
         .nav-links {
             display: flex;
             align-items: center;
-            gap: 32px;
+            gap: 24px;
             position: relative;
         }
 
@@ -99,11 +104,28 @@
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
-            transition: var(--transition);
+            padding: 4px 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
         }
 
         .nav-link:hover {
             color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .nav-link i {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .nav-link.active {
+            color: var(--accent);
         }
 
         .nav-bell-btn {
@@ -819,71 +841,81 @@
                 Auth.ensurePremiumModal();
             }
 
-            // Handle Google OAuth callback
-            // Auth.js já processa os tokens do OAuth callback automaticamente
-            // (via processOAuthCallback() que roda na inicialização do módulo).
-
-            // If not logged in, keep default state
             if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
                 return;
             }
 
-            // Validate token with backend
+            // Tenta carregar do cache para resposta instantânea
+            const cachedUser = Auth.getUser();
+            const cachedAlerts = Auth.Cache.get('autoassist_alerts_cache');
+            if (cachedUser) renderDashboard(cachedUser, cachedAlerts || []);
+
+            // Busca dados atualizados em paralelo
             try {
-                const response = await Auth.authenticatedFetch('/api/user', {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
+                const [userRes, alertsRes] = await Promise.all([
+                    Auth.authenticatedFetch('/api/user'),
+                    Auth.authenticatedFetch('/api/maintenance/alerts')
+                ]);
 
-                if (response.ok) {
-                    const userData = await response.json();
-                    localStorage.setItem('autoassist_user', JSON.stringify(userData));
-
-                    const escapeHtml = (text) => String(text ?? '')
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&#039;');
-
-                    const getBadgeClass = (code) => {
-                        const normalized = String(code || '').toLowerCase();
-                        if (normalized === 'overdue') return 'overdue';
-                        if (normalized === 'due_soon') return 'due_soon';
-                        return 'on_track';
-                    };
-
+                if (userRes.ok) {
+                    const userData = await userRes.json();
                     let maintenanceAlerts = [];
-                    try {
-                        const alertsRes = await Auth.authenticatedFetch('/api/maintenance/alerts');
-                        if (alertsRes.ok) {
-                            const alertsData = await alertsRes.json();
-                            maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
-                        }
-                    } catch (error) {
-                        console.warn('Nao foi possivel carregar notificacoes:', error);
+                    if (alertsRes.ok) {
+                        const alertsData = await alertsRes.json();
+                        maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
+                        Auth.Cache.set('autoassist_alerts_cache', maintenanceAlerts);
                     }
-                    const actionableAlerts = maintenanceAlerts.filter(a => {
-                        const code = String(a.status_code || '').toLowerCase();
-                        return code === 'overdue' || code === 'due_soon';
-                    });
-                    const badgeCount = actionableAlerts.length > 9 ? '9+' : String(actionableAlerts.length);
-                    const notificationsHtml = actionableAlerts.length
-                        ? actionableAlerts.slice(0, 6).map(alert => `
-                            <div class="notif-item">
-                                <div class="notif-item-title">
-                                    <span>${escapeHtml(alert.item || 'Manutencao')}</span>
-                                    <span class="notif-badge ${getBadgeClass(alert.status_code)}">${escapeHtml(alert.status || 'Aviso')}</span>
-                                </div>
-                                <div class="notif-item-text">${escapeHtml(alert.msg || '')}</div>
-                            </div>
-                        `).join('')
-                        : '<div class="notif-empty">Sem notificacoes de manutencao no momento.</div>';
+                    renderDashboard(userData, maintenanceAlerts);
+                }
+            } catch (error) {
+                console.warn('Erro ao atualizar dashboard:', error);
+            }
+        });
+
+        function renderDashboard(userData, maintenanceAlerts) {
+            const authLinks = document.getElementById('authLinks');
+            const ctaContainer = document.getElementById('ctaContainer');
+            if (!authLinks) return;
+
+            const escapeHtml = (text) => String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+
+            const getBadgeClass = (code) => {
+                const normalized = String(code || '').toLowerCase();
+                if (normalized === 'overdue') return 'overdue';
+                if (normalized === 'due_soon') return 'due_soon';
+                return 'on_track';
+            };
+
+            const actionableAlerts = maintenanceAlerts.filter(a => {
+                const code = String(a.status_code || '').toLowerCase();
+                return code === 'overdue' || code === 'due_soon';
+            });
+            
+            const badgeCount = actionableAlerts.length > 9 ? '9+' : String(actionableAlerts.length);
+            const notificationsHtml = actionableAlerts.length
+                ? actionableAlerts.slice(0, 6).map(alert => `
+                    <div class="notif-item">
+                        <div class="notif-item-title">
+                            <span>${escapeHtml(alert.item || 'Manutencao')}</span>
+                            <span class="notif-badge ${getBadgeClass(alert.status_code)}">${escapeHtml(alert.status || 'Aviso')}</span>
+                        </div>
+                        <div class="notif-item-text">${escapeHtml(alert.msg || '')}</div>
+                    </div>
+                `).join('')
+                : '<div class="notif-empty">Sem notificacoes de manutencao no momento.</div>';
                     
                     // Update navbar for logged in user
+                    const isPremium = userData.is_premium;
                     authLinks.innerHTML = `
-                        <a href="dashboard.html" class="nav-link" style="color: var(--accent);"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+                        <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Histórico</a>
+                        ${isPremium ? '<a href="videos.html" class="nav-link"><i class="fas fa-video"></i> Vídeos</a>' : ''}
                         <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
                         <button id="btnNotifications" class="nav-bell-btn" title="Notificacoes">
                             <i class="fas fa-bell"></i>
@@ -896,7 +928,9 @@
                             </div>
                             <div class="notif-list">${notificationsHtml}</div>
                         </div>
-                        <button id="btnLogout" class="nav-btn nav-btn-outline">Sair</button>
+                        <button id="btnLogout" class="nav-link">
+                            <i class="fas fa-sign-out-alt"></i> Sair
+                        </button>
                     `;
 
                     ctaContainer.innerHTML = `
@@ -926,15 +960,8 @@
                                 notificationPanel.classList.remove('open');
                             }
                         });
-                    }
-                } else if (response.status === 401) {
-                    console.warn(`Invalid session (${response.status}). Logging out...`);
-                    Auth.logout();
-                }
-            } catch (error) {
-                console.error('Connection error:', error);
             }
-        });
+        }
 
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

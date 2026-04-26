@@ -2,6 +2,7 @@ import os
 import io
 import html
 import logging
+import threading
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -184,6 +185,14 @@ def send_maintenance_alert_email_for_user(cursor, user_row, force=False):
     if not should_send_maintenance_email(user_row, force=force):
         return {"sent": False, "reason": "already_sent_today", "alerts_count": 0}
 
+    # Se chamado de uma thread sem cursor, abre nova conexão
+    if cursor is None:
+        with get_db() as (new_cursor, conn):
+            return _send_maintenance_alert_logic(new_cursor, user_row, force)
+    else:
+        return _send_maintenance_alert_logic(cursor, user_row, force)
+
+def _send_maintenance_alert_logic(cursor, user_row, force):
     alerts = fetch_user_maintenance_alerts(
         cursor,
         user_id=user_row["id"],
@@ -366,13 +375,17 @@ def edit_veiculo(v_id):
                 WHERE id = %s AND user_id = %s
             """, (data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, data.get("quilometragem"), v_id, user_id))
             
-            # Gatilho imediato de e-mail se a atualização da KM gerou um alerta crítico
+            # Gatilho imediato de e-mail em segundo plano (Não trava o usuário)
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    send_maintenance_alert_email_for_user(cursor, user_row, force=False)
+                    threading.Thread(
+                        target=send_maintenance_alert_email_for_user,
+                        args=(None, user_row), # Cursor None pois abriremos nova conexão na thread
+                        kwargs={"force": False}
+                    ).start()
             except Exception as email_err:
-                logger.warning(f"Falha no gatilho imediato de email: {email_err}")
+                logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
             return jsonify(success=True), 200
     except Exception as e:
@@ -489,13 +502,17 @@ def register_maintenance_history():
             )
             maintenance_id = cursor.lastrowid
             
-            # Gatilho imediato de e-mail se o novo registro gerou um alerta crítico
+            # Gatilho imediato de e-mail em segundo plano
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    send_maintenance_alert_email_for_user(cursor, user_row, force=False)
+                    threading.Thread(
+                        target=send_maintenance_alert_email_for_user,
+                        args=(None, user_row),
+                        kwargs={"force": False}
+                    ).start()
             except Exception as email_err:
-                logger.warning(f"Falha no gatilho imediato de email: {email_err}")
+                logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
             cursor.execute(
                 """
@@ -622,13 +639,17 @@ def update_maintenance_history(maintenance_id):
                   parsed["interval_km"], parsed["next_due_date"], parsed["next_due_km"], 
                   json.dumps(parser_metadata, ensure_ascii=False), maintenance_id, user_id))
             
-            # Gatilho imediato de e-mail se a atualização gerou um alerta crítico
+            # Gatilho imediato de e-mail em segundo plano
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    send_maintenance_alert_email_for_user(cursor, user_row, force=False)
+                    threading.Thread(
+                        target=send_maintenance_alert_email_for_user,
+                        args=(None, user_row),
+                        kwargs={"force": False}
+                    ).start()
             except Exception as email_err:
-                logger.warning(f"Falha no gatilho imediato de email: {email_err}")
+                logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
             cursor.execute("""
                 SELECT mh.*, v.marca AS vehicle_marca, v.modelo AS vehicle_modelo
@@ -684,7 +705,7 @@ def get_email_settings():
         logger.error(f"Erro ao buscar configuracao de email: {e}")
         return jsonify(error="Erro ao buscar configuracao de email"), 500
 
-@pages_bp.route("/api/maintenance/email-settings", methods=["POST"])
+@pages_bp.route("/api/maintenance/email-settings", methods=["PUT"])
 @jwt_required()
 def update_email_settings():
     user_id = get_jwt_identity()
@@ -749,6 +770,7 @@ def dispatch_maintenance_email_batch():
         logger.error(f"Erro no dispatch automatico de emails: {e}")
         return jsonify(error="Erro ao executar dispatch"), 500
 
+
 @pages_bp.route("/api/user", methods=["DELETE"])
 @jwt_required()
 def delete_user():
@@ -760,6 +782,106 @@ def delete_user():
     except Exception as e:
         logger.error(f"Erro ao excluir conta: {e}")
         return jsonify(error="Erro ao excluir conta"), 500
+
+@pages_bp.route("/api/dashboard", methods=["GET"])
+@jwt_required()
+def get_dashboard_data():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT * FROM veiculos WHERE user_id = %s", (user_id,))
+            veiculos = cursor.fetchall()
+            if not veiculos:
+                return jsonify([]), 404
+            
+            dashboard_data = []
+            for v in veiculos:
+                fipe = get_fipe_value(v["tipo"], v["marca"], v["modelo"], v["ano_fabricacao"])
+                alerts = fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=v["id"])
+                dashboard_data.append({
+                    "veiculo": v,
+                    "fipe": fipe,
+                    "saude": alerts
+                })
+            return jsonify(dashboard_data), 200
+    except Exception as e:
+        logger.error(f"Erro no dashboard: {e}")
+        return jsonify(error="Erro interno"), 500
+
+@pages_bp.route("/api/chat/history", methods=["GET"])
+@jwt_required()
+def get_chat_history():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT mensagem_usuario, resposta_ia, created_at, videos FROM chats WHERE user_id = %s ORDER BY created_at ASC", (user_id,))
+            rows = cursor.fetchall()
+            chats = []
+            for r in rows:
+                v_data = r["videos"]
+                if isinstance(v_data, str):
+                    try: v_data = json.loads(v_data)
+                    except: v_data = []
+                chats.append({
+                    "mensagem_usuario": r["mensagem_usuario"],
+                    "resposta_ia": r["resposta_ia"],
+                    "created_at": serialize_datetime_field(r["created_at"]),
+                    "videos": v_data or []
+                })
+            return jsonify(chats=chats), 200
+    except Exception as e:
+        logger.error(f"Erro no historico: {e}")
+        return jsonify(error="Erro interno"), 500
+
+@pages_bp.route("/api/videos", methods=["GET"])
+@jwt_required()
+def get_videos():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT * FROM videos WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
+            rows = cursor.fetchall()
+            return jsonify(videos=rows), 200
+    except Exception as e:
+        logger.error(f"Erro ao buscar videos: {e}")
+        return jsonify(error="Erro interno"), 500
+
+@pages_bp.route("/api/videos", methods=["POST"])
+@jwt_required()
+def add_video():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    titulo = data.get("titulo")
+    url = data.get("url")
+    descricao = data.get("descricao", "")
+
+    if not titulo or not url:
+        return jsonify(error="Título e URL são obrigatórios"), 400
+
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                "INSERT INTO videos (user_id, titulo, url, descricao) VALUES (%s, %s, %s, %s)",
+                (user_id, titulo, url, descricao)
+            )
+            conn.commit()
+        return jsonify(success=True), 201
+    except Exception as e:
+        logger.error(f"Erro ao adicionar video: {e}")
+        return jsonify(error="Erro interno"), 500
+
+@pages_bp.route("/api/videos/<int:video_id>", methods=["DELETE"])
+@jwt_required()
+def delete_video(video_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("DELETE FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
+            conn.commit()
+        return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"Erro ao excluir video: {e}")
+        return jsonify(error="Erro interno"), 500
 
 @pages_bp.route("/api/chat", methods=["POST"])
 @jwt_required()

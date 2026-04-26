@@ -48,16 +48,17 @@
 
         /* Navbar */
         .navbar {
-            background: var(--bg-secondary);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
-            padding: 16px 24px;
+            padding: 12px 24px;
             position: sticky;
             top: 0;
             z-index: 100;
         }
 
         .nav-container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -70,55 +71,50 @@
             gap: 12px;
             text-decoration: none;
             color: var(--text-primary);
-        }
-
-        .nav-logo-icon {
-            width: auto;
-            height: auto;
-            background: transparent;
-            border-radius: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .nav-logo-icon i {
-            font-size: 18px;
-            color: white;
-        }
-
-        .nav-logo-text {
+            font-weight: 800;
             font-size: 20px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-logo img {
+            height: 72px !important;
+            width: 72px;
+            object-fit: contain;
+            object-position: center;
+            display: block;
         }
 
         .nav-links {
             display: flex;
-            gap: 12px;
+            gap: 24px;
+            align-items: center;
         }
 
         .nav-link {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 16px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
+            padding: 4px 8px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 500;
             text-decoration: none;
             cursor: pointer;
-            transition: var(--transition);
+            transition: all 0.2s ease;
             font-family: inherit;
         }
 
         .nav-link:hover {
-            background: var(--bg-primary);
             color: var(--text-primary);
-            border-color: var(--border-hover);
+            transform: translateY(-1px);
+        }
+
+        .nav-link.active {
+            color: var(--accent);
         }
 
         /* Profile Container */
@@ -545,24 +541,16 @@
 <nav class="navbar">
     <div class="nav-container">
         <a href="index.html" class="nav-logo">
-            <div class="nav-logo-icon">
-                <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
-            </div>
-            <span class="nav-logo-text">AutoAssist</span>
+            <img src="logo.png" alt="AutoAssist">
+            AutoAssist
         </a>
         <div class="nav-links">
-            <a href="chat.html" class="nav-link">
-                <i class="fas fa-comments"></i>
-                Chat
-            </a>
-            <a href="maintenance_history.html" class="nav-link">
-                <i class="fas fa-screwdriver-wrench"></i>
-                Manutencao
-            </a>
-            <button class="nav-link" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i>
-                Sair
-            </button>
+            <a href="dashboard.html" id="navDashboard" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Histórico</a>
+            <a href="videos.html" id="btnMyVideos" class="nav-link"><i class="fas fa-video"></i> Vídeos</a>
+            <a href="perfil.html" class="nav-link active"><i class="fas fa-user"></i> Perfil</a>
+            <a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i> Sair</a>
         </div>
     </div>
 </nav>
@@ -669,14 +657,6 @@
                     <i class="fas fa-save"></i>
                     Salvar Alterações
                 </button>
-                <a href="maintenance_history.html" class="btn-video">
-                    <i class="fas fa-screwdriver-wrench"></i>
-                    Historico de Manutencao
-                </a>
-                <a href="videos.html" id="btnVideos" class="btn-video" style="display: none;">
-                    <i class="fas fa-video"></i>
-                    Meus Vídeos Salvos
-                </a>
             </div>
         </div>
     </div>
@@ -693,11 +673,34 @@
             return;
         }
 
+        // Tenta carregar do cache para resposta instantânea
+        const cachedUser = Auth.getUser();
+        const cachedVehicles = Auth.Cache.get('autoassist_veiculos_cache');
+        
+        if (cachedUser) {
+            // Se tiver cache de veículos, injeta no objeto user para o renderProfile
+            if (cachedVehicles) cachedUser.veiculos = cachedVehicles;
+            renderProfile(cachedUser);
+
+            if (cachedUser.is_premium) {
+                document.getElementById('navDashboard').style.display = 'inline-flex';
+                document.getElementById('btnMyVideos').style.display = 'inline-flex';
+            }
+        }
+
         try {
             const res = await Auth.authenticatedFetch('/api/user');
             if (res.ok) {
                 currentUser = await res.json();
+                // Atualiza o cache global de veículos também
+                if (currentUser.veiculos) {
+                    Auth.Cache.set('autoassist_veiculos_cache', currentUser.veiculos);
+                }
                 renderProfile(currentUser);
+                if (currentUser.is_premium) {
+                    document.getElementById('navDashboard').style.display = 'inline-flex';
+                    document.getElementById('btnMyVideos').style.display = 'inline-flex';
+                }
             }
         } catch (e) {
             console.error('Error loading profile:', e);
@@ -883,10 +886,12 @@
         }
     }
 
+    document.getElementById('btnLogout').addEventListener('click', (event) => {
+        event.preventDefault();
+        logout();
+    });
+
     loadProfile();
 </script>
 </body>
 </html>
-
-
-

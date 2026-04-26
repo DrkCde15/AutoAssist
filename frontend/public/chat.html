@@ -85,10 +85,10 @@
 
       /* Header */
       header {
-        padding: 14px 28px;
-        background: rgba(16, 16, 19, 0.75);
-        backdrop-filter: saturate(140%) blur(14px);
-        -webkit-backdrop-filter: saturate(140%) blur(14px);
+        padding: 12px 28px;
+        background: rgba(16, 16, 19, 0.85);
+        backdrop-filter: saturate(140%) blur(20px);
+        -webkit-backdrop-filter: saturate(140%) blur(20px);
         border-bottom: 1px solid var(--border-subtle);
         display: flex;
         justify-content: space-between;
@@ -100,111 +100,73 @@
       .header-left {
         display: flex;
         align-items: center;
-        gap: 24px;
       }
 
       .logo-link {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         text-decoration: none;
         color: var(--text-primary);
-      }
-
-      .logo-icon {
-        width: auto;
-        height: auto;
-        background: transparent;
-        border-radius: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        text-transform: uppercase;
+        letter-spacing: 1px;
       }
 
       .logo-icon img {
-        height: 40px !important;
+        height: 64px !important;
         width: auto;
         display: block;
       }
 
-      .logo-icon i {
-        font-size: 16px;
-        color: white;
-      }
-
       .logo-text {
-        font-size: 17px;
-        font-weight: 600;
-        letter-spacing: -0.02em;
+        font-size: 19px;
+        font-weight: 800;
         color: var(--text-primary);
-      }
-
-      .logo-text span {
-        color: var(--accent);
-        font-weight: 600;
       }
 
       .header-nav {
         display: flex;
-        gap: 4px;
-        padding: 4px;
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: 12px;
+        align-items: center;
+        gap: 24px;
       }
 
       .nav-btn {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 14px;
+        padding: 4px 8px;
         background: transparent;
-        border: 1px solid transparent;
-        border-radius: 8px;
+        border: none;
+        border-radius: 0;
         color: var(--text-secondary);
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 500;
         text-decoration: none;
         cursor: pointer;
-        transition: var(--transition);
+        transition: all 0.2s ease;
         font-family: inherit;
         line-height: 1;
         white-space: nowrap;
       }
 
-      .nav-btn i { font-size: 13px; opacity: 0.9; }
-
       .nav-btn:hover {
-        background: var(--bg-input);
         color: var(--text-primary);
+        transform: translateY(-1px);
       }
 
       .nav-btn-accent {
-        background: var(--accent-soft);
         color: var(--accent);
       }
 
-      .nav-btn-accent:hover {
-        background: rgba(79, 140, 255, 0.14);
-        color: var(--accent);
-      }
-
-      .nav-btn-danger:hover {
-        background: rgba(242, 85, 85, 0.08);
-        color: var(--danger);
+      .nav-btn-danger {
+        color: #fca5a5;
       }
 
       .header-right {
         display: flex;
-        gap: 8px;
+        gap: 24px;
         align-items: center;
       }
-
-      .header-right .nav-btn {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-      }
-      .header-right .nav-btn:hover { border-color: var(--border-hover); }
 
       /* Messages */
       #messages {
@@ -565,7 +527,7 @@
         .header-nav { padding: 3px; }
         .nav-btn span { display: none; }
         .nav-btn { padding: 8px 10px; }
-        .logo-icon img { height: 32px !important; }
+        .logo-icon img { height: 48px !important; }
         .logo-text { font-size: 15px; }
 
         .msg-user, .msg-bot {
@@ -588,26 +550,37 @@
           </div>
           <span class="logo-text">Auto<span>Assist</span></span>
         </a>
-        
-        <nav class="header-nav">
-          <a href="index.html" class="nav-btn">
-            <i class="fas fa-home"></i>
-            <span>Início</span>
-          </a>
-          <a href="videos.html" id="btnMyVideos" class="nav-btn nav-btn-accent">
-            <i class="fas fa-folder-open"></i>
-            <span>Meus Vídeos</span>
-          </a>
-        </nav>
       </div>
 
       <div class="header-right">
-        <button id="btnReport" class="nav-btn">
+        <nav class="header-nav">
+          <a href="dashboard.html" id="navDashboard" class="nav-btn" style="display: none;">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="chat.html" class="nav-btn nav-btn-accent">
+            <i class="fas fa-comments"></i>
+            <span>Chat</span>
+          </a>
+          <a href="maintenance_history.html" class="nav-btn">
+            <i class="fas fa-history"></i>
+            <span>Histórico</span>
+          </a>
+          <a href="videos.html" id="btnMyVideos" class="nav-btn" style="display: none;">
+            <i class="fas fa-video"></i>
+            <span>Vídeos</span>
+          </a>
+          <a href="perfil.html" class="nav-btn">
+            <i class="fas fa-user-circle"></i>
+            <span>Perfil</span>
+          </a>
+          <button id="logout" class="nav-btn nav-btn-danger">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Sair</span>
+          </button>
+        </nav>
+        <button id="btnReport" class="nav-btn" title="Gerar PDF da última análise">
           <i class="fas fa-file-pdf"></i>
-          <span>Análise</span>
-        </button>
-        <button id="logout" class="nav-btn nav-btn-danger">
-          <i class="fas fa-sign-out-alt"></i>
         </button>
       </div>
     </header>
@@ -653,6 +626,12 @@
       // Auth check
       if (typeof Auth !== 'undefined' && !Auth.isAuthenticated()) {
         window.location.href = "login.html";
+      } else {
+        const user = Auth.getUser();
+        if (user && user.is_premium) {
+          document.getElementById('navDashboard').style.display = 'inline-flex';
+          document.getElementById('btnMyVideos').style.display = 'inline-flex';
+        }
       }
 
       // Voice support
@@ -976,22 +955,42 @@
       // Load history
       (async () => {
         if (typeof Auth === 'undefined') return;
-        const res = await Auth.authenticatedFetch("/api/chat/history");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.chats?.length) messagesDiv.innerHTML = "";
-          data.chats?.forEach((c) => {
-            addMessage(`Você: ${c.mensagem_usuario}`, "msg-user");
-            addMessage(
-              `<strong>AutoAssist:</strong><br>${marked.parse(c.resposta_ia)}`,
-              "msg-bot",
-              true,
-              c.videos
-            );
-          });
-          scrollToBottom();
+
+        // Tenta carregar do cache para resposta instantânea
+        const cachedHistory = Auth.Cache.get('autoassist_chat_history_cache');
+        if (cachedHistory) {
+          renderChatHistory(cachedHistory);
+        }
+
+        try {
+          const res = await Auth.authenticatedFetch("/api/chat/history");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.chats) {
+              Auth.Cache.set('autoassist_chat_history_cache', data.chats);
+              renderChatHistory(data.chats);
+            }
+          }
+        } catch (error) {
+          console.warn('Erro ao carregar histórico do chat:', error);
         }
       })();
+
+      function renderChatHistory(chats) {
+        if (!chats || chats.length === 0) return;
+        messagesDiv.innerHTML = "";
+        chats.forEach((c) => {
+          addMessage(`Você: ${c.mensagem_usuario}`, "msg-user");
+          const cleanHtml = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(marked.parse(c.resposta_ia)) : marked.parse(c.resposta_ia);
+          addMessage(
+            `<strong>AutoAssist:</strong><br>${cleanHtml}`,
+            "msg-bot",
+            true,
+            c.videos
+          );
+        });
+        scrollToBottom();
+      }
     </script>
   </body>
 </html>

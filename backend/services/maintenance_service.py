@@ -492,15 +492,22 @@ def _status_from_remaining(days_remaining=None, km_remaining=None):
     overdue = False
     warning = False
 
+    # Regras de Tempo (7 dias para aviso)
     if days_remaining is not None:
         if days_remaining < 0:
             overdue = True
-        elif days_remaining <= 15:
+        elif days_remaining <= 7:
             warning = True
 
+    # Regras de KM (1000 km para aviso)
     if km_remaining is not None:
         if km_remaining < 0:
-            overdue = True
+            # Trava de segurança: Se o KM venceu mas a data ainda está a mais de 60 dias,
+            # tratamos apenas como "Aviso" em vez de "Atenção" (Vermelho).
+            if days_remaining is not None and days_remaining > 60:
+                warning = True
+            else:
+                overdue = True
         elif km_remaining <= 1000:
             warning = True
 

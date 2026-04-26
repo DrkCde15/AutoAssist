@@ -50,25 +50,31 @@ PREMIUM_TUTORIAL_PROMPT = """
 
 def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
     """Busca o valor médio de mercado via API externa FIPE (Parallelum)."""
+    # Normalização para a API Parallelum
+    tipo_norm = str(tipo).lower()
+    if tipo_norm == "carro": tipo_norm = "carros"
+    elif tipo_norm == "moto": tipo_norm = "motos"
+    elif tipo_norm == "caminhao": tipo_norm = "caminhoes"
+    
     BASE_URL = "https://parallelum.com.br/fipe/api/v1"
     try:
-        response = requests.get(f"{BASE_URL}/{tipo}/marcas", timeout=10)
+        response = requests.get(f"{BASE_URL}/{tipo_norm}/marcas", timeout=10)
         if response.status_code != 200: return None
         marcas = response.json()
         marca_obj = next((m for m in marcas if marca_nome.lower() in m["nome"].lower()), None)
         if not marca_obj: return None
-        response = requests.get(f"{BASE_URL}/{tipo}/marcas/{marca_obj['codigo']}/modelos", timeout=10)
+        response = requests.get(f"{BASE_URL}/{tipo_norm}/marcas/{marca_obj['codigo']}/modelos", timeout=10)
         if response.status_code != 200: return None
         modelos_resp = response.json()
         candidatos = [m for m in modelos_resp.get("modelos", []) if modelo_nome.lower() in m["nome"].lower()]
         if not candidatos: return None
         for modelo in candidatos:
-            response = requests.get(f"{BASE_URL}/{tipo}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos", timeout=10)
+            response = requests.get(f"{BASE_URL}/{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos", timeout=10)
             if response.status_code != 200: continue
             anos_disponiveis = response.json()
             ano_obj = next((a for a in anos_disponiveis if a["nome"].startswith(str(ano))), None)
             if ano_obj:
-                valor_resp = requests.get(f"{BASE_URL}/{tipo}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}", timeout=10)
+                valor_resp = requests.get(f"{BASE_URL}/{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}", timeout=10)
                 if valor_resp.status_code == 200: return valor_resp.json()
         return None
     except Exception as e:

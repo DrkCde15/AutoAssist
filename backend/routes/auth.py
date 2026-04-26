@@ -142,10 +142,10 @@ def google_callback():
                     WHERE email = %s
                 """, (google_id, picture, email))
             else:
-                # Cria novo usuÃ¡rio sem senha (Login Social)
+                # Cria novo usuÃ¡rio sem senha (Login Social) e ativa e-mails por padrão
                 cursor.execute("""
-                    INSERT INTO users (nome, email, google_id, profile_pic) 
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO users (nome, email, google_id, profile_pic, maintenance_email_enabled) 
+                    VALUES (%s, %s, %s, %s, TRUE)
                 """, (nome, email, google_id, picture))
                 
             cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
@@ -213,8 +213,8 @@ def cadastro():
         with get_db() as (cursor, conn):
             cursor.execute("""
                 INSERT INTO users (
-                    nome, email, password, possui_veiculo
-                ) VALUES (%s, %s, %s, %s)
+                    nome, email, password, possui_veiculo, maintenance_email_enabled
+                ) VALUES (%s, %s, %s, %s, TRUE)
             """, (
                 nome, email.lower(), bcrypt.hash(password), possui_veiculo
             ))
@@ -235,7 +235,7 @@ def cadastro():
                 ))
         return jsonify(success=True), 201
     except Exception as e:
-        logger.error(f"âŒ Erro no cadastro: {e}")
+        logger.error(f"â Œ Erro no cadastro: {e}")
         return jsonify(error="Erro ao processar cadastro ou email jÃ¡ existe"), 409
 
 @auth_bp.route("/api/login", methods=["POST"])

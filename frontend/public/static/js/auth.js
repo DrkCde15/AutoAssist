@@ -13,6 +13,18 @@ const Auth = (() => {
     ACCESS: "autoassist_access_token",
     REFRESH: "autoassist_refresh_token",
     USER: "autoassist_user",
+    VEHICLES: "autoassist_veiculos_cache",
+  };
+
+  // ─── Cache de Sessão (Otimização) ──────────────────────────────────────────
+  const Cache = {
+    set: (key, data) => sessionStorage.setItem(key, JSON.stringify(data)),
+    get: (key) => {
+      try { return JSON.parse(sessionStorage.getItem(key)); } catch { return null; }
+    },
+    clear: () => {
+      sessionStorage.removeItem(KEYS.VEHICLES);
+    }
   };
 
   // ─── Persistência ─────────────────────────────────────────────────────────
@@ -25,6 +37,7 @@ const Auth = (() => {
 
   function clearSession() {
     Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
+    Cache.clear();
   }
 
   function getAccessToken() {
@@ -285,5 +298,7 @@ const Auth = (() => {
     getAccessToken,
     authenticatedFetch,
     saveSession,
+    Cache,
+    KEYS
   };
 })();

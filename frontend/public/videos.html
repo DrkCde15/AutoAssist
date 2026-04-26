@@ -36,7 +36,7 @@
         .navbar {
             background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(10px);
-            padding: 20px 50px;
+            padding: 12px 24px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             position: sticky;
             top: 0;
@@ -52,30 +52,42 @@
         }
 
         .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             color: white;
             text-decoration: none;
-            font-weight: bold;
+            font-weight: 800;
             font-size: 20px;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .nav-logo img {
+            height: 64px !important;
+            width: auto;
         }
 
         .nav-links {
             display: flex;
-            gap: 25px;
+            gap: 24px;
             align-items: center;
         }
 
         .nav-link {
             color: white;
             text-decoration: none;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 14px;
             opacity: 0.8;
-            transition: opacity 0.3s;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
         }
 
-        .nav-link:hover { opacity: 1; }
+        .nav-link:hover { opacity: 1; transform: translateY(-1px); }
+        .nav-link.active { color: #3b82f6; opacity: 1; }
 
         /* Content */
         .videos-content {
@@ -141,7 +153,7 @@
 
         .video-wrapper {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            padding-bottom: 56.25%;
             height: 0;
             overflow: hidden;
             background: #000;
@@ -229,9 +241,7 @@
             z-index: 1000;
         }
 
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
 
         .modal {
             background: var(--secondary-dark);
@@ -261,10 +271,7 @@
             color: var(--text-gray);
             font-size: 20px;
             cursor: pointer;
-            transition: color 0.3s;
         }
-
-        .btn-close:hover { color: white; }
 
         .form-group { margin-bottom: 20px; }
         .form-group label {
@@ -284,11 +291,6 @@
             font-family: inherit;
         }
 
-        .form-control:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-        }
-
         .btn-submit {
             width: 100%;
             padding: 14px;
@@ -298,18 +300,15 @@
             border-radius: 10px;
             font-weight: 600;
             cursor: pointer;
-            transition: 0.3s;
         }
-
-        .btn-submit:hover { background: #2563eb; }
 
         .message { margin-top: 15px; font-size: 14px; text-align: center; }
         .message.error { color: var(--danger-red); }
         .message.success { color: #34d399; }
 
         @media (max-width: 768px) {
-            .navbar { padding: 15px 20px; }
             .nav-container { flex-direction: column; gap: 15px; }
+            .nav-links { flex-wrap: wrap; justify-content: center; }
             .header-section { flex-direction: column; gap: 20px; text-align: center; }
         }
     </style>
@@ -318,16 +317,17 @@
 
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo" style="display: flex; align-items: center; gap: 10px;">
-                <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
+            <a href="index.html" class="nav-logo">
+                <img src="logo.png" alt="AutoAssist">
                 AUTOASSIST
             </a>
             <div class="nav-links">
-                <a href="dashboard.html" id="premiumDashboardLink" class="nav-link" style="display: none;"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="dashboard.html" id="premiumDashboardLink" class="nav-link" style="display: none;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                 <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-                <a href="videos.html" class="nav-link" style="color: var(--accent-blue);"><i class="fas fa-video"></i> Vídeos</a>
+                <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Histórico</a>
+                <a href="videos.html" class="nav-link active"><i class="fas fa-video"></i> Vídeos</a>
                 <a href="perfil.html" class="nav-link"><i class="fas fa-user-circle"></i> Perfil</a>
-                <button onclick="Auth.logout()" class="nav-link" style="background:none; border:none; cursor:pointer;">Sair</button>
+                <button onclick="Auth.logout()" class="nav-link" style="background:none; border:none; cursor:pointer;"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </div>
     </nav>
@@ -392,11 +392,10 @@
                 window.location.href = 'chat.html';
                 return;
             }
-            document.getElementById('premiumDashboardLink').style.display = 'inline-flex';
+            document.getElementById('premiumDashboardLink').style.display = 'flex';
             loadVideos();
         });
 
-        // Utils para Extrair ID do YouTube
         function getYouTubeVideoId(url) {
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
             const match = url.match(regExp);
@@ -414,7 +413,7 @@
                 const data = await res.json();
                 loading.style.display = 'none';
 
-                if (data.videos.length === 0) {
+                if (!data.videos || data.videos.length === 0) {
                     grid.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-video-slash"></i>
@@ -459,7 +458,6 @@
             }
         }
 
-        // Modal Logic
         const modal = document.getElementById('videoModal');
         const form = document.getElementById('addVideoForm');
         const msgDiv = document.getElementById('formMessage');
@@ -468,19 +466,16 @@
             modal.classList.add('active');
             form.reset();
             msgDiv.textContent = '';
-            msgDiv.className = 'message';
         }
 
         function closeModal() {
             modal.classList.remove('active');
         }
 
-        // Fechar ao clicar fora
         modal.addEventListener('click', (e) => {
             if (e.target === modal) closeModal();
         });
 
-        // Submit form
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnSubmitVideo');
@@ -502,8 +497,6 @@
 
                 if (res.ok) {
                     closeModal();
-                    document.getElementById('loadingVideos').style.display = 'block';
-                    document.getElementById('videosGrid').innerHTML = '';
                     loadVideos();
                 } else {
                     const err = await res.json();
@@ -539,6 +532,3 @@
     </script>
 </body>
 </html>
-
-
-
