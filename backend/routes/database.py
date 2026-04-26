@@ -1,31 +1,23 @@
 import os
 import pymysql
-import smtplib
 import logging
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from pymysql.cursors import DictCursor
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from utils.email import enviar_email
 
 # Carrega variáveis de ambiente procurando o .env na pasta pai (backend/)
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '..', '.env'))
 
-# Configurações de Email
-EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
-EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-
-# Configuração do Banco
+# Configurações de Banco
 MYSQL_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost'),
+    'host': os.getenv('DB_HOST', 'localhost').strip(),
     'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'database': os.getenv('DB_NAME'),
+    'user': os.getenv('DB_USER', '').strip(),
+    'password': os.getenv('DB_PASSWORD', '').strip(),
+    'database': os.getenv('DB_NAME', '').strip(),
     'charset': 'utf8mb4',
     'cursorclass': DictCursor,
     'autocommit': True,
@@ -189,23 +181,7 @@ def init_db():
         """)
         print("✅ Banco de dados inicializado com sucesso!")
 
-def enviar_email(destinatario, assunto, mensagem_html):
-    msg = MIMEMultipart()
-    msg["From"] = EMAIL_REMETENTE
-    msg["To"] = destinatario
-    msg["Subject"] = assunto
-    msg.attach(MIMEText(mensagem_html, "html"))
-    try:
-        servidor = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        servidor.starttls()
-        servidor.login(EMAIL_REMETENTE, EMAIL_SENHA_APP)
-        servidor.sendmail(EMAIL_REMETENTE, destinatario, msg.as_string())
-        servidor.quit()
-        print("Email enviado com sucesso!")
-        return True
-    except Exception as e:
-        print("Erro ao enviar email:", e)
-        return False
+# (enviar_email removido daqui e movido para utils.email)
 
 def is_trial_expired(user):
     return False

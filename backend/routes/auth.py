@@ -432,13 +432,17 @@ def forgot_password():
             reset_link = f"{frontend_url}redefinir-senha.html?token={token}"
 
             mensagem = f"""
-<h2>RedefiniÃ§Ã£o de senha</h2>
-<p>VocÃª solicitou redefinir sua senha.</p>
-<p>Clique no link abaixo:</p>
-<a href="{reset_link}">Redefinir senha</a>
-<p>Este link expira em 15 minutos.</p>
-<p>Se vocÃª nÃ£o solicitou isso, ignore este email.</p>
-"""
+                <h2 style="margin-top: 0; color: #111827; font-size: 20px;">Redefinição de Senha</h2>
+                <p style="color: #4b5563; font-size: 16px; margin-bottom: 25px;">
+                    Olá! Recebemos uma solicitação para redefinir a senha da sua conta no <strong>AutoAssist</strong>.
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_link}" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Redefinir Minha Senha</a>
+                </div>
+                <p style="color: #6b7280; font-size: 14px; margin-top: 25px;">
+                    Este link é válido por <strong>15 minutos</strong>. Se você não solicitou esta alteração, pode ignorar este e-mail com segurança.
+                </p>
+            """
             enviar_email(email, "RedefiniÃ§Ã£o de senha", mensagem)
             logger.info(f"Email de redefiniÃ§Ã£o enviado para {email}")
 

@@ -127,54 +127,59 @@ def should_send_maintenance_email(user_row, force=False):
     return last_date < datetime.now().date()
 
 def render_maintenance_email_html(user_name, alerts):
-    safe_name = html.escape(user_name or "usuario")
-    generated_at = datetime.now().strftime("%d/%m/%Y %H:%M")
+    safe_name = html.escape(user_name or "usuário")
     rows = []
     for alert in alerts:
-        item = html.escape(str(alert.get("item") or "Manutencao"))
+        item = html.escape(str(alert.get("item") or "Manutenção"))
         msg = html.escape(str(alert.get("msg") or ""))
         status_code = alert.get("status_code")
+        
         if status_code == "overdue":
-            badge_color = "#b91c1c"
-            badge_bg = "#fee2e2"
+            color = "#dc2626"  # Vermelho forte
+            bg = "#fee2e2"
+            status_text = "⚠️ ATENÇÃO"
         elif status_code == "due_soon":
-            badge_color = "#b45309"
-            badge_bg = "#fef3c7"
+            color = "#d97706"  # Laranja/Ambar
+            bg = "#fef3c7"
+            status_text = "📅 EM BREVE"
         else:
-            badge_color = "#166534"
-            badge_bg = "#dcfce7"
-        status = html.escape(str(alert.get("status") or "Aviso"))
+            color = "#059669"  # Verde
+            bg = "#d1fae5"
+            status_text = "✅ OK"
+
         rows.append(
             f"""
-            <tr>
-                <td style="padding:12px;border-bottom:1px solid #e5e7eb;">
-                    <strong>{item}</strong><br>
-                    <span style="color:#4b5563;">{msg}</span>
-                </td>
-                <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;">
-                    <span style="display:inline-block;padding:4px 10px;border-radius:999px;background:{badge_bg};color:{badge_color};font-size:12px;font-weight:700;">
-                        {status}
-                    </span>
-                </td>
-            </tr>
+            <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-weight: bold; font-size: 16px; color: #111827;">{item}</span>
+                    <span style="padding: 4px 10px; border-radius: 6px; background-color: {bg}; color: {color}; font-size: 11px; font-weight: 800; text-transform: uppercase;">{status_text}</span>
+                </div>
+                <p style="margin: 0; font-size: 14px; color: #4b5563;">{msg}</p>
+            </div>
             """
         )
 
-    rows_html = "".join(rows) if rows else """
-        <tr><td style="padding:12px;color:#4b5563;">Sem alertas no momento.</td></tr>
-    """
+    rows_html = "".join(rows) if rows else "<p>Nenhum alerta crítico identificado para seus veículos.</p>"
 
     return f"""
-    <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;color:#111827;">
-        <h2 style="margin-bottom:4px;">AutoAssist - Alertas de manutencao</h2>
-        <p style="margin-top:0;color:#4b5563;">Ola, {safe_name}. Aqui esta o resumo automatico de hoje ({generated_at}).</p>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-            {rows_html}
-        </table>
-        <p style="margin-top:16px;color:#6b7280;font-size:12px;">
-            Este e um envio automatico de alertas de manutencao do AutoAssist.
+        <h2 style="margin-top: 0; color: #111827; font-size: 20px;">Olá, {safe_name}!</h2>
+        <p style="color: #4b5563; font-size: 16px; margin-bottom: 25px;">
+            Identificamos alguns itens de manutenção que precisam da sua atenção para garantir a segurança e o bom funcionamento do seu veículo.
         </p>
-    </div>
+        
+        <div style="margin-top: 20px;">
+            {rows_html}
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background-color: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd;">
+            <p style="margin: 0; font-size: 14px; color: #0369a1;">
+                <strong>Dica AutoAssist:</strong> Manter a manutenção em dia economiza até 30% em reparos futuros e valoriza seu veículo na hora da revenda.
+            </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 35px;">
+            <a href="https://drkcde15.github.io/AutoAssist/dashboard.html" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Ver Painel Completo</a>
+        </div>
     """
 
 def send_maintenance_alert_email_for_user(cursor, user_row, force=False):
