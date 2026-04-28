@@ -435,6 +435,47 @@ const Auth = (() => {
     return false;
   }
 
+  function bindPremiumLinkGuards() {
+    if (typeof document === "undefined") return;
+    if (document.body?.dataset?.premiumGuardBound === "1") return;
+    document.body.dataset.premiumGuardBound = "1";
+
+    const premiumPaths = new Set([
+      "dashboard.html",
+      "videos.html",
+      "maintenance_history.html",
+    ]);
+
+    document.addEventListener("click", (event) => {
+      const anchor = event.target.closest("a");
+      if (!anchor) return;
+
+      const hrefRaw = (anchor.getAttribute("href") || "").trim();
+      if (!hrefRaw || hrefRaw.startsWith("#") || hrefRaw.startsWith("javascript:")) return;
+
+      let targetPath = "";
+      try {
+        const hrefUrl = new URL(hrefRaw, window.location.href);
+        targetPath = (hrefUrl.pathname.split("/").pop() || "").toLowerCase();
+      } catch {
+        return;
+      }
+
+      if (!premiumPaths.has(targetPath)) return;
+      if (!isAuthenticated()) return;
+
+      const user = getUser();
+      if (user && user.is_premium) return;
+
+      event.preventDefault();
+      showPremiumPaywall({
+        title: "Recurso Premium",
+        message: "Para acessar esta pagina, ative o plano Premium.",
+        backHref: "chat.html",
+      });
+    });
+  }
+
   function ensurePremiumModal() {
     if (typeof document === "undefined") return;
     if (!isAuthenticated()) return;
@@ -489,6 +530,9 @@ const Auth = (() => {
     document.body.appendChild(btn);
   }
 
+  // Ativa o guard global para cliques em links premium.
+  bindPremiumLinkGuards();
+
   return {
     isAuthenticated,
     login,
@@ -504,6 +548,7 @@ const Auth = (() => {
     showPremiumPaywall,
     closePremiumPaywall,
     requirePremiumPage,
+    bindPremiumLinkGuards,
     ensurePremiumModal,
     openPremiumCheckout,
     Cache,
