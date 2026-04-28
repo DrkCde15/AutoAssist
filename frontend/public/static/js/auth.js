@@ -286,6 +286,85 @@ const Auth = (() => {
 
   // ─── API Pública ──────────────────────────────────────────────────────────
 
+  async function openPremiumCheckout() {
+    const res = await authenticatedFetch("/api/pay/preference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Nao foi possivel iniciar o checkout premium.");
+    }
+
+    const checkoutUrl =
+      data.checkout_url ||
+      (data.data && data.data.checkout_url) ||
+      data.init_point ||
+      "";
+
+    if (!checkoutUrl) {
+      throw new Error("Checkout premium nao configurado.");
+    }
+
+    window.location.href = checkoutUrl;
+  }
+
+  function ensurePremiumModal() {
+    if (typeof document === "undefined") return;
+    if (!isAuthenticated()) return;
+
+    const user = getUser();
+    if (!user || user.is_premium) return;
+    if (document.getElementById("autoassist-upgrade-btn")) return;
+
+    const styleId = "autoassist-upgrade-style";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        .autoassist-upgrade-btn {
+          position: fixed;
+          right: 18px;
+          bottom: 18px;
+          z-index: 9999;
+          border: 0;
+          border-radius: 999px;
+          padding: 12px 18px;
+          background: #0f766e;
+          color: #ffffff;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 8px 20px rgba(15, 118, 110, 0.28);
+        }
+        .autoassist-upgrade-btn:hover { filter: brightness(1.05); }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const btn = document.createElement("button");
+    btn.id = "autoassist-upgrade-btn";
+    btn.className = "autoassist-upgrade-btn";
+    btn.type = "button";
+    btn.textContent = "Ativar Premium";
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = "Abrindo checkout...";
+      try {
+        await openPremiumCheckout();
+      } catch (err) {
+        alert(err.message || "Nao foi possivel abrir o checkout premium.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    });
+
+    document.body.appendChild(btn);
+  }
+
   return {
     isAuthenticated,
     login,
@@ -298,6 +377,8 @@ const Auth = (() => {
     getAccessToken,
     authenticatedFetch,
     saveSession,
+    ensurePremiumModal,
+    openPremiumCheckout,
     Cache,
     KEYS
   };

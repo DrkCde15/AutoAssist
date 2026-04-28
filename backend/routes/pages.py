@@ -41,7 +41,9 @@ def get_user_by_id(cursor, user_id):
     return cursor.fetchone()
 
 def ensure_premium_user(user):
-    return None
+    if user and bool(user.get("is_premium")):
+        return None
+    return jsonify(error=PREMIUM_ONLY_ERROR), 403
 
 def build_spending_summary(history_rows):
     total_cost = 0.0
@@ -255,7 +257,7 @@ def get_user():
             **user,
             "trial_expired": is_trial_expired(user),
             "trial_days_remaining": get_trial_days_remaining(user),
-            "is_premium": True,
+            "is_premium": bool(user.get("is_premium")),
             "possui_veiculo": len(veiculos) > 0,
             "veiculos": veiculos,
             "total_consultas": int(total["total"])
@@ -297,7 +299,7 @@ def update_user():
                 **user,
                 "trial_expired": is_trial_expired(user),
                 "trial_days_remaining": get_trial_days_remaining(user),
-                "is_premium": True,
+                "is_premium": bool(user.get("is_premium")),
                 "total_consultas": int(total["total"]),
                 "success": True
             }), 200
@@ -433,6 +435,11 @@ def register_maintenance_history():
 
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             if raw_vehicle_id is not None:
                 try:
                     vehicle_id = int(raw_vehicle_id)
@@ -547,6 +554,11 @@ def list_maintenance_history():
 
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             params = [user_id]
             vehicle_filter = ""
             if vehicle_id is not None:
@@ -586,6 +598,11 @@ def update_maintenance_history(maintenance_id):
 
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("SELECT * FROM maintenance_history WHERE id = %s AND user_id = %s", (maintenance_id, user_id))
             existing = cursor.fetchone()
             if not existing:
@@ -674,6 +691,11 @@ def delete_maintenance_history(maintenance_id):
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("DELETE FROM maintenance_history WHERE id = %s AND user_id = %s", (maintenance_id, user_id))
             if cursor.rowcount == 0:
                 return jsonify(error="Registro de manutencao nao encontrado"), 404
@@ -689,6 +711,11 @@ def get_maintenance_alerts():
     vehicle_id = request.args.get("veiculo_id")
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             alerts = fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=vehicle_id)
             return jsonify(alertas=alerts), 200
     except Exception as e:
@@ -701,6 +728,11 @@ def get_email_settings():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("SELECT maintenance_email_enabled FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
@@ -718,6 +750,11 @@ def update_email_settings():
     enabled = bool(data.get("enabled", True))
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("UPDATE users SET maintenance_email_enabled = %s WHERE id = %s", (enabled, user_id))
             return jsonify(success=True), 200
     except Exception as e:
@@ -730,6 +767,11 @@ def send_maintenance_email_now():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
@@ -794,6 +836,11 @@ def get_dashboard_data():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("SELECT * FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
             if not veiculos:
@@ -844,6 +891,11 @@ def get_videos():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("SELECT * FROM videos WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
             rows = cursor.fetchall()
             return jsonify(videos=rows), 200
@@ -865,6 +917,11 @@ def add_video():
 
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute(
                 "INSERT INTO videos (user_id, titulo, url, descricao) VALUES (%s, %s, %s, %s)",
                 (user_id, titulo, url, descricao)
@@ -881,6 +938,11 @@ def delete_video(video_id):
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("DELETE FROM videos WHERE id = %s AND user_id = %s", (video_id, user_id))
             conn.commit()
         return jsonify(success=True), 200

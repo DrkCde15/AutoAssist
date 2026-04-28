@@ -162,9 +162,9 @@ def google_callback():
         # Preparar dados do usuÃ¡rio para o frontend
         user_payload = {
             "nome": user["nome"], 
-            "is_premium": True, 
-            "trial_expired": False,
-            "trial_days_remaining": 9999,
+            "is_premium": bool(user.get("is_premium")),
+            "trial_expired": is_trial_expired(user),
+            "trial_days_remaining": get_trial_days_remaining(user),
             "possui_veiculo": len(veiculos) > 0,
             "veiculos": veiculos,
             "profile_pic": user.get("profile_pic")
@@ -280,9 +280,9 @@ def login():
                 refresh_token=create_refresh_token(identity=str(user["id"])),
                 user={
                     "nome": user["nome"],
-                    "is_premium": True,
-                    "trial_expired": False,
-                    "trial_days_remaining": 9999,
+                    "is_premium": bool(user.get("is_premium")),
+                    "trial_expired": is_trial_expired(user),
+                    "trial_days_remaining": get_trial_days_remaining(user),
                     "possui_veiculo": len(veiculos) > 0,
                     "veiculos": veiculos
                 }
@@ -325,9 +325,9 @@ def verify_2fa_login():
                     refresh_token=create_refresh_token(identity=str(user_id)),
                     user={
                         "nome": user["nome"], 
-                        "is_premium": True, 
-                        "trial_expired": False,
-                        "trial_days_remaining": 9999,
+                        "is_premium": bool(user.get("is_premium")),
+                        "trial_expired": is_trial_expired(user),
+                        "trial_days_remaining": get_trial_days_remaining(user),
                         "possui_veiculo": len(veiculos) > 0,
                         "veiculos": veiculos
                     }
