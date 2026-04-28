@@ -1071,12 +1071,15 @@
             return;
         }
 
-        const user = Auth.getUser();
-        if (!user || !user.is_premium) {
-            window.location.href = "chat.html";
+        if (!Auth.requirePremiumPage({
+            title: "Historico Premium",
+            message: "Para acessar o historico de manutencao, ative o plano Premium.",
+            backHref: "chat.html"
+        })) {
             return;
         }
 
+        const user = Auth.getUser();
         if (user && user.is_premium) {
             document.getElementById('navDashboard').style.display = 'inline-flex';
             document.getElementById('btnMyVideos').style.display = 'inline-flex';

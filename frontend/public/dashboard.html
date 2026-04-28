@@ -375,11 +375,15 @@
                 return;
             }
 
-            const currentUser = Auth.getUser();
-            if (!currentUser?.is_premium) {
-                window.location.href = 'chat.html';
+            if (!Auth.requirePremiumPage({
+                title: 'Dashboard Premium',
+                message: 'Para acessar o Dashboard, ative o plano Premium.',
+                backHref: 'chat.html'
+            })) {
                 return;
             }
+
+            const currentUser = Auth.getUser();
             document.getElementById('premiumVideosLink').style.display = 'flex';
 
             const content = document.getElementById('dashboardContent');

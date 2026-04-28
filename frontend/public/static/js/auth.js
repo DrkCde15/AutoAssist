@@ -311,6 +311,130 @@ const Auth = (() => {
     window.location.href = checkoutUrl;
   }
 
+  function closePremiumPaywall() {
+    const overlay = document.getElementById("autoassist-premium-overlay");
+    if (overlay) overlay.remove();
+  }
+
+  function showPremiumPaywall(options = {}) {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("autoassist-premium-overlay")) return;
+
+    const title = options.title || "Recurso Premium";
+    const message =
+      options.message ||
+      "Este recurso esta disponivel apenas para usuarios Premium.";
+    const showBackButton = options.showBackButton !== false;
+    const backHref = options.backHref || "chat.html";
+
+    const styleId = "autoassist-premium-style";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        .autoassist-premium-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.55);
+          z-index: 10000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .autoassist-premium-modal {
+          width: 100%;
+          max-width: 420px;
+          background: #111827;
+          color: #f9fafb;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+          padding: 22px;
+        }
+        .autoassist-premium-title {
+          margin: 0 0 8px 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+        }
+        .autoassist-premium-text {
+          margin: 0 0 18px 0;
+          color: #d1d5db;
+          line-height: 1.5;
+        }
+        .autoassist-premium-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+          flex-wrap: wrap;
+        }
+        .autoassist-premium-btn {
+          border: 0;
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .autoassist-premium-btn-pay {
+          background: #0f766e;
+          color: #ffffff;
+        }
+        .autoassist-premium-btn-back {
+          background: #374151;
+          color: #f9fafb;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "autoassist-premium-overlay";
+    overlay.className = "autoassist-premium-overlay";
+    overlay.innerHTML = `
+      <div class="autoassist-premium-modal" role="dialog" aria-modal="true" aria-label="Premium">
+        <h2 class="autoassist-premium-title">${title}</h2>
+        <p class="autoassist-premium-text">${message}</p>
+        <div class="autoassist-premium-actions">
+          ${showBackButton ? '<button type="button" class="autoassist-premium-btn autoassist-premium-btn-back" id="autoassist-premium-back">Voltar</button>' : ""}
+          <button type="button" class="autoassist-premium-btn autoassist-premium-btn-pay" id="autoassist-premium-pay">Pagar</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const payBtn = document.getElementById("autoassist-premium-pay");
+    const backBtn = document.getElementById("autoassist-premium-back");
+    if (payBtn) {
+      payBtn.addEventListener("click", async () => {
+        payBtn.disabled = true;
+        const original = payBtn.textContent;
+        payBtn.textContent = "Abrindo checkout...";
+        try {
+          await openPremiumCheckout();
+        } catch (err) {
+          alert(err.message || "Nao foi possivel abrir o checkout premium.");
+          payBtn.disabled = false;
+          payBtn.textContent = original;
+        }
+      });
+    }
+
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        closePremiumPaywall();
+        window.location.href = backHref;
+      });
+    }
+  }
+
+  function requirePremiumPage(options = {}) {
+    const user = getUser();
+    if (user && user.is_premium) return true;
+    showPremiumPaywall(options);
+    return false;
+  }
+
   function ensurePremiumModal() {
     if (typeof document === "undefined") return;
     if (!isAuthenticated()) return;
@@ -377,6 +501,9 @@ const Auth = (() => {
     getAccessToken,
     authenticatedFetch,
     saveSession,
+    showPremiumPaywall,
+    closePremiumPaywall,
+    requirePremiumPage,
     ensurePremiumModal,
     openPremiumCheckout,
     Cache,

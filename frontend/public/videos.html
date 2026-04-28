@@ -387,11 +387,14 @@
                 return;
             }
 
-            const currentUser = Auth.getUser();
-            if (!currentUser?.is_premium) {
-                window.location.href = 'chat.html';
+            if (!Auth.requirePremiumPage({
+                title: 'Biblioteca de Videos Premium',
+                message: 'Para acessar seus videos, ative o plano Premium.',
+                backHref: 'chat.html'
+            })) {
                 return;
             }
+            const currentUser = Auth.getUser();
             document.getElementById('premiumDashboardLink').style.display = 'flex';
             loadVideos();
         });
