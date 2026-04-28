@@ -3,7 +3,7 @@ import logging
 from datetime import timedelta
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
@@ -129,6 +129,30 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(pages_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(gateway_bp)
+
+
+@app.route("/api/<path:_>", methods=["OPTIONS"])
+@app.route("/pagamentos/<path:_>", methods=["OPTIONS"])
+def cors_preflight(_):
+    """
+    Resposta explicita de preflight para evitar bloqueios CORS/PNA quando
+    o frontend HTTPS chama backend local HTTP (localhost).
+    """
+    origin = (request.headers.get("Origin") or "").strip()
+    origin_allowed = origin in allowed_origins or origin.endswith(".github.io")
+
+    response = make_response("", 204)
+    if origin_allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+
+    response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
+    response.headers["Access-Control-Allow-Headers"] = ", ".join(allowed_headers)
+
+    if request.headers.get("Access-Control-Request-Private-Network") == "true":
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+
+    return response
 
 
 if __name__ == "__main__":
