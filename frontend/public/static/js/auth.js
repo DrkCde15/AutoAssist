@@ -325,7 +325,7 @@ const Auth = (() => {
       options.message ||
       "Este recurso esta disponivel apenas para usuarios Premium.";
     const showBackButton = options.showBackButton !== false;
-    const backHref = options.backHref || "chat.html";
+    const backHref = options.backHref || "index.html";
 
     const styleId = "autoassist-premium-style";
     if (!document.getElementById(styleId)) {
@@ -335,7 +335,10 @@ const Auth = (() => {
         .autoassist-premium-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.55);
+          background:
+            radial-gradient(circle at top right, rgba(16, 185, 129, 0.18), transparent 45%),
+            rgba(2, 6, 23, 0.78);
+          backdrop-filter: blur(5px);
           z-index: 10000;
           display: flex;
           align-items: center;
@@ -344,44 +347,73 @@ const Auth = (() => {
         }
         .autoassist-premium-modal {
           width: 100%;
-          max-width: 420px;
-          background: #111827;
-          color: #f9fafb;
-          border-radius: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-          padding: 22px;
+          max-width: 460px;
+          background: linear-gradient(180deg, #0f172a 0%, #0b1224 100%);
+          color: #f8fafc;
+          border-radius: 18px;
+          border: 1px solid rgba(148, 163, 184, 0.28);
+          box-shadow:
+            0 26px 64px rgba(2, 6, 23, 0.52),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          padding: 24px;
+          transform: translateY(6px);
+          animation: premium-pop 0.25s ease-out forwards;
+        }
+        @keyframes premium-pop {
+          to { transform: translateY(0); }
+        }
+        .autoassist-premium-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          background: rgba(16, 185, 129, 0.16);
+          border: 1px solid rgba(16, 185, 129, 0.35);
+          color: #6ee7b7;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
         }
         .autoassist-premium-title {
-          margin: 0 0 8px 0;
-          font-size: 1.2rem;
+          margin: 0 0 10px 0;
+          font-size: 1.42rem;
           font-weight: 700;
+          letter-spacing: -0.3px;
         }
         .autoassist-premium-text {
-          margin: 0 0 18px 0;
-          color: #d1d5db;
-          line-height: 1.5;
+          margin: 0 0 20px 0;
+          color: #cbd5e1;
+          line-height: 1.62;
         }
         .autoassist-premium-actions {
           display: flex;
-          gap: 10px;
-          justify-content: flex-end;
-          flex-wrap: wrap;
+          gap: 12px;
+          justify-content: space-between;
         }
         .autoassist-premium-btn {
           border: 0;
-          border-radius: 10px;
-          padding: 10px 14px;
+          border-radius: 12px;
+          padding: 11px 15px;
           font-weight: 600;
           cursor: pointer;
+          min-width: 120px;
+          transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+        }
+        .autoassist-premium-btn:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.03);
         }
         .autoassist-premium-btn-pay {
-          background: #0f766e;
+          background: linear-gradient(135deg, #059669, #0f766e);
           color: #ffffff;
+          box-shadow: 0 10px 22px rgba(5, 150, 105, 0.28);
         }
         .autoassist-premium-btn-back {
-          background: #374151;
-          color: #f9fafb;
+          background: rgba(51, 65, 85, 0.58);
+          color: #e2e8f0;
+          border: 1px solid rgba(148, 163, 184, 0.32);
         }
       `;
       document.head.appendChild(style);
@@ -392,6 +424,7 @@ const Auth = (() => {
     overlay.className = "autoassist-premium-overlay";
     overlay.innerHTML = `
       <div class="autoassist-premium-modal" role="dialog" aria-modal="true" aria-label="Premium">
+        <div class="autoassist-premium-badge">Plano Premium</div>
         <h2 class="autoassist-premium-title">${title}</h2>
         <p class="autoassist-premium-text">${message}</p>
         <div class="autoassist-premium-actions">
@@ -471,63 +504,16 @@ const Auth = (() => {
       showPremiumPaywall({
         title: "Recurso Premium",
         message: "Para acessar esta pagina, ative o plano Premium.",
-        backHref: "chat.html",
+        backHref: "index.html",
       });
     });
   }
 
   function ensurePremiumModal() {
-    if (typeof document === "undefined") return;
-    if (!isAuthenticated()) return;
-
-    const user = getUser();
-    if (!user || user.is_premium) return;
-    if (document.getElementById("autoassist-upgrade-btn")) return;
-
-    const styleId = "autoassist-upgrade-style";
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.textContent = `
-        .autoassist-upgrade-btn {
-          position: fixed;
-          right: 18px;
-          bottom: 18px;
-          z-index: 9999;
-          border: 0;
-          border-radius: 999px;
-          padding: 12px 18px;
-          background: #0f766e;
-          color: #ffffff;
-          font-weight: 700;
-          cursor: pointer;
-          box-shadow: 0 8px 20px rgba(15, 118, 110, 0.28);
-        }
-        .autoassist-upgrade-btn:hover { filter: brightness(1.05); }
-      `;
-      document.head.appendChild(style);
-    }
-
-    const btn = document.createElement("button");
-    btn.id = "autoassist-upgrade-btn";
-    btn.className = "autoassist-upgrade-btn";
-    btn.type = "button";
-    btn.textContent = "Ativar Premium";
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      const original = btn.textContent;
-      btn.textContent = "Abrindo checkout...";
-      try {
-        await openPremiumCheckout();
-      } catch (err) {
-        alert(err.message || "Nao foi possivel abrir o checkout premium.");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = original;
-      }
-    });
-
-    document.body.appendChild(btn);
+    // Mantido para compatibilidade com paginas que chamam este metodo.
+    // O CTA flutuante foi removido; agora usamos apenas modal contextual.
+    const oldBtn = document.getElementById("autoassist-upgrade-btn");
+    if (oldBtn) oldBtn.remove();
   }
 
   // Ativa o guard global para cliques em links premium.
