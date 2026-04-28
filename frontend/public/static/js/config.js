@@ -18,6 +18,7 @@
 const CONFIG = (() => {
   const FLASK_URL_DEV  = "http://localhost:5000";
   const FLASK_URL_PROD = "https://autoassis.onrender.com";
+  const API_OVERRIDE_KEY = "autoassist_api_url_override";
 
   const isLocal =
     window.location.hostname === "localhost" ||
@@ -25,9 +26,18 @@ const CONFIG = (() => {
   const isNextDev = isLocal && window.location.port === "3000";
   const isFlaskSameOrigin = isLocal && window.location.port === "5000";
 
+  const query = new URLSearchParams(window.location.search);
+  const queryApi = (query.get("api") || "").trim();
+  if (queryApi) {
+    localStorage.setItem(API_OVERRIDE_KEY, queryApi);
+  }
+  const overrideApi = (localStorage.getItem(API_OVERRIDE_KEY) || "").trim();
+
   return {
-    API_URL: isLocal
-      ? (isNextDev || isFlaskSameOrigin ? "" : FLASK_URL_DEV)
-      : FLASK_URL_PROD,
+    API_URL: overrideApi || (
+      isLocal
+        ? (isNextDev || isFlaskSameOrigin ? "" : FLASK_URL_DEV)
+        : FLASK_URL_PROD
+    ),
   };
 })();

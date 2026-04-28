@@ -91,6 +91,10 @@ def ensure_cors_headers(response):
         response.headers.setdefault("Vary", "Origin")
         response.headers.setdefault("Access-Control-Allow-Methods", ", ".join(allowed_methods))
         response.headers.setdefault("Access-Control-Allow-Headers", ", ".join(allowed_headers))
+        # Necessario para requests de paginas publicas HTTPS para backend local
+        # (Private Network Access preflight no Chrome).
+        if request.headers.get("Access-Control-Request-Private-Network") == "true":
+            response.headers.setdefault("Access-Control-Allow-Private-Network", "true")
 
     return response
 
