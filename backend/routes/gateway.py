@@ -18,9 +18,13 @@ PAYMENT_METHOD_ALIASES = {
     "cartao-credito": "cartao_credito",
     "cartao": "cartao_credito",
     "credito": "cartao_credito",
+    "cartaocredito": "cartao_credito",
     "picpay": "picpay",
+    "pic-pay": "picpay",
     "apple_pay": "apple_pay",
     "apple-pay": "apple_pay",
+    "applepay": "apple_pay",
+    "googlepay": "google_pay",
     "google_pay": "google_pay",
     "google-pay": "google_pay",
 }
