@@ -51,15 +51,14 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
         msg.attach(MIMEText(html_final, 'html'))
 
         # Envio via SMTP Gmail
-        print(f"--- Tentando enviar email via SMTP para: {destinatario} ---")
+        print(f"--- Tentando enviar email para: {destinatario} ---")
         
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(EMAIL_REMETENTE, EMAIL_SENHA_APP)
             server.send_message(msg)
-            
-        print(f"✅ E-mail enviado com sucesso via SMTP!")
-        return True
+
+        return True, "E-mail enviado com sucesso via SMTP!"
     except Exception as e:
         print(f"❌ Erro ao enviar e-mail via SMTP: {e}")
         return False

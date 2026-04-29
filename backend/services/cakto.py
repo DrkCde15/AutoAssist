@@ -43,6 +43,7 @@ class CaktoService:
         user_id: str,
         user_email: str | None = None,
         provided_url: str | None = None,
+        payment_method: str | None = None,
     ) -> str:
         base_url = (provided_url or self.default_checkout_url or "").strip()
         if not base_url:
@@ -59,6 +60,8 @@ class CaktoService:
         query_items.setdefault("user_ref", str(user_id))
         if user_email:
             query_items.setdefault("email", user_email)
+        if payment_method:
+            query_items.setdefault("payment_method", str(payment_method).strip().lower())
 
         new_query = urlencode(query_items)
         return urlunparse(
