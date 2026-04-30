@@ -1,4 +1,4 @@
-﻿# Documentacao Consolidada da API Cakto
+# Documentacao Consolidada da API Cakto
 
 ## 1) Visao geral da API
 
@@ -135,8 +135,8 @@ No historico de eventos de webhook, aparece payload com estrutura:
 
 A navegacao oficial mostra tambem:
 - Pedidos:
-  - `GET` Listar Pedidos
-  - `GET` Obter Pedido
+  - `GET /public_api/orders/` (Listar Pedidos)
+  - `GET /public_api/orders/{id}/` (Obter Pedido - usado na validacao ativa do webhook)
   - `POST` Reembolsar Pedido
   - `POST` Reenviar Email de Aprovacao
   - `POST` Reenviar Acesso
@@ -155,28 +155,29 @@ Observacao: os detalhes completos desses grupos (body, filtros e respostas) nao 
 
 ## 8) Como isso conversa com o AutoAssist (estado atual)
 
-No projeto AutoAssist, o fluxo atual esta assim:
-- Checkout do usuario: via `CAKTO_CHECKOUT_URL` (link de pagamento)
-- Ativacao premium: via webhook recebido no backend
-- Seguranca webhook: validacao de `CAKTO_WEBHOOK_SECRET`
+No projeto AutoAssist, o fluxo de pagamento funciona assim:
+- Checkout do usuario: redirecionado via `CAKTO_CHECKOUT_URL` (link de pagamento parametrizado)
+- Recebimento: via webhook recebido na rota `/api/pay/webhook/cakto`
+- Seguranca 1: validacao de assinatura basica via `CAKTO_WEBHOOK_SECRET`
+- Seguranca 2 (Hardening): **Validacao ativa na API da Cakto** consultando o status real da transacao.
 
 Campos de ambiente usados no projeto:
-- `CLIENT_ID`
-- `CLIENT_SECRET`
+- `CLIENT_ID` e `CLIENT_SECRET` (para autenticacao OAuth2 na Cakto)
 - `CAKTO_CHECKOUT_URL`
 - `CAKTO_WEBHOOK_SECRET`
 - `CAKTO_APPEND_REF`
 - `CAKTO_ACCEPT_QUERY_SECRET`
-- `BASE_URL` (quando necessario para chamadas da API)
+- `BASE_URL` (para uso geral da aplicacao)
 
-## 9) Recomendacao de hardening (proximo passo)
+## 9) Hardening Implementado (Validacao Ativa)
 
-Para confirmacao ativa antes de liberar premium:
-1. Receber webhook
-2. Obter `access_token` com `CLIENT_ID/CLIENT_SECRET`
-3. Consultar pedido/assinatura na API Cakto
-4. Validar status final (`paid`/`approved`/assinatura ativa)
-5. So entao atualizar `users.is_premium`
+Para garantir seguranca total e evitar fraudes de webhooks falsos, o AutoAssist implementou a verificacao ativa do pagamento (Double Check) na classe `CaktoService`:
+1. Recebe o webhook informando aprovacao (ex: `purchase_approved`).
+2. Extrai o ID da transacao (ID do pedido).
+3. Obtem um `access_token` em tempo real enviando `CLIENT_ID` e `CLIENT_SECRET` para `POST /public_api/token/`.
+4. Consulta diretamente a API oficial da Cakto em `GET /public_api/orders/{id}/`.
+5. Valida se o status retornado pela resposta segura e realmente `paid` ou `approved`.
+6. Somente se o status for confirmado com a fonte da verdade, o usuario e ativado como premium no banco de dados.
 
 ## 10) Links oficiais usados nesta consolidacao
 

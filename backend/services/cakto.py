@@ -36,6 +36,10 @@ class CaktoService:
             (os.getenv("CAKTO_APPEND_REF") or "1").strip().lower()
             not in {"0", "false", "no", "off"}
         )
+        self.client_id = (os.getenv("CLIENT_ID") or "").strip()
+        self.client_secret = (os.getenv("CLIENT_SECRET") or "").strip()
+        self.api_base_url = "https://api.cakto.com.br"
+        self._access_token = None
 
     def build_checkout_url(
         self,
@@ -67,6 +71,62 @@ class CaktoService:
         return urlunparse(
             (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment)
         )
+
+    def get_access_token(self) -> str:
+        if self._access_token:
+            return self._access_token
+
+        if not self.client_id or not self.client_secret:
+            logger.error("CLIENT_ID ou CLIENT_SECRET nao configurados.")
+            raise ValueError("Credenciais da API da Cakto nao configuradas.")
+
+        import requests
+        url = f"{self.api_base_url}/public_api/token/"
+        payload = {
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "grant_type": "client_credentials" # Padrao OAuth2 se exigido, mas enviaremos todos os campos necessarios
+        }
+        
+        try:
+            response = requests.post(url, data=payload, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            self._access_token = data.get("access_token")
+            return self._access_token
+        except requests.RequestException as e:
+            logger.error("Falha ao obter access token da Cakto: %s", e)
+            raise ValueError("Erro ao autenticar na API da Cakto.")
+
+    def verify_transaction_status(self, transaction_id: str) -> bool:
+        """Faz a consulta ativa do pedido na Cakto para confirmar o status."""
+        if not transaction_id:
+            return False
+
+        try:
+            token = self.get_access_token()
+            import requests
+            url = f"{self.api_base_url}/public_api/orders/{transaction_id}/" # Assumindo endpoint padrao de pedido
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 404:
+                logger.warning("Pedido %s nao encontrado na API Cakto.", transaction_id)
+                return False
+                
+            response.raise_for_status()
+            data = response.json()
+            
+            # Ajuste dependendo da estrutura real de retorno, tipicamente retorna o obj do pedido
+            status = str(data.get("status") or "").strip().lower()
+            return status in {"paid", "approved"}
+            
+        except Exception as e:
+            logger.error("Erro ao validar transacao %s na Cakto: %s", transaction_id, e)
+            return False
 
     @staticmethod
     def extract_event(payload: dict) -> str:

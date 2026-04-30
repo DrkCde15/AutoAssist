@@ -144,6 +144,24 @@ def cakto_webhook():
     if not should_activate and not should_deactivate:
         return jsonify(success=True, message="Evento recebido sem acao de premium."), 200
 
+    if should_activate:
+        transaction_id = data.get("id")
+        if not transaction_id:
+            logger.warning("Hardening Cakto: Nenhum ID de transacao no webhook para validacao ativa.")
+            return jsonify(success=False, error="ID de transacao ausente no payload."), 400
+            
+        try:
+            is_really_paid = service.verify_transaction_status(transaction_id)
+            if not is_really_paid:
+                logger.warning("Hardening Cakto: Transacao %s divergente (nao paga na API).", transaction_id)
+                return jsonify(success=False, error="Pagamento nao confirmado na consulta a API."), 400
+        except ValueError as e:
+            logger.error("Credenciais invalidas/ausentes na verificacao Cakto: %s", e)
+            return jsonify(success=False, error="Erro de configuracao na API de pagamentos."), 500
+        except Exception as e:
+            logger.error("Erro inesperado na validacao ativa Cakto: %s", e)
+            return jsonify(success=False, error="Falha ao consultar API da Cakto."), 500
+
     target_state = True if should_activate else False
     user_id = service.extract_reference_user_id(payload)
     updated = 0
