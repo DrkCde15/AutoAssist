@@ -30,7 +30,7 @@ Seja didático, use negrito para termos técnicos e emojis. Proteja o comprador.
 """
 
 # Ordem de preferência dos modelos
-MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-1.5-flash"]
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"]
 client = genai.Client(api_key=os.getenv("API_GEMINI"))
 
 def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:

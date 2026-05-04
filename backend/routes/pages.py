@@ -966,9 +966,86 @@ def chat():
 
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
             videos = []
-            # ... logic for parts/stores/youtube ...
-            # (Keeping it simple for the restore, assuming it's mostly logs and minor additions)
+            
+            termo_yt = gerar_termo_busca_youtube(msg)
+            if termo_yt:
+                try:
+                    videos_yt = buscar_videos_youtube(termo_yt)
+                    if videos_yt:
+                        videos.extend(videos_yt)
+                except Exception as e:
+                    logger.warning(f"Erro ao buscar videos: {e}")
+
+            # Salvar no histórico
+            cursor.execute(
+                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
+                (user_id, msg, resposta, json.dumps(videos))
+            )
+            conn.commit()
+
             return jsonify(response=resposta, videos=videos)
     except Exception as e:
         logger.error(f"Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno"), 500
+
+@pages_bp.route("/api/voice", methods=["POST"])
+@jwt_required()
+def handle_voice():
+    user_id = get_jwt_identity()
+    if 'audio' not in request.files:
+        return jsonify(error="Nenhum áudio recebido"), 400
+        
+    audio_file = request.files['audio']
+    img_b64 = request.form.get("image")
+    
+    try:
+        # Converter webm para wav usando pydub
+        audio_segment = AudioSegment.from_file(audio_file, format="webm")
+        wav_io = io.BytesIO()
+        audio_segment.export(wav_io, format="wav")
+        wav_io.seek(0)
+        
+        # Reconhecimento de fala
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(wav_io) as source:
+            audio_data = recognizer.record(source)
+            
+        text = recognizer.recognize_google(audio_data, language="pt-BR")
+        
+        # Gerar resposta da IA
+        with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            if not user: return jsonify(error="Usuário não encontrado"), 404
+            
+            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
+            veiculos = cursor.fetchall()
+            if veiculos: user['lista_veiculos'] = veiculos
+
+            resposta = analisar_imagem(img_b64, text) if img_b64 else gerar_resposta(text, user_id, user_data=user)
+            videos = []
+            termo_yt = gerar_termo_busca_youtube(text)
+            if termo_yt:
+                try:
+                    videos_yt = buscar_videos_youtube(termo_yt)
+                    if videos_yt:
+                        videos.extend(videos_yt)
+                except Exception as e:
+                    logger.warning(f"Erro ao buscar videos (voz): {e}")
+
+            # Salvar no histórico
+            cursor.execute(
+                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
+                (user_id, text, resposta, json.dumps(videos))
+            )
+            conn.commit()
+            
+            return jsonify(text=text, response=resposta, videos=videos)
+            
+    except sr.UnknownValueError:
+        return jsonify(error="Não entendi o que foi falado. Pode repetir?"), 400
+    except sr.RequestError as e:
+        logger.error(f"Erro de serviço SR: {e}")
+        return jsonify(error="Erro no serviço de voz."), 500
+    except Exception as e:
+        logger.error(f"Erro na rota /api/voice: {e}")
+        return jsonify(error="Erro interno ao processar voz"), 500

@@ -127,7 +127,7 @@ def transformar_historico_gemini(historico_mysql):
     return gemini_history
 
 # Ordem de preferência dos modelos
-MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-1.5-flash"]
+MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"]
 
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
     try:
@@ -203,10 +203,11 @@ def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | Non
     """
     try:
         prompt = f"""
-        Você é um assistente que extrai termos de pesquisa do YouTube.
-        Analise a seguinte mensagem do usuário solicitando ajuda automotiva.
-        Se a mensagem pedir como consertar, trocar, verificar, identificar ou entender alguma peça ou problema no carro, gere UM termo de busca curto, direto e otimizado para o YouTube.
-        Exemplo: "como trocar pneu celta", "barulho suspensão gol G4", "o que é homocinética".
+        Você é um assistente que extrai termos de pesquisa do YouTube focados EXCLUSIVAMENTE em mecânica automotiva.
+        Analise a seguinte mensagem do usuário solicitando ajuda.
+        Se a mensagem pedir como consertar, trocar, verificar, identificar ou entender alguma peça, gere UM termo de pesquisa.
+        MUITO IMPORTANTE: O termo DEVE obrigatoriamente incluir palavras de contexto como "carro", "motor", "mecânica automotiva" ou o nome do veículo. NUNCA gere palavras soltas como "peça" ou "motor" sem contexto, para evitar resultados de músicas ou não-relacionados.
+        Exemplo: "como trocar pneu celta", "barulho suspensão gol G4", "identificar peça motor carro".
         Se for apenas uma saudação, agradecimento ou conversa genérica ("oi", "obrigado", "tchau", "bom dia"), retorne APENAS a palavra NONE.
         Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas, pontos finais ou explicações.
         
@@ -369,9 +370,9 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
             return json.loads(response.text)
         except Exception as e:
             logger.warning(f"Falha na previsão de intervalo com Gemini 2.0: {e}")
-            # Fallback para 1.5 se o 2.0 falhar
+            # Fallback se o 2.0 falhar
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-2.0-flash-lite",
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                 ),

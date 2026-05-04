@@ -758,7 +758,21 @@
         const formData = new FormData();
         formData.append("audio", blob, "voice.webm");
 
-        addMessage("Processando voz...", "msg-user");
+        const file = fileInput.files[0];
+        if (file) {
+          const reader = new FileReader();
+          const imageBase64 = await new Promise((r) => {
+            reader.onload = () => r(reader.result);
+            reader.readAsDataURL(file);
+          });
+          formData.append("image", imageBase64);
+          
+          fileInput.value = "";
+          document.getElementById("imagePreviewContainer").style.display = "none";
+          document.getElementById("imagePreviewContainer").innerHTML = "";
+        }
+
+        addMessage(`Você: [Áudio enviado]${file ? " [Imagem anexada]" : ""}`, "msg-user");
         const typingDiv = addMessage(
           '<div class="typing-indicator"><span></span><span></span><span></span></div>',
           "msg-bot",
