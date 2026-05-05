@@ -162,24 +162,66 @@
 
         /* Video Card */
         .video-card {
-            background: var(--secondary-dark);
-            border-radius: 16px;
+            background: var(--bg-card);
+            border-radius: 18px;
+            border: 1px solid var(--border);
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: 0.3s;
-            position: relative;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
         }
 
         .video-card:hover {
             transform: translateY(-5px);
-            border-color: var(--accent-blue);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
         }
 
-        .thumb-container {
+        .video-play-area {
+            height: 140px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
             position: relative;
-            aspect-ratio: 16 / 9;
             overflow: hidden;
+        }
+
+        .video-play-area::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(59, 130, 246, 0.2), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-card:hover .video-play-area::after {
+            opacity: 1;
+        }
+
+        .play-icon-wrapper {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1;
+        }
+
+        .video-card:hover .play-icon-wrapper {
+            transform: scale(1.2);
+            background: var(--accent-blue);
+            color: white;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            border-color: transparent;
         }
 
         .thumb-container img {
@@ -368,23 +410,17 @@
                     
                     // Adicionar vídeos
                     topic.videos.forEach(v => {
-                        const ytId = getYouTubeVideoId(v.url);
-                        const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : 'static/placeholder.jpg';
                         
                         mediaItems.push(`
                             <div class="video-card">
-                                <a href="${v.url}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; color:inherit;">
-                                    <div class="thumb-container">
-                                        <img src="${thumb}" alt="${v.titulo}">
-                                        <div class="play-overlay">
-                                            <i class="fas fa-play"></i>
-                                            <span>Assistir no YouTube</span>
-                                        </div>
-                                    </div>
-                                    <div class="video-info">
-                                        <div class="video-title">${v.titulo}</div>
+                                <a href="${v.url}" target="_blank" class="video-play-area">
+                                    <div class="play-icon-wrapper">
+                                        <i class="fas fa-play"></i>
                                     </div>
                                 </a>
+                                <div class="video-info">
+                                    <div class="video-title">${v.titulo}</div>
+                                </div>
                             </div>
                         `);
                     });
