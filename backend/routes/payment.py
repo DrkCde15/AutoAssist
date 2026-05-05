@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -72,26 +73,37 @@ def create_preference():
         return error_response
 
     user_email = _get_user_email(user_id)
+    order_id = str(uuid.uuid4())
 
     try:
+        # Criar pedido pendente no banco antes de gerar o checkout
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                "INSERT INTO payments_orders (id, user_id, status, provider) VALUES (%s, %s, 'pending', 'cakto')",
+                (order_id, user_id)
+            )
+            conn.commit()
+
+        # Passar o order_id interno como referência para a Cakto
         checkout_url = service.build_checkout_url(
             user_id=user_id,
             user_email=user_email,
             provided_url=body.get("checkout_url"),
+            internal_order_id=order_id
         )
-    except ValueError as exc:
+    except Exception as exc:
+        logger.error(f"Erro ao criar checkout: {exc}")
         return jsonify(success=False, error=str(exc)), 400
 
     return jsonify(
         success=True,
         message="Checkout Cakto gerado com sucesso.",
         checkout_url=checkout_url,
-        data={"checkout_url": checkout_url},
+        data={"checkout_url": checkout_url, "order_id": order_id},
     ), 201
 
 
 @payment_bp.route("/api/pay/confirm", methods=["POST"])
-@payment_bp.route("/api/pay/mock", methods=["POST"])
 @jwt_required()
 def confirm_payment():
     user_id = str(get_jwt_identity())
@@ -163,13 +175,32 @@ def cakto_webhook():
             return jsonify(success=False, error="Falha ao consultar API da Cakto."), 500
 
     target_state = True if should_activate else False
-    user_id = service.extract_reference_user_id(payload)
-    updated = 0
+    # Extrair ID do pedido interno que enviamos no checkout
+    internal_order_id = service.extract_reference_user_id(payload) 
+    user_id = None
+    
+    if internal_order_id:
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT user_id, status FROM payments_orders WHERE id = %s", (internal_order_id,))
+            order = cursor.fetchone()
+            
+            if order:
+                user_id = order["user_id"]
+                # Atualizar status do pedido interno
+                new_status = "approved" if should_activate else "revoked"
+                cursor.execute(
+                    "UPDATE payments_orders SET status = %s, provider_order_id = %s WHERE id = %s",
+                    (new_status, data.get("id"), internal_order_id)
+                )
+                conn.commit()
+            else:
+                logger.warning(f"Webhook Cakto: Pedido interno {internal_order_id} nao encontrado.")
 
+    updated = 0
     if user_id:
         updated = _set_premium_by_user_id(user_id, target_state)
-
-    if updated == 0:
+    else:
+        # Fallback por email se falhar o ID do pedido (mantido por retrocompatibilidade se necessario)
         email = service.extract_customer_email(payload)
         if email:
             updated = _set_premium_by_email(email, target_state)
@@ -183,10 +214,10 @@ def cakto_webhook():
         return jsonify(success=False, error="Usuario nao encontrado para este evento."), 404
 
     logger.info(
-        "Webhook Cakto processado | event=%s status=%s premium=%s registros=%s",
+        "Webhook Cakto processado | event=%s status=%s premium=%s order=%s",
         event,
         status,
         target_state,
-        updated,
+        internal_order_id,
     )
     return jsonify(success=True, premium=target_state, updated=updated), 200

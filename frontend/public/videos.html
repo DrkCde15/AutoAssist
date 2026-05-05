@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>Vídeos - AutoAssist</title>
     <link rel="icon" type="image/png" href="static/logo2.png">
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet" crossorigin="anonymous">
 
     <style>
         :root {
@@ -405,6 +403,16 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
+        function escapeHTML(str) {
+            if (!str) return "";
+            return str.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         async function loadVideos() {
             const grid = document.getElementById('videosGrid');
             const loading = document.getElementById('loadingVideos');
@@ -431,10 +439,18 @@
                     const ytId = getYouTubeVideoId(video.url);
                     const embedUrl = ytId ? `https://www.youtube.com/embed/${ytId}` : null;
                     
+                    const safeTitle = escapeHTML(video.titulo);
+                    const safeDesc = escapeHTML(video.descricao || 'Sem descrição.');
+                    const safeUrl = escapeHTML(video.url);
+                    
+                    // Garantir que a URL é segura (http/https)
+                    const isSafeUrl = video.url.startsWith('http://') || video.url.startsWith('https://');
+                    const finalUrl = isSafeUrl ? safeUrl : '#';
+
                     const mediaContent = embedUrl 
                         ? `<iframe src="${embedUrl}" allowfullscreen></iframe>`
                         : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#111827;color:var(--text-gray);text-align:center;padding:20px;">
-                             <span><i class="fas fa-external-link-alt" style="font-size:24px;margin-bottom:10px;display:block;"></i>Link Externo<br><a href="${video.url}" target="_blank" style="color:var(--accent-blue);font-size:12px;margin-top:5px;display:block;word-break:break-all;">Acessar</a></span>
+                             <span><i class="fas fa-external-link-alt" style="font-size:24px;margin-bottom:10px;display:block;"></i>Link Externo<br><a href="${finalUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue);font-size:12px;margin-top:5px;display:block;word-break:break-all;">Acessar</a></span>
                            </div>`;
 
                     return `
@@ -443,8 +459,8 @@
                                 ${mediaContent}
                             </div>
                             <div class="video-info">
-                                <div class="video-title">${video.titulo}</div>
-                                <div class="video-desc">${video.descricao || 'Sem descrição.'}</div>
+                                <div class="video-title">${safeTitle}</div>
+                                <div class="video-desc">${safeDesc}</div>
                                 <div class="video-actions">
                                     <button class="btn-delete" onclick="deleteVideo(${video.id})">
                                         <i class="fas fa-trash"></i> Remover

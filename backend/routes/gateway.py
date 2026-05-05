@@ -1,5 +1,6 @@
-﻿import logging
+import logging
 
+from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -183,6 +184,18 @@ def criar_google_pay():
 @gateway_bp.route("/payments/<payment_id>/reembolso", methods=["POST"])
 @jwt_required()
 def reembolsar(payment_id: str):
+    user_id = get_jwt_identity()
+    with get_db() as (cursor, conn):
+        cursor.execute("SELECT is_admin FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+    
+    if not user or not user.get("is_admin"):
+        logger.warning(f"Tentativa de reembolso nao autorizada: user_id={user_id}, payment_id={payment_id}, ip={request.remote_addr}")
+        return _bad("Acesso negado. Apenas administradores podem realizar reembolsos.", 403)
+
+    # Auditoria
+    logger.info(f"SOLICITACAO DE REEMBOLSO: admin_id={user_id}, payment_id={payment_id}, ip={request.remote_addr}, timestamp={datetime.now()}")
+
     return _bad(
         "Reembolso automatico nao disponivel nesta integracao. Faca pelo painel da Cakto.",
         410,

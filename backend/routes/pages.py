@@ -4,8 +4,9 @@ import html
 import logging
 import threading
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
+import uuid
 import speech_recognition as sr
 from pydub import AudioSegment
 from services.nogai import (
@@ -791,9 +792,12 @@ def dispatch_maintenance_email_batch():
     if auth_header.lower().startswith("bearer "):
         bearer_secret = auth_header[7:].strip()
 
+    import secrets
     if not cron_secret:
         return jsonify(error="MAINTENANCE_EMAIL_CRON_SECRET nao configurado"), 500
-    if cron_secret not in (sent_secret, bearer_secret):
+    
+    is_valid = secrets.compare_digest(cron_secret, sent_secret) or secrets.compare_digest(cron_secret, bearer_secret)
+    if not is_valid:
         return jsonify(error="Nao autorizado"), 401
 
     payload = request.get_json(silent=True) or {}
@@ -950,8 +954,11 @@ def delete_video(video_id):
         logger.error(f"Erro ao excluir video: {e}")
         return jsonify(error="Erro interno"), 500
 
+from extensions import limiter
+
 @pages_bp.route("/api/chat", methods=["POST"])
 @jwt_required()
+@limiter.limit("20 per hour")
 def chat():
     user_id = get_jwt_identity()
     data = request.get_json()
@@ -1049,3 +1056,58 @@ def handle_voice():
     except Exception as e:
         logger.error(f"Erro na rota /api/voice: {e}")
         return jsonify(error="Erro interno ao processar voz"), 500
+
+@pages_bp.route("/api/report", methods=["POST"])
+@jwt_required()
+def generate_report():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    text = data.get("text")
+
+    if not text:
+        return jsonify(error="Texto da análise é obrigatório"), 400
+
+    try:
+        with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
+            # Criar diretório seguro se não existir
+            secure_reports_dir = os.path.join(current_app.root_path, "secure_reports")
+            if not os.path.exists(secure_reports_dir):
+                os.makedirs(secure_reports_dir)
+
+            # Nome de arquivo único e imprevisível
+            filename = f"report_{user_id}_{uuid.uuid4().hex}.pdf"
+            filepath = os.path.join(secure_reports_dir, filename)
+
+            # Gerar o PDF
+            success = criar_relatorio_pdf(user, text, filepath)
+            
+            if success:
+                # Retornar URL da rota que serve o arquivo (com auth)
+                return jsonify(url=f"/api/report/{filename}"), 200
+            else:
+                return jsonify(error="Erro ao gerar relatório"), 500
+    except Exception as e:
+        logger.error(f"Erro ao gerar relatório: {e}")
+        return jsonify(error="Erro interno ao gerar relatório"), 500
+
+@pages_bp.route("/api/report/<filename>", methods=["GET"])
+@jwt_required()
+def serve_report(filename):
+    user_id = str(get_jwt_identity())
+    
+    # Segurança básica contra Path Traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return jsonify(error="Nome de arquivo inválido"), 400
+    
+    # Verificar se o arquivo pertence ao usuário (prefixo report_USERID_)
+    if not filename.startswith(f"report_{user_id}_"):
+        logger.warning(f"Tentativa de IDOR: Usuário {user_id} tentou acessar {filename}")
+        return jsonify(error="Acesso negado"), 403
+
+    secure_reports_dir = os.path.join(current_app.root_path, "secure_reports")
+    return send_from_directory(secure_reports_dir, filename)

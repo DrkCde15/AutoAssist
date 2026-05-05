@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>AutoAssist - Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
         :root {
             --primary: #1a1a1a;
@@ -412,6 +411,16 @@
             }
         });
 
+        function escapeHTML(str) {
+            if (!str) return "";
+            return str.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function renderDashboard(data) {
             const content = document.getElementById('dashboardContent');
             const icons = {'moto': 'fa-motorcycle', 'caminhao': 'fa-truck', 'aviao': 'fa-plane', 'navio': 'fa-ship', 'geral': 'fa-car'};
@@ -419,14 +428,21 @@
 
             data.forEach((item, index) => {
                 const iconClass = icons[item.veiculo.tipo] || 'fa-car';
+                const marca = escapeHTML(item.veiculo.marca);
+                const modelo = escapeHTML(item.veiculo.modelo);
+                const ano = escapeHTML(item.veiculo.ano_fabricacao || item.veiculo.ano || '---');
+                const km = item.veiculo.quilometragem ? item.veiculo.quilometragem.toLocaleString() : '---';
+                const fipeValor = escapeHTML(item.fipe ? (item.fipe.Valor || item.fipe.preco || '---') : '---');
+                const fipeRef = escapeHTML(item.fipe ? (item.fipe.MesReferencia || item.fipe.mes || '---') : '---');
+
                 htmlBuilder += `
                 <div class="vehicle-card">
                     <div class="vehicle-icon"><i class="fas ${iconClass}"></i></div>
                     <div class="vehicle-info">
-                        <h2>${item.veiculo.marca} ${item.veiculo.modelo}</h2>
+                        <h2>${marca} ${modelo}</h2>
                         <div class="vehicle-meta">
-                            <span><i class="fas fa-calendar"></i> Ano: ${item.veiculo.ano_fabricacao || item.veiculo.ano || '---'}</span>
-                            <span><i class="fas fa-tachometer-alt"></i> ${item.veiculo.quilometragem ? item.veiculo.quilometragem.toLocaleString() + ' km' : '---'}</span>
+                            <span><i class="fas fa-calendar"></i> Ano: ${ano}</span>
+                            <span><i class="fas fa-tachometer-alt"></i> ${km} km</span>
                         </div>
                     </div>
                 </div>
@@ -437,8 +453,8 @@
                             <div class="stat-card-icon"><i class="fas fa-chart-line"></i></div>
                             <div class="stat-card-title">Valor de Mercado (FIPE)</div>
                         </div>
-                        <div class="stat-value">${item.fipe ? (item.fipe.Valor || item.fipe.preco || '---') : '---'}</div>
-                        <p class="stat-subtitle">Referência: ${item.fipe ? (item.fipe.MesReferencia || item.fipe.mes || '---') : '---'}</p>
+                        <div class="stat-value">${fipeValor}</div>
+                        <p class="stat-subtitle">Referência: ${fipeRef}</p>
                     </div>
 
                     <div class="stat-card">
@@ -447,15 +463,21 @@
                             <div class="stat-card-title">Estado de Conservação</div>
                         </div>
                         <div id="alertsList">
-                            ${item.saude.map(alert => `
-                                <div class="alert-item">
-                                    <div class="alert-content">
-                                        <div class="alert-title">${alert.item}</div>
-                                        <div class="alert-desc">${alert.msg}</div>
+                            ${item.saude.map(alert => {
+                                const alertItem = escapeHTML(alert.item);
+                                const alertMsg = escapeHTML(alert.msg);
+                                const alertStatus = escapeHTML(alert.status);
+                                const badgeClass = `badge-${alertStatus.toLowerCase()}`;
+                                return `
+                                    <div class="alert-item">
+                                        <div class="alert-content">
+                                            <div class="alert-title">${alertItem}</div>
+                                            <div class="alert-desc">${alertMsg}</div>
+                                        </div>
+                                        <span class="alert-badge ${badgeClass}">${alertStatus}</span>
                                     </div>
-                                    <span class="alert-badge badge-${alert.status.toLowerCase()}">${alert.status}</span>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                         <a href="chat.html" class="btn-action"><i class="fas fa-comments"></i> Consultar sobre estes itens</a>
                     </div>

@@ -1,12 +1,11 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>Login • AutoAssist</title>
     <link rel="icon" type="image/png" href="static/logo2.png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
       :root {
@@ -398,7 +397,7 @@
 
       <!-- 2FA Form -->
       <form id="twoFactorForm">
-        <p>Digite sua senha secundária para verificação de segurança.</p>
+        <p>Digite o código de verificação do seu aplicativo autenticador.</p>
         
         <div class="form-group">
           <label for="twoFactorCode">Código de Verificação</label>

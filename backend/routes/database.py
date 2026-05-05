@@ -2,7 +2,7 @@ import os
 import pymysql
 import logging
 from dotenv import load_dotenv
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 from pymysql.cursors import DictCursor
 from utils.email import enviar_email
@@ -86,7 +86,8 @@ def init_db():
             ("google_id", "VARCHAR(255)"),
             ("profile_pic", "VARCHAR(500)"),
             ("maintenance_email_enabled", "BOOLEAN DEFAULT TRUE"),
-            ("maintenance_email_last_sent", "DATETIME NULL")
+            ("maintenance_email_last_sent", "DATETIME NULL"),
+            ("is_admin", "BOOLEAN DEFAULT FALSE")
         ]
         for col, dtype in columns:
             try:
@@ -179,15 +180,52 @@ def init_db():
                 FOREIGN KEY (vehicle_id) REFERENCES veiculos(id) ON DELETE SET NULL
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS payments_orders (
+                id VARCHAR(100) PRIMARY KEY,
+                user_id INT NOT NULL,
+                status VARCHAR(50) DEFAULT 'pending',
+                amount DECIMAL(10,2),
+                provider VARCHAR(50) DEFAULT 'cakto',
+                provider_order_id VARCHAR(100),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
         print("✅ Banco de dados inicializado com sucesso!")
 
 # (enviar_email removido daqui e movido para utils.email)
 
 def is_trial_expired(user):
-    return False
+    if not user or not user.get("created_at"):
+        return True
+    
+    created_at = user["created_at"]
+    if isinstance(created_at, str):
+        try:
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        except ValueError:
+            return True
+            
+    # Trial de 7 dias
+    expiry_date = created_at + timedelta(days=7)
+    return datetime.now(timezone.utc if created_at.tzinfo else None) > expiry_date
 
 def get_trial_days_remaining(user):
-    return 9999
+    if not user or not user.get("created_at"):
+        return 0
+        
+    created_at = user["created_at"]
+    if isinstance(created_at, str):
+        try:
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        except ValueError:
+            return 0
+            
+    expiry_date = created_at + timedelta(days=7)
+    delta = expiry_date - datetime.now(timezone.utc if created_at.tzinfo else None)
+    return max(0, delta.days)
 
 def is_valid_email_domain(email):
     allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com", "@testuser.com"]

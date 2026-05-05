@@ -4,12 +4,16 @@ from flask_jwt_extended import (
     create_refresh_token,
     jwt_required,
     get_jwt_identity,
-    decode_token
+    decode_token,
+    set_access_cookies,
+    set_refresh_cookies
 )
 from passlib.hash import bcrypt
 import secrets
 import os
 import logging
+import pyotp
+from extensions import limiter
 import requests
 import json
 from dataclasses import dataclass
@@ -20,12 +24,11 @@ from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_em
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
-
 def get_frontend_url() -> str:
     """Retorna a URL do frontend baseada no ambiente (FLASK_ENV)."""
     is_production = os.getenv("FLASK_ENV") == "production"
     if is_production:
-        return os.getenv("FRONTEND_URL_PROD", "https://drkcde15.github.io/AutoAssist/")
+        return os.getenv("FRONTEND_URL_PROD")
 
     # Em desenvolvimento, usa FRONTEND_URL_DEV quando configurada.
     # Caso contrário, usa a própria origem da requisição (ex.: localhost:5000),
@@ -73,21 +76,48 @@ def get_google_oauth_hosts():
 def google_login():
     hosts = get_google_oauth_hosts()
     if not hosts or not google_client:
-        logger.error("ConfiguraÃ§Ã£o Google OAuth2 ausente ou incompleta")
-        return jsonify(error="ConfiguraÃ§Ã£o do Google OAuth2 incompleta"), 500
+        logger.error("Configuração Google OAuth2 ausente ou incompleta")
+        return jsonify(error="Configuração do Google OAuth2 incompleta"), 500
+
+    state = secrets.token_urlsafe(16)
     
     authorization_url = google_client.prepare_request_uri(
         uri=hosts.authorization_endpoint,
         redirect_uri=GOOGLE_REDIRECT_URI,
-        scope=["openid", "email", "profile"]
+        scope=["openid", "email", "profile"],
+        state=state
     )
-    return redirect(authorization_url)
+    
+    from flask import make_response
+    resp = make_response(redirect(authorization_url))
+    
+    # State cookie expira em 10 minutos
+    # Só força Secure se for produção E não for localhost/127.0.0.1
+    is_prod = os.getenv("FLASK_ENV") == "production"
+    is_secure = is_prod and not (request.host.startswith("localhost") or request.host.startswith("127.0.0.1"))
+    
+    resp.set_cookie(
+        "oauth_state", 
+        state, 
+        httponly=True, 
+        secure=is_secure, 
+        samesite='Lax', 
+        max_age=600
+    )
+    return resp
 
 @auth_bp.route("/api/auth/google/callback")
 def google_callback():
     code = request.args.get("code")
+    state = request.args.get("state")
+    cookie_state = request.cookies.get("oauth_state")
+    
     hosts = get_google_oauth_hosts()
     
+    if not state or state != cookie_state:
+        logger.error(f"Estado OAuth invalido. State: {state}, Cookie: {cookie_state}")
+        return jsonify(error="Estado OAuth invÃ¡lido ou expirado. Tente novamente."), 400
+
     if not hosts or not google_client or not code:
         return jsonify(error="Dados de callback invÃ¡lidos"), 400
 
@@ -159,41 +189,50 @@ def google_callback():
         # Obter a URL do frontend do .env
         frontend_base = get_frontend_url()
         
-        # Preparar dados do usuÃ¡rio para o frontend
-        user_payload = {
-            "nome": user["nome"], 
-            "is_premium": bool(user.get("is_premium")),
-            "trial_expired": is_trial_expired(user),
-            "trial_days_remaining": get_trial_days_remaining(user),
-            "possui_veiculo": len(veiculos) > 0,
-            "veiculos": veiculos,
+        # Redirecionar para o frontend (index.html)
+        if "index.html" in frontend_base:
+            redirect_url = frontend_base
+        else:
+            base = frontend_base if frontend_base.endswith("/") else f"{frontend_base}/"
+            redirect_url = f"{base}index.html"
+            
+        # Preparar dados do usuário para o frontend
+        user_data = {
+            "id": user["id"],
+            "nome": user["nome"],
+            "email": user["email"],
+            "is_premium": bool(user["is_premium"]),
             "profile_pic": user.get("profile_pic")
         }
-
-        # Redirecionar com os tokens na URL
+        
         import urllib.parse
-        params = urllib.parse.urlencode({
+        params = {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": json.dumps(user_payload)
-        })
+            "user": json.dumps(user_data)
+        }
         
-        # Trata a URL de redirecionamento
-        if "index.html" in frontend_base:
-            separator = "&" if "?" in frontend_base else "?"
-            redirect_url = f"{frontend_base}{separator}{params}"
-        else:
-            # Garante que termina com / antes de index.html
-            base = frontend_base if frontend_base.endswith("/") else f"{frontend_base}/"
-            redirect_url = f"{base}index.html?{params}"
-            
-        return redirect(redirect_url)
+        # Constrói a URL final com os parâmetros para o auth.js processar
+        final_redirect_url = f"{redirect_url}?{urllib.parse.urlencode(params)}"
+        
+        from flask import make_response
+        resp = make_response(redirect(final_redirect_url))
+        
+        # Mantém os cookies JWT como camada extra de segurança (HttpOnly)
+        set_access_cookies(resp, access_token)
+        set_refresh_cookies(resp, refresh_token)
+        
+        # Limpa o cookie de estado
+        resp.set_cookie("oauth_state", "", expires=0)
+        
+        return resp
 
     except Exception as e:
         logger.error(f"Erro no callback do Google: {e}", exc_info=True)
         return jsonify(error="Erro interno no login Google"), 500
 
 @auth_bp.route("/api/cadastro", methods=["POST"])
+@limiter.limit("5 per hour")
 def cadastro():
     data = request.get_json()
     nome, email, password = data.get("nome"), data.get("email"), data.get("password")
@@ -239,6 +278,7 @@ def cadastro():
         return jsonify(error="Erro ao processar cadastro ou email jÃ¡ existe"), 409
 
 @auth_bp.route("/api/login", methods=["POST"])
+@limiter.limit("10 per minute")
 def login():
     data = request.get_json() or {}
     email, password = data.get("email"), data.get("password")
@@ -275,9 +315,13 @@ def login():
                 }), 200
 
             veiculos = fetch_veiculos_user(cursor, user["id"])
-            return jsonify(
-                access_token=create_access_token(identity=str(user["id"])),
-                refresh_token=create_refresh_token(identity=str(user["id"])),
+            
+            access_token = create_access_token(identity=str(user["id"]))
+            refresh_token = create_refresh_token(identity=str(user["id"]))
+            
+            resp = jsonify(
+                access_token=access_token,
+                refresh_token=refresh_token,
                 user={
                     "nome": user["nome"],
                     "is_premium": bool(user.get("is_premium")),
@@ -286,11 +330,14 @@ def login():
                     "possui_veiculo": len(veiculos) > 0,
                     "veiculos": veiculos
                 }
-            ), 200
+            )
+            set_access_cookies(resp, access_token)
+            set_refresh_cookies(resp, refresh_token)
+            return resp, 200
     except Exception as e:
         logger.error(f"❌ Erro no login: {e}")
         return jsonify(error="Erro ao processar login"), 500
-
+    
 @auth_bp.route("/api/auth/2fa/verify", methods=["POST"])
 def verify_2fa_login():
     data = request.get_json()
@@ -312,17 +359,33 @@ def verify_2fa_login():
             user = cursor.fetchone()
             
             if not user or not user["is_two_factor_enabled"]:
-                return jsonify(error="2FA nÃ£o configurado"), 400
+                return jsonify(error="2FA não configurado"), 400
                 
-            try:
-                secret_hash = user.get("two_factor_secret")
-                if not secret_hash or not bcrypt.verify(code, secret_hash):
-                    return jsonify(error="Senha secundÃ¡ria incorreta"), 401
+            secret = user.get("two_factor_secret")
+            if not secret:
+                return jsonify(error="Configuração de 2FA corrompida"), 500
                 
+            # Verificar se o segredo é um hash bcrypt (antigo) ou base32 (novo)
+            is_totp = not secret.startswith("$2") # Bcrypt hashes começam com $2
+            
+            if is_totp:
+                totp = pyotp.TOTP(secret)
+                is_valid = totp.verify(code)
+            else:
+                # Fallback para o sistema antigo de senha secundária durante a transição
+                try:
+                    is_valid = bcrypt.verify(code, secret)
+                except Exception:
+                    is_valid = False
+            
+            if is_valid:
                 veiculos = fetch_veiculos_user(cursor, user_id)
-                return jsonify(
-                    access_token=create_access_token(identity=str(user_id)),
-                    refresh_token=create_refresh_token(identity=str(user_id)),
+                access_token = create_access_token(identity=str(user_id))
+                refresh_token = create_refresh_token(identity=str(user_id))
+                
+                resp = jsonify(
+                    access_token=access_token,
+                    refresh_token=refresh_token,
                     user={
                         "nome": user["nome"], 
                         "is_premium": bool(user.get("is_premium")),
@@ -331,10 +394,12 @@ def verify_2fa_login():
                         "possui_veiculo": len(veiculos) > 0,
                         "veiculos": veiculos
                     }
-                ), 200
-            except Exception as e:
-                logger.error(f"Erro ao verificar hash de 2FA: {e}")
-                return jsonify(error="Erro de compatibilidade no 2FA. Por favor, desative e reative sua senha secundÃ¡ria."), 401
+                )
+                set_access_cookies(resp, access_token)
+                set_refresh_cookies(resp, refresh_token)
+                return resp, 200
+            else:
+                return jsonify(error="Código 2FA ou senha secundária inválida"), 401
     except Exception as e:
         logger.error(f"Erro na verificaÃ§Ã£o 2FA: {e}")
         return jsonify(error="Erro interno na verificaÃ§Ã£o"), 500
@@ -343,30 +408,58 @@ def verify_2fa_login():
 @jwt_required(refresh=True)
 def refresh():
     user_id = get_jwt_identity()
-    return jsonify(access_token=create_access_token(identity=str(user_id))), 200
+    access_token = create_access_token(identity=str(user_id))
+    resp = jsonify(access_token=access_token)
+    set_access_cookies(resp, access_token)
+    return resp, 200
 
-@auth_bp.route("/api/auth/2fa/enable", methods=["POST"])
+@auth_bp.route("/api/auth/2fa/setup", methods=["GET"])
 @jwt_required()
-def enable_2fa():
+def setup_2fa():
     user_id = get_jwt_identity()
-    data = request.get_json()
-    secondary_password = data.get("password")
-    
-    if not secondary_password or len(secondary_password) < 4:
-        return jsonify(error="A senha secundÃ¡ria deve ter pelo menos 4 caracteres"), 400
-        
     try:
         with get_db() as (cursor, conn):
-            hashed_password = bcrypt.hash(secondary_password)
-            cursor.execute("""
-                UPDATE users 
-                SET is_two_factor_enabled = TRUE, two_factor_secret = %s 
-                WHERE id = %s
-            """, (hashed_password, user_id))
-            return jsonify(message="Senha secundÃ¡ria (2FA) ativada com sucesso"), 200
+            cursor.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+            if not user:
+                return jsonify(error="Usuário não encontrado"), 404
+            
+            secret = pyotp.random_base32()
+            totp = pyotp.TOTP(secret)
+            provisioning_url = totp.provisioning_uri(name=user["email"], issuer_name="AutoAssist")
+            
+            return jsonify(secret=secret, provisioning_url=provisioning_url), 200
     except Exception as e:
-        logger.error(f"Erro ao ativar 2FA: {e}")
-        return jsonify(error="Erro ao ativar 2FA"), 500
+        logger.error(f"Erro no setup 2FA: {e}")
+        return jsonify(error="Erro ao configurar 2FA"), 500
+
+@auth_bp.route("/api/auth/2fa/confirm", methods=["POST"])
+@jwt_required()
+def confirm_2fa():
+    user_id = get_jwt_identity()
+    data = request.get_json()
+    secret = data.get("secret")
+    code = data.get("code")
+    
+    if not secret or not code:
+        return jsonify(error="Secret e código são obrigatórios"), 400
+        
+    try:
+        totp = pyotp.TOTP(secret)
+        if totp.verify(code):
+            with get_db() as (cursor, conn):
+                cursor.execute("""
+                    UPDATE users 
+                    SET is_two_factor_enabled = TRUE, two_factor_secret = %s 
+                    WHERE id = %s
+                """, (secret, user_id))
+                conn.commit()
+            return jsonify(message="2FA (TOTP) ativado com sucesso"), 200
+        else:
+            return jsonify(error="Código inválido. Verifique se o relógio do seu celular está correto."), 400
+    except Exception as e:
+        logger.error(f"Erro ao confirmar 2FA: {e}")
+        return jsonify(error="Erro ao confirmar 2FA"), 500
 
 @auth_bp.route("/api/auth/2fa/disable", methods=["POST"])
 @jwt_required()
@@ -383,14 +476,18 @@ def disable_2fa():
             cursor.execute("SELECT two_factor_secret FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             
-            if not user:
-                return jsonify(error="UsuÃ¡rio nÃ£o encontrado"), 404
-                
-            if bcrypt.verify(password, user["two_factor_secret"]):
+            if not user or not user["two_factor_secret"]:
+                return jsonify(error="Configuração de 2FA não encontrada"), 404
+            
+            # Para desativar, podemos exigir o código TOTP ou a senha principal
+            # Aqui vamos exigir o código TOTP para confirmar posse do dispositivo
+            totp = pyotp.TOTP(user["two_factor_secret"])
+            if totp.verify(password): # O campo 'password' aqui será o código de 6 dígitos
                 cursor.execute("UPDATE users SET is_two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = %s", (user_id,))
+                conn.commit()
                 return jsonify(message="2FA desativado com sucesso"), 200
             else:
-                return jsonify(error="Senha secundÃ¡ria incorreta"), 400
+                return jsonify(error="Código TOTP inválido"), 400
     except Exception as e:
         logger.error(f"Erro ao desativar 2FA: {e}")
         return jsonify(error="Erro ao desativar 2FA"), 500

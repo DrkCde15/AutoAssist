@@ -48,6 +48,7 @@ class CaktoService:
         user_email: str | None = None,
         provided_url: str | None = None,
         payment_method: str | None = None,
+        internal_order_id: str | None = None,
     ) -> str:
         base_url = (provided_url or self.default_checkout_url or "").strip()
         if not base_url:
@@ -61,7 +62,14 @@ class CaktoService:
         parsed = urlparse(base_url)
         query_items = dict(parse_qsl(parsed.query, keep_blank_values=True))
         query_items.setdefault("src", "autoassist")
-        query_items.setdefault("user_ref", str(user_id))
+        
+        # Se tivermos um order_id interno, usamos ele como referência principal
+        # para validar o webhook de forma estrita.
+        if internal_order_id:
+            query_items.setdefault("user_ref", str(internal_order_id))
+        else:
+            query_items.setdefault("user_ref", str(user_id))
+
         if user_email:
             query_items.setdefault("email", user_email)
         if payment_method:
@@ -191,7 +199,7 @@ class CaktoService:
             if candidate is None:
                 continue
             as_text = str(candidate).strip()
-            if as_text.isdigit():
+            if as_text:
                 return as_text
         return None
 

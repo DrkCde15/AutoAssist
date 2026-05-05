@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>Perfil - AutoAssist</title>
     <link rel="icon" type="image/png" href="static/logo2.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
 
     <style>
         :root {
@@ -707,6 +706,16 @@
         }
     }
 
+    function escapeHTML(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     function renderProfile(user) {
         const initials = user.nome ? user.nome.split(' ').map(n => n[0]).join('').substring(0, 2) : 'U';
         document.getElementById('profileAvatar').textContent = initials;
@@ -717,10 +726,6 @@
         document.getElementById('infoStatus').textContent = user.is_premium ? 'Premium' : 'Gratuito';
         document.getElementById('infoStatus').className = user.is_premium ? 'field-value premium' : 'field-value';
         document.getElementById('infoConsultas').textContent = user.total_chats || '0';
-
-        if (user.is_premium) {
-            document.getElementById('btnVideos').style.display = 'flex';
-        }
 
         renderVehiclesList(user.veiculos || []);
     }
@@ -739,22 +744,30 @@
             'caminhao': 'fa-truck'
         };
 
-        container.innerHTML = veiculos.map(v => `
-            <div class="vehicle-item">
-                <div class="vehicle-item-info">
-                    <div class="vehicle-item-icon">
-                        <i class="fas ${icons[v.tipo] || 'fa-car'}"></i>
+        container.innerHTML = veiculos.map(v => {
+            const safeMarca = escapeHTML(v.marca);
+            const safeModelo = escapeHTML(v.modelo);
+            const safeAno = escapeHTML(v.ano_fabricacao || '-');
+            const safeKm = v.quilometragem ? v.quilometragem.toLocaleString() : '-';
+            const iconClass = icons[v.tipo] || 'fa-car';
+
+            return `
+                <div class="vehicle-item">
+                    <div class="vehicle-item-info">
+                        <div class="vehicle-item-icon">
+                            <i class="fas ${iconClass}"></i>
+                        </div>
+                        <div>
+                            <div class="vehicle-item-name">${safeMarca} ${safeModelo}</div>
+                            <div class="vehicle-item-year">${safeAno} • ${safeKm} km</div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="vehicle-item-name">${v.marca} ${v.modelo}</div>
-                        <div class="vehicle-item-year">${v.ano_fabricacao || '-'} • ${v.quilometragem ? v.quilometragem.toLocaleString() + ' km' : '-'}</div>
-                    </div>
+                    <button class="btn-delete-vehicle" onclick="deleteVehicle(${v.id})" title="Remover veículo">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
-                <button class="btn-delete-vehicle" onclick="deleteVehicle(${v.id})" title="Remover veículo">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     document.getElementById('btnAddNewVehicle').addEventListener('click', () => {
