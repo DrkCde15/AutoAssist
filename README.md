@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo.png" alt="AutoAssist Logo" width="200">
+</p>
+
 # AutoAssist IA 🚗💨
 
 O **AutoAssist IA** é um ecossistema de inteligência artificial de última geração, desenvolvido especificamente para o mercado automotivo brasileiro. A plataforma integra Processamento de Linguagem Natural (NLP) e Visão Computacional para fornecer diagnósticos precisos, avaliações de mercado e consultoria técnica especializada, operando com alta performance através da integração com a API do **Google Gemini**.
@@ -8,23 +12,24 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ### **Recursos Inteligentes (NOG IA)**
 
-- **Consultoria Especializada:** O assistente "NOG" utiliza o modelo **Gemini** para oferecer respostas focadas no mercado brasileiro, analisando modelos, manutenção e custo-benefício.
-- **IA de Previsão de Manutenção:** Sistema que analisa descrições (ex: "Troquei o óleo hoje") e utiliza IA para prever a data e quilometragem da próxima revisão, mesmo quando não há dados manuais.
+- **Consultoria Contextual:** O assistente "NOG" agora utiliza o **histórico da conversa** para oferecer respostas mais profundas e evitar resultados repetitivos.
+- **E-commerce Automotivo Integrado:** Recomendação automática de links para compra de **veículos (WebMotors)** e **peças (Mercado Livre)** baseada na necessidade do usuário.
+- **IA de Previsão de Manutenção:** Sistema que analisa descrições (ex: "Troquei o óleo hoje") e utiliza IA para prever a data e quilometragem da próxima revisão.
 - **Raio-X Mecânico:** Análise visual avançada alimentada pelo **Gemini Vision** para identificação de ferrugem, desalinhamentos e vazamentos em fotos.
 
 ### **Dashboard e Gestão**
 
 - **Histórico Proativo:** Painel que monitora a saúde das peças e indica o status de cada manutenção (Ok, Aviso ou Atrasado).
+- **Galeria de Vídeos Otimizada:** Nova biblioteca de vídeos com redirecionamento direto para o YouTube, miniaturas em alta resolução e carregamento ultrarrápido.
 - **Notificações Instantâneas:** Sistema de e-mail que alerta o usuário **no mesmo dia** em que uma manutenção atinge o status crítico ou vence.
 - **Tabela FIPE Real-Time:** Integração com a API FIPE para fornecer valores de mercado precisos e atualizados.
-- **Biblioteca de Vídeos:** Recomendação automática de tutoriais baseados na conversa, salvos na galeria do usuário.
 
-### **Segurança e Cloud**
+### **Segurança e Cloud (Hardening de Produção)**
 
-- **Google OAuth 2.0:** Login simplificado e seguro utilizando contas Google.
+- **Proteção Avançada:** Implementação de **SRI (Subresource Integrity)**, **CSP (Content Security Policy)** e sanitização global contra XSS.
+- **Google OAuth 2.0:** Login simplificado e seguro utilizando contas Google com propagação dinâmica de tokens.
 - **Autenticação em Duas Etapas (2FA):** Camada de segurança adicional para proteção de dados sensíveis.
-- **Cloud Resiliency:** Conectividade reforçada com suporte a SSL e timeouts otimizados para bancos de dados em nuvem (Aiven, RDS, etc).
-- **Viva-Voz Inteligente:** Interação por voz nativa com detecção de silêncio (VAD).
+- **Cloud Resiliency:** Conectividade reforçada com suporte a SSL e timeouts otimizados para bancos de dados em nuvem.
 
 ---
 
@@ -38,7 +43,7 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 | **Google Gemini SDK** | Integração com Gemini 2.0 Flash (Texto e Visão).       |
 | **PyMySQL + SSL**     | Conexão segura e resiliente com o banco de dados.      |
 | **SMTP / Gmail**      | Motor de disparo de notificações proativas por e-mail. |
-| **JWT**               | Autenticação moderna com Tokens de Acesso e Refresh.   |
+| **JWT + Refresh**     | Autenticação moderna com Tokens de Acesso e Refresh.   |
 
 ### **Frontend**
 
@@ -46,6 +51,7 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 | :------------------- | :--------------------------------------------------------- |
 | **Vanilla JS**       | Lógica de estado e consumo de APIs sem frameworks pesados. |
 | **Glassmorphism UI** | Design moderno com transparências e animações dinâmicas.   |
+| **DOMPurify + Marked**| Renderização segura de Markdown e sanitização de HTML.     |
 | **Web Speech API**   | Captura e processamento de voz nativo no navegador.        |
 
 ---
@@ -62,6 +68,7 @@ AutoAssist/
 ├── frontend/
 │   ├── index.html              # Landing Page / Dashboard
 │   ├── chat.html               # Consultor NOG IA
+│   ├── videos.html             # Galeria de Vídeos YouTube
 │   ├── maintenance_history.html # Gestão de Manutenções
 │   └── static/                 # CSS, JS (auth.js, config.js)
 └── README.md
@@ -110,7 +117,7 @@ python app.py
 ## 🔒 Segurança e Boas Práticas
 
 - **Bcrypt Hashing**: Proteção de senhas com algoritmos de derivação de chave.
-- **SSL Enforcement**: Todas as conexões de banco de dados utilizam criptografia SSL.
+- **SRI & CSP**: Proteção contra injeção de scripts maliciosos e manipulação de recursos externos.
 - **JWT Protection**: Endpoints protegidos garantem que apenas usuários autenticados acessem dados sensíveis.
 
 ---
