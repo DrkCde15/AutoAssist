@@ -60,6 +60,28 @@ const Auth = (() => {
     return !!getAccessToken();
   }
 
+  /**
+   * Sincroniza os dados do usuário com o banco de dados.
+   * Útil para atualizar o status Premium sem precisar de re-login.
+   */
+  async function syncUser() {
+    if (!isAuthenticated()) return null;
+    try {
+      const res = await fetch(`${CONFIG.API_URL}/api/user`, {
+        headers: { Authorization: `Bearer ${getAccessToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Atualiza o localStorage com os dados frescos do banco
+        localStorage.setItem(KEYS.USER, JSON.stringify(data));
+        return data;
+      }
+    } catch (e) {
+      console.warn("Falha ao sincronizar usuário:", e);
+    }
+    return getUser();
+  }
+
   // ─── Renovação de token ───────────────────────────────────────────────────
 
   async function refreshAccessToken() {
@@ -125,6 +147,10 @@ const Auth = (() => {
         // refreshAccessToken já faz o redirect
         throw new Error("Sessão encerrada.");
       }
+    }
+      if (res.status === 200 && endpoint === "/api/user" && options.method === "GET") {
+        const data = await res.clone().json();
+        localStorage.setItem(KEYS.USER, JSON.stringify(data));
     }
 
     return res;
@@ -531,6 +557,7 @@ const Auth = (() => {
     getAccessToken,
     authenticatedFetch,
     saveSession,
+    syncUser,
     showPremiumPaywall,
     closePremiumPaywall,
     requirePremiumPage,
@@ -541,3 +568,8 @@ const Auth = (() => {
     KEYS
   };
 })();
+
+// Sincronização automática ao carregar o script (se autenticado)
+if (Auth.isAuthenticated()) {
+  Auth.syncUser();
+}

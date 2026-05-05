@@ -81,35 +81,7 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
 
-def get_mysql_history(user_id: int, limit: int = 5):
-    """Recupera o histórico do MySQL."""
-    try:
-        conn = pymysql.connect(
-            host=os.getenv('DB_HOST'),
-            port=int(os.getenv('DB_PORT', 3306)),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME'),
-            cursorclass=DictCursor
-        )
-        with conn.cursor() as cursor:
-            cursor.execute(
-                "SELECT mensagem_usuario, resposta_ia FROM chats WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
-                (user_id, limit)
-            )
-            rows = cursor.fetchall()
-            history = []
-            for row in reversed(rows):
-                if row['mensagem_usuario']:
-                    history.append({"role": "user", "content": row['mensagem_usuario']})
-                if row['resposta_ia']:
-                    history.append({"role": "model", "content": row['resposta_ia']})
-            return history
-    except Exception as e:
-        logger.error(f"Erro histórico MySQL: {e}")
-        return []
-    finally:
-        if 'conn' in locals(): conn.close()
+from routes.database import get_db, get_mysql_history
 
 # Inicializa o cliente Gemini (Deixando o SDK escolher a melhor versão estável)
 client = genai.Client(api_key=os.getenv("API_GEMINI"))

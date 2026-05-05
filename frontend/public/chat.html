@@ -842,6 +842,39 @@
         scrollToBottom();
       }
 
+      function appendVideosToDiv(div, videos) {
+        if (videos && videos.length > 0) {
+          const vContainer = document.createElement("div");
+          vContainer.className = "videos-container";
+          
+          videos.forEach(v => {
+            const vCard = document.createElement("div");
+            vCard.className = "video-card";
+            
+            // Sanitização básica para atributos
+            const safeUrl = (v.url || "").replace(/"/g, '&quot;');
+            const safeThumb = (v.thumbnail || "").replace(/"/g, '&quot;');
+            const safeTitleAttr = (v.titulo || "").replace(/"/g, '&quot;');
+            
+            vCard.innerHTML = `
+              ${v.thumbnail ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer"><img src="${safeThumb}" class="video-thumbnail" alt="Thumbnail"></a>` : ''}
+              <div class="video-info">
+                <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+                  <div class="video-title" title="${safeTitleAttr}"></div>
+                </a>
+              </div>
+            `;
+            // Usar textContent para o título
+            const titleDiv = vCard.querySelector('.video-title');
+            if (titleDiv) titleDiv.textContent = v.titulo || "";
+            
+            vContainer.appendChild(vCard);
+          });
+          div.appendChild(vContainer);
+          scrollToBottom();
+        }
+      }
+
       // Chat Logic
       const scrollToBottom = () => {
         setTimeout(() => {

@@ -139,6 +139,10 @@ def init_db():
             cursor.execute("ALTER TABLE chats ADD COLUMN links JSON")
         except Exception:
             pass
+        try:
+            cursor.execute("ALTER TABLE chats ADD COLUMN topic VARCHAR(255)")
+        except Exception:
+            pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS redefinicao_senha (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -230,6 +234,32 @@ def get_trial_days_remaining(user):
     expiry_date = created_at + timedelta(days=7)
     delta = expiry_date - datetime.now(timezone.utc if created_at.tzinfo else None)
     return max(0, delta.days)
+
+def get_mysql_history(user_id: int, limit: int = 5):
+    """Recupera o histórico de conversas do MySQL."""
+    try:
+        from database import get_db
+    except ImportError:
+        # Fallback se for chamado de dentro do próprio módulo
+        from .database import get_db
+        
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                "SELECT mensagem_usuario, resposta_ia FROM chats WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
+                (user_id, limit)
+            )
+            rows = cursor.fetchall()
+            history = []
+            for row in reversed(rows):
+                if row['mensagem_usuario']:
+                    history.append({"role": "user", "content": row['mensagem_usuario']})
+                if row['resposta_ia']:
+                    history.append({"role": "model", "content": row['resposta_ia']})
+            return history
+    except Exception as e:
+        logging.error(f"Erro histórico MySQL: {e}")
+        return []
 
 def is_valid_email_domain(email):
     allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com", "@testuser.com"]

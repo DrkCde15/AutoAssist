@@ -221,15 +221,6 @@ def _send_maintenance_alert_logic(cursor, user_row, force):
     )
     return {"sent": True, "reason": "sent", "alerts_count": len(alerts)}
 
-@pages_bp.route("/")
-def index():
-    return current_app.send_static_file("index.html")
-
-@pages_bp.route("/<path:path>")
-def serve_html(path):
-    if not path.endswith(".html") and "." not in path:
-        path += ".html"
-    return current_app.send_static_file(path)
 
 @pages_bp.route("/api/user", methods=["GET"])
 @jwt_required()
@@ -954,6 +945,55 @@ def delete_video(video_id):
         logger.error(f"Erro ao excluir video: {e}")
         return jsonify(error="Erro interno"), 500
 
+@pages_bp.route("/api/videos/library", methods=["GET"])
+@jwt_required()
+def get_video_library():
+    """Consolida todos os vídeos e links recebidos no chat agrupados por tópico."""
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            cursor.execute("""
+                SELECT topic, videos, links, created_at 
+                FROM chats 
+                WHERE user_id = %s AND (videos != '[]' OR links != '[]')
+                ORDER BY created_at DESC
+            """, (user_id,))
+            rows = cursor.fetchall()
+            
+            library = {}
+            for row in rows:
+                topic = row['topic'] or "Outros"
+                if topic not in library:
+                    library[topic] = {"videos": [], "links": [], "date": row['created_at']}
+                
+                v_list = json.loads(row['videos']) if row['videos'] else []
+                l_list = json.loads(row['links']) if row['links'] else []
+                
+                # Evitar duplicatas no mesmo tópico
+                for v in v_list:
+                    if not any(item['url'] == v['url'] for item in library[topic]["videos"]):
+                        library[topic]["videos"].append(v)
+                
+                for l in l_list:
+                    if not any(item['url'] == l['url'] for item in library[topic]["links"]):
+                        library[topic]["links"].append(l)
+            
+            # Converter para lista para o frontend
+            result = []
+            for topic, data in library.items():
+                if data["videos"] or data["links"]:
+                    result.append({
+                        "topic": topic,
+                        "videos": data["videos"],
+                        "links": data["links"],
+                        "last_updated": data["date"]
+                    })
+            
+            return jsonify(library=result), 200
+    except Exception as e:
+        logger.error(f"Erro na biblioteca de videos: {e}")
+        return jsonify(error="Erro ao carregar biblioteca"), 500
+
 from extensions import limiter
 
 @pages_bp.route("/api/chat", methods=["POST"])
@@ -1008,10 +1048,13 @@ def chat():
                     "icon": "fas fa-tools"
                 })
 
+            # Determinar o tópico da conversa para a biblioteca
+            topic = termo_yt or termo_loja or termo_pecas or "Consultoria Geral"
+
             # Salvar no histórico
             cursor.execute(
-                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links) VALUES (%s, %s, %s, %s, %s)",
-                (user_id, msg, resposta, json.dumps(videos), json.dumps(links))
+                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
+                (user_id, msg, resposta, json.dumps(videos), json.dumps(links), topic)
             )
             conn.commit()
 
@@ -1053,10 +1096,15 @@ def handle_voice():
             veiculos = cursor.fetchall()
             if veiculos: user['lista_veiculos'] = veiculos
 
+            # Recuperar histórico para contextualizar a busca de vídeos e links
+            historico_recente = get_mysql_history(user_id, limit=3)
+
             resposta = analisar_imagem(img_b64, text) if img_b64 else gerar_resposta(text, user_id, user_data=user)
             videos = []
             links = []
-            termo_yt = gerar_termo_busca_youtube(text)
+
+            # 1. Busca de Vídeos
+            termo_yt = gerar_termo_busca_youtube(text, historico=historico_recente)
             if termo_yt:
                 try:
                     videos_yt = buscar_videos_youtube(termo_yt)
@@ -1065,14 +1113,38 @@ def handle_voice():
                 except Exception as e:
                     logger.warning(f"Erro ao buscar videos (voz): {e}")
 
+            # 2. Busca de Veículos (Links)
+            termo_loja = gerar_termo_busca_loja(text, historico=historico_recente)
+            if termo_loja:
+                links.append({
+                    "titulo": f"Ver ofertas de {termo_loja}",
+                    "url": f"https://www.webmotors.com.br/carros/estoque?q={termo_loja.replace(' ', '%20')}",
+                    "tipo": "veiculo",
+                    "icon": "fas fa-car"
+                })
+
+            # 3. Busca de Peças (Links)
+            termo_pecas = gerar_termo_busca_pecas(text, historico=historico_recente)
+            if termo_pecas:
+                links.append({
+                    "titulo": f"Comprar {termo_pecas} no Mercado Livre",
+                    "url": f"https://lista.mercadolivre.com.br/{termo_pecas.replace(' ', '-')}",
+                    "tipo": "peca",
+                    "icon": "fas fa-tools"
+                })
+
+            # Determinar o tópico da conversa
+            topic = termo_yt or termo_loja or termo_pecas or "Consultoria por Voz"
+
             # Salvar no histórico
             cursor.execute(
-                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
-                (user_id, text, resposta, json.dumps(videos))
+                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
+                (user_id, text, resposta, json.dumps(videos), json.dumps(links), topic)
             )
             conn.commit()
             
-            return jsonify(text=text, response=resposta, videos=videos)
+            return jsonify(text=text, response=resposta, videos=videos, links=links)
+
             
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que foi falado. Pode repetir?"), 400
@@ -1137,3 +1209,13 @@ def serve_report(filename):
 
     secure_reports_dir = os.path.join(current_app.root_path, "secure_reports")
     return send_from_directory(secure_reports_dir, filename)
+
+@pages_bp.route("/")
+def index():
+    return current_app.send_static_file("index.html")
+
+@pages_bp.route("/<path:path>")
+def serve_html(path):
+    if not path.endswith(".html") and "." not in path:
+        path += ".html"
+    return current_app.send_static_file(path)
