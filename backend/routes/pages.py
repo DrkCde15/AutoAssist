@@ -30,7 +30,7 @@ from services.maintenance_service import (
     consolidate_active_maintenance_records,
     build_maintenance_alerts,
 )
-from .database import get_db, is_trial_expired, get_trial_days_remaining, enviar_email
+from .database import get_db, is_trial_expired, get_trial_days_remaining, enviar_email, get_mysql_history
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -971,10 +971,15 @@ def chat():
             veiculos = cursor.fetchall()
             if veiculos: user['lista_veiculos'] = veiculos
 
+            # Recuperar histórico para contextualizar a busca de vídeos e links
+            historico_recente = get_mysql_history(user_id, limit=3)
+            
             resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
             videos = []
+            links = [] # Novos links de recomendação
             
-            termo_yt = gerar_termo_busca_youtube(msg)
+            # 1. Busca de Vídeos Contextual
+            termo_yt = gerar_termo_busca_youtube(msg, historico=historico_recente)
             if termo_yt:
                 try:
                     videos_yt = buscar_videos_youtube(termo_yt)
@@ -983,14 +988,34 @@ def chat():
                 except Exception as e:
                     logger.warning(f"Erro ao buscar videos: {e}")
 
+            # 2. Busca de Veículos (Links)
+            termo_loja = gerar_termo_busca_loja(msg, historico=historico_recente)
+            if termo_loja:
+                links.append({
+                    "titulo": f"Ver ofertas de {termo_loja}",
+                    "url": f"https://www.webmotors.com.br/carros/estoque?q={termo_loja.replace(' ', '%20')}",
+                    "tipo": "veiculo",
+                    "icon": "fas fa-car"
+                })
+
+            # 3. Busca de Peças (Links)
+            termo_pecas = gerar_termo_busca_pecas(msg, historico=historico_recente)
+            if termo_pecas:
+                links.append({
+                    "titulo": f"Comprar {termo_pecas} no Mercado Livre",
+                    "url": f"https://lista.mercadolivre.com.br/{termo_pecas.replace(' ', '-')}",
+                    "tipo": "peca",
+                    "icon": "fas fa-tools"
+                })
+
             # Salvar no histórico
             cursor.execute(
-                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos) VALUES (%s, %s, %s, %s)",
-                (user_id, msg, resposta, json.dumps(videos))
+                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links) VALUES (%s, %s, %s, %s, %s)",
+                (user_id, msg, resposta, json.dumps(videos), json.dumps(links))
             )
             conn.commit()
 
-            return jsonify(response=resposta, videos=videos)
+            return jsonify(response=resposta, videos=videos, links=links)
     except Exception as e:
         logger.error(f"Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno"), 500
@@ -1030,6 +1055,7 @@ def handle_voice():
 
             resposta = analisar_imagem(img_b64, text) if img_b64 else gerar_resposta(text, user_id, user_data=user)
             videos = []
+            links = []
             termo_yt = gerar_termo_busca_youtube(text)
             if termo_yt:
                 try:

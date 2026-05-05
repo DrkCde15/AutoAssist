@@ -195,23 +195,34 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
         logger.error(f"❌ Erro no NOG (Gemini New SDK): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
 
-def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | None:
+def gerar_termo_busca_youtube(mensagem: str, historico: list = None) -> str | None:
     """
-    Avalia a mensagem do usuário e opcionalmente a resposta da IA para decidir se 
-    há necessidade de recomendar um vídeo de tutorial ou explicação automotiva.
+    Avalia a mensagem do usuário e o histórico para decidir se 
+    há necessidade de recomendar um vídeo de tutorial.
     Retorna uma string curta para pesquisa no YouTube ou None.
     """
     try:
+        contexto_historico = ""
+        if historico:
+            # Pega as últimas 3 interações para contexto
+            resumo = "\n".join([f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in historico[-3:]])
+            contexto_historico = f"\nHistórico recente da conversa:\n{resumo}\n"
+
         prompt = f"""
         Você é um assistente que extrai termos de pesquisa do YouTube focados EXCLUSIVAMENTE em mecânica automotiva.
-        Analise a seguinte mensagem do usuário solicitando ajuda.
-        Se a mensagem pedir como consertar, trocar, verificar, identificar ou entender alguma peça, gere UM termo de pesquisa.
-        MUITO IMPORTANTE: O termo DEVE obrigatoriamente incluir palavras de contexto como "carro", "motor", "mecânica automotiva" ou o nome do veículo. NUNCA gere palavras soltas como "peça" ou "motor" sem contexto, para evitar resultados de músicas ou não-relacionados.
-        Exemplo: "como trocar pneu celta", "barulho suspensão gol G4", "identificar peça motor carro".
-        Se for apenas uma saudação, agradecimento ou conversa genérica ("oi", "obrigado", "tchau", "bom dia"), retorne APENAS a palavra NONE.
-        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas, pontos finais ou explicações.
+        Analise a mensagem do usuário e o histórico da conversa abaixo.
         
-        Mensagem do Usuário: "{mensagem}"
+        {contexto_historico}
+        
+        Mensagem atual do Usuário: "{mensagem}"
+        
+        Sua tarefa:
+        1. Se a mensagem pedir ajuda técnica, gere UM termo de pesquisa específico.
+        2. Se o assunto for recorrente, gere um termo MAIS ESPECÍFICO ou uma variação (ex: em vez de apenas "óleo", use "viscosidade óleo motor" ou "melhores marcas óleo").
+        3. O termo DEVE incluir palavras de contexto como "carro", "motor", "mecânica" ou o modelo do veículo.
+        4. Se for apenas conversa genérica (oi, obrigado), retorne APENAS a palavra NONE.
+        
+        Retorne APENAS o termo de pesquisa ou NONE. Sem aspas ou explicações.
         """
         
         # Tentativa inicial com Gemini 2.5 Flash
@@ -253,22 +264,26 @@ def gerar_termo_busca_youtube(mensagem: str, resposta_ia: str = "") -> str | Non
         logger.error(f"❌ Erro ao gerar termo de busca YouTube: {e}")
         return None
 
-def gerar_termo_busca_loja(mensagem: str) -> str | None:
+def gerar_termo_busca_loja(mensagem: str, historico: list = None) -> str | None:
     """
-    Avalia a mensagem do usuário para decidir se há necessidade de recomendar 
-    links de lojas para comprar um veículo.
-    Retorna uma string curta para pesquisa ou None.
+    Avalia a mensagem e o histórico para sugerir links de compra de veículos.
     """
     try:
+        contexto_historico = ""
+        if historico:
+            resumo = "\n".join([f"{m['role']}: {m['content']}" for m in historico[-2:]])
+            contexto_historico = f"\nContexto anterior:\n{resumo}\n"
+
         prompt = f"""
-        Você é um assistente que extrai termos de pesquisa de veículos.
-        Analise a seguinte mensagem do usuário.
-        Se a mensagem indicar que o usuário quer comprar um veículo (carro, moto, caminhão, etc.), sugerir modelos, perguntar o preço ou onde comprar, gere UM termo de busca curto focado no modelo ou busca.
-        Exemplo: "Honda Civic", "Yamaha MT-09", "Volvo FH", "comprar moto".
-        Se não envolver compra de veículo, retorne APENAS a palavra NONE.
-        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas.
+        Você é um especialista em mercado automotivo.
+        Analise se o usuário quer comprar um veículo, sugerir modelos ou ver preços.
         
-        Mensagem do Usuário: "{mensagem}"
+        {contexto_historico}
+        
+        Mensagem atual: "{mensagem}"
+        
+        Gere UM termo de busca curto e variado. Se ele já perguntou de um carro, tente sugerir um comparativo ou versão específica.
+        Se não for sobre compra, retorne APENAS: NONE.
         """
         try:
             response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
@@ -294,22 +309,25 @@ def gerar_termo_busca_loja(mensagem: str) -> str | None:
         logger.error(f"Erro ao gerar termo busca loja: {e}")
         return None
 
-def gerar_termo_busca_pecas(mensagem: str) -> str | None:
+def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> str | None:
     """
-    Avalia a mensagem do usuário para decidir se há necessidade de recomendar 
-    links para comprar peças e componentes automotivos.
-    Retorna uma string curta para pesquisa ou None.
+    Avalia a mensagem e o histórico para sugerir compra de peças.
     """
     try:
+        contexto_historico = ""
+        if historico:
+            resumo = "\n".join([f"{m['role']}: {m['content']}" for m in historico[-2:]])
+            contexto_historico = f"\nContexto anterior:\n{resumo}\n"
+
         prompt = f"""
-        Você é um assistente que extrai termos de pesquisa de PEÇAS automotivas.
-        Analise a seguinte mensagem do usuário.
-        Se a mensagem indicar que o usuário quer comprar uma peça (ex: pneu, bateria, óleo, pastilha de freio, amortecedor, etc.), gere UM termo de busca curto focado na peça e no modelo do carro (se mencionado).
-        Exemplo: "pneu aro 15", "bateria Moura", "pastilha de freio Honda Civic", "óleo de motor 5w30".
-        Se não envolver compra de peças, retorne APENAS a palavra NONE.
-        Retorne APENAS o termo de pesquisa ou NONE. Não adicione aspas.
+        Extraia UM termo de busca de PEÇAS automotivas.
         
-        Mensagem do Usuário: "{mensagem}"
+        {contexto_historico}
+        
+        Mensagem atual: "{mensagem}"
+        
+        Se o usuário já perguntou de uma peça, gere um termo para uma marca específica ou componente relacionado.
+        Se não for sobre peças, retorne APENAS: NONE.
         """
         try:
             response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)

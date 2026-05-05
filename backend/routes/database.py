@@ -135,6 +135,10 @@ def init_db():
             cursor.execute("ALTER TABLE chats ADD COLUMN videos JSON")
         except Exception:
             pass
+        try:
+            cursor.execute("ALTER TABLE chats ADD COLUMN links JSON")
+        except Exception:
+            pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS redefinicao_senha (
                 id INT AUTO_INCREMENT PRIMARY KEY,

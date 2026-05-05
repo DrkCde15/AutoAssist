@@ -157,13 +157,47 @@
             background: #000;
         }
 
-        .video-wrapper iframe {
+        .video-link-wrapper {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .video-play-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .video-link-wrapper:hover .video-play-overlay {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .video-play-overlay i {
+            font-size: 48px;
+            color: white;
+        }
+
+        .video-play-overlay span {
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .video-info {
@@ -437,21 +471,27 @@
 
                 grid.innerHTML = data.videos.map(video => {
                     const ytId = getYouTubeVideoId(video.url);
-                    const embedUrl = ytId ? `https://www.youtube.com/embed/${ytId}` : null;
+                    const thumbUrl = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null;
                     
                     const safeTitle = escapeHTML(video.titulo);
                     const safeDesc = escapeHTML(video.descricao || 'Sem descrição.');
                     const safeUrl = escapeHTML(video.url);
                     
-                    // Garantir que a URL é segura (http/https)
                     const isSafeUrl = video.url.startsWith('http://') || video.url.startsWith('https://');
                     const finalUrl = isSafeUrl ? safeUrl : '#';
 
-                    const mediaContent = embedUrl 
-                        ? `<iframe src="${embedUrl}" allowfullscreen></iframe>`
-                        : `<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#111827;color:var(--text-gray);text-align:center;padding:20px;">
-                             <span><i class="fas fa-external-link-alt" style="font-size:24px;margin-bottom:10px;display:block;"></i>Link Externo<br><a href="${finalUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue);font-size:12px;margin-top:5px;display:block;word-break:break-all;">Acessar</a></span>
-                           </div>`;
+                    const mediaContent = thumbUrl 
+                        ? `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="video-link-wrapper">
+                             <img src="${thumbUrl}" alt="${safeTitle}" style="width:100%; height:100%; object-fit:cover;">
+                             <div class="video-play-overlay">
+                                <i class="fas fa-play-circle"></i>
+                                <span>Assistir no YouTube</span>
+                             </div>
+                           </a>`
+                        : `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="video-link-wrapper" style="background:#111827; flex-direction:column; gap:10px;">
+                             <i class="fas fa-external-link-alt" style="font-size:32px; color:var(--text-gray);"></i>
+                             <span style="color:var(--accent-blue); font-size:14px; font-weight:600;">Acessar Link Externo</span>
+                           </a>`;
 
                     return `
                         <div class="video-card">

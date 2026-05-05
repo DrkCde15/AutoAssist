@@ -369,6 +369,44 @@
         overflow: hidden;
       }
 
+      /* Recommendation Links */
+      .links-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed var(--border-subtle);
+      }
+
+      .recommendation-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        text-decoration: none !important;
+        font-size: 13.5px;
+        font-weight: 500;
+        transition: var(--transition);
+        border-bottom: none !important;
+      }
+
+      .recommendation-link:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--accent);
+        transform: translateY(-1.5px);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .recommendation-link i {
+        font-size: 14px;
+        color: var(--accent);
+      }
+
       /* Footer */
       footer {
         padding: 14px 24px 22px;
@@ -795,8 +833,9 @@
             const cleanHtml = DOMPurify.sanitize(marked.parse(data.response));
             typingDiv.innerHTML = `<strong>AutoAssist:</strong><br>${cleanHtml}`;
             appendVideosToDiv(typingDiv, data.videos);
+            appendLinksToDiv(typingDiv, data.links);
             lastAnalysisText = data.response;
-          }
+        }
         } catch (err) {
           typingDiv.innerHTML = "<strong>AutoAssist:</strong><br>Erro ao processar voz.";
         }
@@ -810,40 +849,26 @@
         }, 100);
       };
 
-      function appendVideosToDiv(div, videos) {
-        if (videos && videos.length > 0) {
-          const vContainer = document.createElement("div");
-          vContainer.className = "videos-container";
-          
-          videos.forEach(v => {
-            const vCard = document.createElement("div");
-            vCard.className = "video-card";
+    function appendLinksToDiv(div, links) {
+        if (links && links.length > 0) {
+            const lContainer = document.createElement("div");
+            lContainer.className = "links-container";
             
-            // Sanitização básica para atributos
-            const safeUrl = (v.url || "").replace(/"/g, '&quot;');
-            const safeThumb = (v.thumbnail || "").replace(/"/g, '&quot;');
-            const safeTitleAttr = (v.titulo || "").replace(/"/g, '&quot;');
-            
-            vCard.innerHTML = `
-              ${v.thumbnail ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer"><img src="${safeThumb}" class="video-thumbnail" alt="Thumbnail"></a>` : ''}
-              <div class="video-info">
-                <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
-                  <div class="video-title" title="${safeTitleAttr}"></div>
-                </a>
-              </div>
-            `;
-            // Usar textContent para o título
-            const titleDiv = vCard.querySelector('.video-title');
-            if (titleDiv) titleDiv.textContent = v.titulo || "";
-            
-            vContainer.appendChild(vCard);
-          });
-          div.appendChild(vContainer);
-          scrollToBottom();
+            links.forEach(l => {
+                const a = document.createElement("a");
+                a.className = "recommendation-link";
+                a.href = l.url;
+                a.target = "_blank";
+                a.rel = "noopener noreferrer";
+                a.innerHTML = `<i class="${l.icon || 'fas fa-external-link-alt'}"></i> <span>${l.titulo}</span>`;
+                lContainer.appendChild(a);
+            });
+            div.appendChild(lContainer);
+            scrollToBottom();
         }
-      }
+    }
 
-      function addMessage(text, cls, isHtml = false, videos = []) {
+    function addMessage(text, cls, isHtml = false, videos = [], links = []) {
         const div = document.createElement("div");
         div.className = cls;
         if (isHtml) {
@@ -854,10 +879,11 @@
         messagesDiv.appendChild(div);
         
         appendVideosToDiv(div, videos);
+        appendLinksToDiv(div, links);
         
         scrollToBottom();
         return div;
-      }
+    }
 
       const sendMessage = async () => {
         const msg = input.value.trim();
@@ -904,6 +930,7 @@
           const cleanHtml = DOMPurify.sanitize(marked.parse(botResponse));
           typingDiv.innerHTML = `<strong>AutoAssist:</strong><br>${cleanHtml}`;
           appendVideosToDiv(typingDiv, data.videos);
+          appendLinksToDiv(typingDiv, data.links);
           typingDiv.id = "";
 
         } catch (err) {
@@ -1019,7 +1046,8 @@
             `<strong>AutoAssist:</strong><br>${cleanHtml}`,
             "msg-bot",
             true,
-            c.videos
+            c.videos,
+            c.links
           );
         });
         scrollToBottom();
