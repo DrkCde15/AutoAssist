@@ -19,7 +19,8 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from oauthlib.oauth2 import WebApplicationClient
-from .database import get_db, is_valid_email_domain, is_trial_expired, enviar_email, get_trial_days_remaining
+from .database import get_db, is_valid_email_domain, is_trial_expired, get_trial_days_remaining
+from utils.email import enviar_email
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ def _get_frontend_base_url_for_email() -> str:
         frontend_env = (
             os.getenv("URL_PROD")
             or os.getenv("URL_DEV")
+            or "https://autoassist-l9lr.onrender.com/"
         ).strip()
     return frontend_env if frontend_env.endswith("/") else f"{frontend_env}/"
 
@@ -670,4 +672,3 @@ def reset_password():
     except Exception as e:
         logger.error(f"Erro ao redefinir senha: {e}")
         return jsonify(error="Erro ao redefinir senha"), 500
-
