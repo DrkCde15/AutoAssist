@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 from pymysql.cursors import DictCursor
-from utils.email import enviar_email
 
 # Carrega variáveis de ambiente procurando o .env na pasta pai (backend/)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -152,6 +151,17 @@ def init_db():
                 FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        reset_columns = [
+            ("email_sent", "BOOLEAN DEFAULT FALSE"),
+            ("email_attempts", "INT DEFAULT 0"),
+            ("last_attempt_at", "DATETIME NULL"),
+            ("send_error", "TEXT NULL")
+        ]
+        for col, dtype in reset_columns:
+            try:
+                cursor.execute(f"ALTER TABLE redefinicao_senha ADD COLUMN {col} {dtype}")
+            except Exception:
+                pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS videos (
                 id INT AUTO_INCREMENT PRIMARY KEY,

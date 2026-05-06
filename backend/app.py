@@ -204,7 +204,6 @@ def first_request():
         except Exception as e:
             logging.error(f"Falha ao inicializar banco: {e}")
 
-
 # Rota de Health Check
 @app.route("/health")
 def health():

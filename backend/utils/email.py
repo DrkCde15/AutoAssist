@@ -1,5 +1,6 @@
 import os
 import smtplib
+import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -14,13 +15,39 @@ EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
 EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
 EMAIL_FROM = (os.getenv("EMAIL_FROM") or EMAIL_REMETENTE or "").strip()
 EMAIL_FROM_NAME = (os.getenv("EMAIL_FROM_NAME") or "AutoAssist").strip()
-EMAIL_PROVIDER = (os.getenv("EMAIL_PROVIDER") or "auto").strip().lower()
+EMAIL_PROVIDER = (os.getenv("EMAIL_PROVIDER") or "smtp").strip().lower()
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
 EMAIL_API_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_TIMEOUT_SECONDS", "8"))
+EMAIL_API_CONNECT_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_CONNECT_TIMEOUT_SECONDS", "5"))
+EMAIL_API_RETRIES = int(os.getenv("EMAIL_API_RETRIES", "2"))
 
 RESEND_API_KEY = (os.getenv("RESEND_API_KEY") or "").strip()
 BREVO_API_KEY = (os.getenv("BREVO_API_KEY") or "").strip()
 SENDGRID_API_KEY = (os.getenv("SENDGRID_API_KEY") or "").strip()
+WEBHOOK_EMAIL_URL = (os.getenv("WEBHOOK_EMAIL_URL") or "").strip()
+WEBHOOK_EMAIL_SECRET = (os.getenv("WEBHOOK_EMAIL_SECRET") or "").strip()
+
+
+def _post_with_retry(url: str, payload: dict, headers: dict):
+    attempts = max(1, EMAIL_API_RETRIES + 1)
+    last_exc = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=(EMAIL_API_CONNECT_TIMEOUT_SECONDS, EMAIL_API_TIMEOUT_SECONDS),
+            )
+        except requests.exceptions.Timeout as exc:
+            last_exc = exc
+            if attempt < attempts:
+                time.sleep(0.6 * attempt)
+                continue
+            raise
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("Falha inesperada no envio HTTP")
 
 
 def _wrap_email_html(content_html: str) -> str:
@@ -66,12 +93,7 @@ def _send_via_resend(destinatario: str, assunto: str, html_final: str) -> bool:
         "Authorization": f"Bearer {RESEND_API_KEY}",
         "Content-Type": "application/json",
     }
-    resp = requests.post(
-        "https://api.resend.com/emails",
-        json=payload,
-        headers=headers,
-        timeout=EMAIL_API_TIMEOUT_SECONDS,
-    )
+    resp = _post_with_retry("https://api.resend.com/emails", payload, headers)
     if 200 <= resp.status_code < 300:
         return True
     print(f"Erro ao enviar e-mail via Resend: HTTP {resp.status_code} - {resp.text}")
@@ -92,12 +114,7 @@ def _send_via_brevo(destinatario: str, assunto: str, html_final: str) -> bool:
         "api-key": BREVO_API_KEY,
         "Content-Type": "application/json",
     }
-    resp = requests.post(
-        "https://api.brevo.com/v3/smtp/email",
-        json=payload,
-        headers=headers,
-        timeout=EMAIL_API_TIMEOUT_SECONDS,
-    )
+    resp = _post_with_retry("https://api.brevo.com/v3/smtp/email", payload, headers)
     if 200 <= resp.status_code < 300:
         return True
     print(f"Erro ao enviar e-mail via Brevo: HTTP {resp.status_code} - {resp.text}")
@@ -118,15 +135,32 @@ def _send_via_sendgrid(destinatario: str, assunto: str, html_final: str) -> bool
         "Authorization": f"Bearer {SENDGRID_API_KEY}",
         "Content-Type": "application/json",
     }
-    resp = requests.post(
-        "https://api.sendgrid.com/v3/mail/send",
-        json=payload,
-        headers=headers,
-        timeout=EMAIL_API_TIMEOUT_SECONDS,
-    )
+    resp = _post_with_retry("https://api.sendgrid.com/v3/mail/send", payload, headers)
     if 200 <= resp.status_code < 300:
         return True
     print(f"Erro ao enviar e-mail via SendGrid: HTTP {resp.status_code} - {resp.text}")
+    return False
+
+
+def _send_via_webhook(destinatario: str, assunto: str, html_final: str) -> bool:
+    if not WEBHOOK_EMAIL_URL:
+        return False
+
+    payload = {
+        "to": destinatario,
+        "subject": assunto,
+        "html": html_final,
+        "from": _from_string(),
+        "from_name": EMAIL_FROM_NAME or "AutoAssist",
+    }
+    headers = {"Content-Type": "application/json"}
+    if WEBHOOK_EMAIL_SECRET:
+        headers["X-Webhook-Secret"] = WEBHOOK_EMAIL_SECRET
+
+    resp = _post_with_retry(WEBHOOK_EMAIL_URL, payload, headers)
+    if 200 <= resp.status_code < 300:
+        return True
+    print(f"Erro ao enviar e-mail via Webhook: HTTP {resp.status_code} - {resp.text}")
     return False
 
 
@@ -156,28 +190,9 @@ def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
 
 def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     """
-    Envia e-mail priorizando API HTTP (Render Free friendly) e usando SMTP como fallback.
+    Envia e-mail somente via SMTP.
     """
     html_final = _wrap_email_html(mensagem_html)
-    provider_order = []
-
-    if EMAIL_PROVIDER in ("resend", "brevo", "sendgrid", "smtp"):
-        provider_order = [EMAIL_PROVIDER]
-    else:
-        provider_order = ["resend", "brevo", "sendgrid", "smtp"]
-
-    for provider in provider_order:
-        try:
-            if provider == "resend" and _send_via_resend(destinatario, assunto, html_final):
-                return True
-            if provider == "brevo" and _send_via_brevo(destinatario, assunto, html_final):
-                return True
-            if provider == "sendgrid" and _send_via_sendgrid(destinatario, assunto, html_final):
-                return True
-            if provider == "smtp" and _send_via_smtp(destinatario, assunto, html_final):
-                return True
-        except Exception as exc:
-            print(f"Erro ao enviar e-mail via {provider}: {exc}")
-
-    print("Falha ao enviar e-mail: nenhum provider conseguiu entregar.")
-    return False
+    if EMAIL_PROVIDER != "smtp":
+        print("EMAIL_PROVIDER diferente de smtp foi ignorado; envio usando SMTP apenas.")
+    return _send_via_smtp(destinatario, assunto, html_final)
