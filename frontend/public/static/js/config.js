@@ -16,8 +16,8 @@
  * Em produção: aponta diretamente ao servidor Flask hospedado.
  */
 const CONFIG = (() => {
-  const FLASK_URL_DEV  = "http://localhost:5000";
-  const FLASK_URL_PROD = "https://autoassis.onrender.com";
+  const FLASK_URL_DEV = "http://localhost:5000";
+  const FLASK_URL_PROD = "https://autoassist.onrender.com";
   const API_OVERRIDE_KEY = "autoassist_api_url_override";
 
   const isLocal =
