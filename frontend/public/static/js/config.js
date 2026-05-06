@@ -17,7 +17,7 @@
  */
 const CONFIG = (() => {
   const FLASK_URL_DEV = "http://localhost:5000";
-  const FLASK_URL_PROD = "https://autoassist.onrender.com";
+  const FLASK_URL_PROD = "https://autoassist-l9lr.onrender.com";
   const API_OVERRIDE_KEY = "autoassist_api_url_override";
 
   const isLocal =

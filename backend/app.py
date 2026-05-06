@@ -140,7 +140,7 @@ jwt = JWTManager(app)
 
 # [SEGURANCA] CORS
 base_allowed_origins = [
-    "https://autoassist.onrender.com",
+    "https://autoassist-l9lr.onrender.com",
     "https://drkcde15.github.io",
     "http://localhost:5000",
     "http://127.0.0.1:5000",
