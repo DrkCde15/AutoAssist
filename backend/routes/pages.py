@@ -30,7 +30,8 @@ from services.maintenance_service import (
     consolidate_active_maintenance_records,
     build_maintenance_alerts,
 )
-from .database import get_db, is_trial_expired, get_trial_days_remaining, enviar_email, get_mysql_history
+from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
+from utils.email import enviar_email
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
