@@ -10,11 +10,16 @@ load_dotenv(os.path.join(basedir, '..', '.env'))
 
 EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
 EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
+SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
 
 def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     """
     Envia um e-mail utilizando SMTP (Gmail) com o layout premium do AutoAssist.
     """
+    if not EMAIL_REMETENTE or not EMAIL_SENHA_APP:
+        print("Erro ao enviar e-mail: EMAIL_REMETENTE/EMAIL_SENHA_APP nao configurados.")
+        return False
+
     try:
         # Template base premium (Mantido do padrão anterior)
         template = """
@@ -53,12 +58,14 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
         # Envio via SMTP Gmail
         print(f"--- Tentando enviar email para: {destinatario} ---")
         
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT_SECONDS) as server:
+            server.ehlo()
             server.starttls()
+            server.ehlo()
             server.login(EMAIL_REMETENTE, EMAIL_SENHA_APP)
             server.send_message(msg)
 
-        return True, "E-mail enviado com sucesso via SMTP!"
+        return True
     except Exception as e:
         print(f"❌ Erro ao enviar e-mail via SMTP: {e}")
         return False
