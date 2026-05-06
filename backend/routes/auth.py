@@ -25,17 +25,14 @@ auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
 def get_frontend_url() -> str:
-    """Retorna a URL do frontend baseada no ambiente (FLASK_ENV)."""
+    """Retorna a URL base do frontend com fallback para a origem atual."""
     is_production = os.getenv("FLASK_ENV") == "production"
-    if is_production:
-        return os.getenv("FRONTEND_URL_PROD")
+    env_key = "URL_PROD" if is_production else "URL_DEV"
+    frontend_env = (os.getenv(env_key) or "").strip()
+    if frontend_env:
+        return frontend_env
 
-    # Em desenvolvimento, usa FRONTEND_URL_DEV quando configurada.
-    # Caso contrário, usa a própria origem da requisição (ex.: localhost:5000),
-    # evitando redirecionamento para porta inexistente.
-    frontend_dev = (os.getenv("FRONTEND_URL_DEV") or "").strip()
-    if frontend_dev:
-        return frontend_dev
+    # Fallback seguro quando não houver variável de frontend definida.
     return request.host_url
 
 

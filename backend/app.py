@@ -141,7 +141,6 @@ jwt = JWTManager(app)
 # [SEGURANCA] CORS
 base_allowed_origins = [
     "https://autoassist-l9lr.onrender.com",
-    "https://drkcde15.github.io",
     "http://localhost:5000",
     "http://127.0.0.1:5000",
     "http://localhost:5500",
@@ -160,8 +159,8 @@ allowed_headers = ["Content-Type", "Authorization", "X-Requested-With", "X-Cron-
 CORS(
     app,
     resources={
-        r"/api/*": {"origins": [*allowed_origins, r"https://.*\\.github\\.io"]},
-        r"/pagamentos/*": {"origins": [*allowed_origins, r"https://.*\\.github\\.io"]},
+        r"/api/*": {"origins": allowed_origins},
+        r"/pagamentos/*": {"origins": allowed_origins},
     },
     methods=allowed_methods,
     allow_headers=allowed_headers,
@@ -176,7 +175,7 @@ def ensure_cors_headers(response):
     if not origin:
         return response
 
-    origin_allowed = origin in allowed_origins or origin.endswith(".github.io")
+    origin_allowed = origin in allowed_origins
     path = request.path or ""
     cors_path = path.startswith("/api/") or path.startswith("/pagamentos/")
 
@@ -249,7 +248,7 @@ def cors_preflight(_):
     o frontend HTTPS chama backend local HTTP (localhost).
     """
     origin = (request.headers.get("Origin") or "").strip()
-    origin_allowed = origin in allowed_origins or origin.endswith(".github.io")
+    origin_allowed = origin in allowed_origins
 
     response = make_response("", 204)
     if origin_allowed:

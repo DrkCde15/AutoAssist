@@ -4,7 +4,7 @@ import html
 import logging
 import threading
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, current_app, send_from_directory
+from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import uuid
 import speech_recognition as sr
@@ -36,6 +36,15 @@ pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
 
 PREMIUM_ONLY_ERROR = "Recurso exclusivo para Premium"
+
+def get_dashboard_url() -> str:
+    frontend_url = (os.getenv("URL_PROD") or "").strip()
+    if not frontend_url and has_request_context():
+        frontend_url = request.host_url
+    if not frontend_url:
+        frontend_url = "https://autoassist-l9lr.onrender.com/"
+    base = frontend_url if frontend_url.endswith("/") else f"{frontend_url}/"
+    return f"{base}dashboard.html"
 
 def get_user_by_id(cursor, user_id):
     cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
@@ -181,7 +190,7 @@ def render_maintenance_email_html(user_name, alerts):
         </div>
         
         <div style="text-align: center; margin-top: 35px;">
-            <a href="https://drkcde15.github.io/AutoAssist/dashboard.html" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Ver Painel Completo</a>
+            <a href="{html.escape(get_dashboard_url())}" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Ver Painel Completo</a>
         </div>
     """
 
