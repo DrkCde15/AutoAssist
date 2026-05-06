@@ -6,7 +6,21 @@ from pathlib import Path
 
 def _prepare_paths() -> None:
     script_path = Path(__file__).resolve()
+    script_dir = script_path.parent
     backend_dir = script_path.parents[1]
+
+    # Evita conflito com backend/utils/email.py que pode sombrear
+    # o pacote padrão "email" do Python no GitHub Actions.
+    filtered = []
+    for entry in sys.path:
+        try:
+            if Path(entry).resolve() == script_dir:
+                continue
+        except Exception:
+            pass
+        filtered.append(entry)
+    sys.path[:] = filtered
+
     if str(backend_dir) not in sys.path:
         sys.path.insert(0, str(backend_dir))
 
