@@ -1,5 +1,18 @@
 import logging
 import os
+import sys
+from pathlib import Path
+
+
+def _prepare_paths() -> None:
+    script_path = Path(__file__).resolve()
+    backend_dir = script_path.parents[1]
+    if str(backend_dir) not in sys.path:
+        sys.path.insert(0, str(backend_dir))
+
+
+_prepare_paths()
+
 from routes.auth import process_pending_password_reset_emails
 
 
