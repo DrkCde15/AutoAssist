@@ -77,6 +77,21 @@ def _build_reset_html(reset_link: str) -> str:
     """
 
 
+def _ensure_reset_queue_columns(cursor) -> None:
+    needed = [
+        ("email_sent", "BOOLEAN DEFAULT FALSE"),
+        ("email_attempts", "INT DEFAULT 0"),
+        ("last_attempt_at", "DATETIME NULL"),
+        ("send_error", "TEXT NULL"),
+    ]
+    for col, ddl in needed:
+        try:
+            cursor.execute(f"ALTER TABLE redefinicao_senha ADD COLUMN {col} {ddl}")
+        except Exception:
+            # Coluna ja existe (ou banco sem permissao de alter): segue fluxo.
+            pass
+
+
 def process_pending_password_reset_emails(batch_size: int = 50) -> dict:
     retry_seconds = max(1, int(os.getenv("RESET_EMAIL_RETRY_SECONDS", "15")))
     processed = 0
@@ -84,6 +99,7 @@ def process_pending_password_reset_emails(batch_size: int = 50) -> dict:
     conn = pymysql.connect(**_db_config())
     try:
         with conn.cursor() as cursor:
+            _ensure_reset_queue_columns(cursor)
             cursor.execute("SELECT GET_LOCK(%s, 0) AS got_lock", (RESET_DISPATCH_LOCK_NAME,))
             lock_row = cursor.fetchone() or {}
             got_lock = int(lock_row.get("got_lock") or 0)
