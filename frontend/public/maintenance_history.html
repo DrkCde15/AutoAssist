@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>Historico de Manutencao - AutoAssist</title>
-    <link rel="icon" type="image/png" href="static/logo2.png">
+    <title>Anotações - AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
@@ -73,7 +74,7 @@
         }
 
         .nav-logo img {
-            height: 64px !important;
+            height: 72px !important;
             width: auto;
         }
 
@@ -537,8 +538,8 @@
         <div class="nav-links">
             <a href="dashboard.html" id="navDashboard" class="nav-link" style="display: none;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-            <a href="maintenance_history.html" class="nav-link active"><i class="fas fa-history"></i> Histórico</a>
-            <a href="videos.html" id="btnMyVideos" class="nav-link" style="display: none;"><i class="fas fa-video"></i> Vídeos</a>
+            <a href="maintenance_history.html" class="nav-link active"><i class="fas fa-history"></i> Anotações</a>
+            <a href="library.html" id="btnMyVideos" class="nav-link" style="display: none;"><i class="fas fa-book"></i> Biblioteca</a>
             <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
             <a href="#" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i> Sair</a>
         </div>
@@ -547,7 +548,7 @@
 
 <main class="container">
     <header class="page-header">
-        <h1 class="page-title">Historico de Manutencao</h1>
+        <h1 class="page-title">Anotações</h1>
         <p class="page-subtitle">Registre servicos em texto livre, acompanhe gastos e veja retornos automaticos.</p>
     </header>
 
@@ -606,7 +607,7 @@
             <div class="form-actions">
                 <button class="btn btn-primary" id="btnSalvarRegistro">
                     <i class="fas fa-plus"></i>
-                    Salvar no historico
+                    Salvar Anotação
                 </button>
                 <button class="btn btn-ghost" id="btnCancelarEdicao" style="display:none;">
                     <i class="fas fa-xmark"></i>
@@ -1012,7 +1013,7 @@
         document.getElementById("intervaloDias").value = "";
         document.getElementById("intervaloKm").value = "";
         document.getElementById("veiculoSelect").value = "";
-        document.getElementById("btnSalvarRegistro").innerHTML = '<i class="fas fa-plus"></i> Salvar no historico';
+        document.getElementById("btnSalvarRegistro").innerHTML = '<i class="fas fa-plus"></i> Salvar Anotação';
         document.getElementById("btnCancelarEdicao").style.display = "none";
     }
 
@@ -1073,8 +1074,8 @@
         }
 
         if (!Auth.requirePremiumPage({
-            title: "Historico Premium",
-            message: "Para acessar o historico de manutencao, ative o plano Premium.",
+            title: "Anotações Premium",
+            message: "Para acessar suas anotações de manutenção, ative o plano Premium.",
             backHref: "index.html"
         })) {
             return;
@@ -1106,7 +1107,7 @@
             await refreshData();
         } catch (err) {
             console.error(err);
-            if (!cachedHistory) alert("Nao foi possivel carregar o historico de manutencao.");
+            if (!cachedHistory) alert("Nao foi possivel carregar suas anotações.");
         }
     }
 

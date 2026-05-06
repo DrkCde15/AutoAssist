@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # Importando as rotas e inicializacao do banco
-from routes import auth_bp, pages_bp, payment_bp, init_db
+from routes import auth_bp, pages_bp, payment_bp, feedback_bp, init_db
 
 # [SEGURANCA] Cabecalhos HTTP Seguros e CSP
 is_production = os.getenv("FLASK_ENV") == "production"
@@ -216,6 +216,7 @@ def health():
 app.register_blueprint(auth_bp)
 app.register_blueprint(pages_bp)
 app.register_blueprint(payment_bp)
+app.register_blueprint(feedback_bp)
 app.register_blueprint(gateway_bp)
 
 # [SEGURANCA] Padronizacao de Erros (Information Disclosure)

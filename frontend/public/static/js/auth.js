@@ -501,7 +501,7 @@ const Auth = (() => {
 
     const premiumPaths = new Set([
       "dashboard.html",
-      "videos.html",
+      "library.html",
       "maintenance_history.html",
     ]);
 

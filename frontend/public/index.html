@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>AutoAssist - Consultoria Automotiva com IA</title>
-    <link rel="icon" type="image/png" href="static/logo2.png">
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
 
@@ -89,7 +90,7 @@
         }
 
         .nav-logo img {
-            height: 64px !important;
+            height: 84px !important;
             width: auto;
         }
 
@@ -589,6 +590,10 @@
             color: var(--text-muted);
         }
 
+        footer a:hover {
+            color: var(--text-primary) !important;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .navbar {
@@ -663,6 +668,10 @@
         .feature-card:nth-child(2) { animation-delay: 0.2s; }
         .feature-card:nth-child(3) { animation-delay: 0.3s; }
         .feature-card:nth-child(4) { animation-delay: 0.4s; }
+        .feature-card:nth-child(5) { animation-delay: 0.5s; }
+        .feature-card:nth-child(6) { animation-delay: 0.6s; }
+        .feature-card:nth-child(7) { animation-delay: 0.7s; }
+        .feature-card:nth-child(8) { animation-delay: 0.8s; }
     </style>
 </head>
 <body>
@@ -671,7 +680,7 @@
         <div class="nav-container">
             <a href="index.html" class="nav-logo">
                 <div class="nav-logo-icon">
-                    <img src="logo.png" alt="AutoAssist IA" style="height:72px;width:auto;">
+                    <img src="logo.png" alt="AutoAssist IA" style="height:84px;width:auto;">
                 </div>
                 <span class="nav-logo-text">AutoAssist</span>
             </a>
@@ -757,6 +766,46 @@
                         Consulte valores FIPE atualizados e acompanhe a valorização do seu patrimônio.
                     </p>
                 </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3 class="feature-title">Anotações Inteligentes</h3>
+                    <p class="feature-description">
+                        Organize todo o histórico de manutenção e gastos do seu veículo em um só lugar com IA.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3 class="feature-title">Biblioteca Curada</h3>
+                    <p class="feature-description">
+                        Acesse vídeos e recomendações personalizadas sugeridas pela IA durante suas conversas.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h3 class="feature-title">Alertas Preventivos</h3>
+                    <p class="feature-description">
+                        Receba avisos automáticos por e-mail sobre revisões e trocas de peças essenciais.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h3 class="feature-title">Relatórios PDF</h3>
+                    <p class="feature-description">
+                        Gere documentos profissionais com o estado de saúde e histórico completo do seu carro.
+                    </p>
+                </div>
             </div>
         </div>
     </section>
@@ -775,6 +824,13 @@
     </section>
 
     <footer>
+        <div style="margin-bottom: 15px; display: flex; justify-content: center; gap: 20px;">
+            <a href="feedback.html" style="color: var(--text-secondary); text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; transition: color 0.2s;">
+                <i class="fas fa-star" style="color: var(--warning);"></i>
+                Feedbacks
+            </a>
+            <a href="#features" style="color: var(--text-secondary); text-decoration: none; font-size: 14px;">Recursos</a>
+        </div>
         <p>&copy; 2026 AutoAssist IA. Todos os direitos reservados.</p>
     </footer>
 
@@ -915,8 +971,8 @@
                     authLinks.innerHTML = `
                         <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-                        <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Histórico</a>
-                        ${isPremium ? '<a href="videos.html" class="nav-link"><i class="fas fa-video"></i> Vídeos</a>' : ''}
+                        <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
+                        ${isPremium ? '<a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>' : ''}
                         <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
                         <button id="btnNotifications" class="nav-bell-btn" title="Notificacoes">
                             <i class="fas fa-bell"></i>

@@ -201,6 +201,18 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feedbacks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NULL,
+                nome VARCHAR(100),
+                email VARCHAR(100),
+                estrelas INT DEFAULT 5,
+                comentario TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+        """)
         print("✅ Banco de dados inicializado com sucesso!")
 
 # (enviar_email removido daqui e movido para utils.email)

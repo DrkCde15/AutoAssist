@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/public/logo.png" alt="AutoAssist Logo" width="200">
+  <img src="frontend/public/static/logo2.png" alt="AutoAssist Logo" width="200">
 </p>
 
 # AutoAssist IA 🚗💨
@@ -23,6 +23,7 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 - **Galeria de Vídeos Otimizada:** Nova biblioteca de vídeos com redirecionamento direto para o YouTube, miniaturas em alta resolução e carregamento ultrarrápido.
 - **Notificações Instantâneas:** Sistema de e-mail que alerta o usuário **no mesmo dia** em que uma manutenção atinge o status crítico ou vence.
 - **Tabela FIPE Real-Time:** Integração com a API FIPE para fornecer valores de mercado precisos e atualizados.
+- **Feedback Inteligente:** Sistema que coleta e organiza o feedback dos usuários para melhoria contínua do sistema.
 
 ### **Segurança e Cloud (Hardening de Produção)**
 
@@ -68,7 +69,7 @@ AutoAssist/
 ├── frontend/
 │   ├── index.html              # Landing Page / Dashboard
 │   ├── chat.html               # Consultor NOG IA
-│   ├── videos.html             # Galeria de Vídeos YouTube
+│   ├── library.html             # Galeria de Vídeos YouTube
 │   ├── maintenance_history.html # Gestão de Manutenções
 │   └── static/                 # CSS, JS (auth.js, config.js)
 └── README.md

@@ -25,7 +25,7 @@ Frontend:
 - `frontend/chat.html`
 - `frontend/dashboard.html`
 - `frontend/perfil.html`
-- `frontend/videos.html`
+- `frontend/library.html`
 - `frontend/static/js/auth.js`
 
 Severidade:
@@ -151,7 +151,7 @@ Severidade:
 
 ### 7. XSS DOM em paginas de videos, dashboard, perfil e cards do chat
 
-**Local**: `frontend/videos.html`, `frontend/dashboard.html`, `frontend/perfil.html`, `frontend/chat.html`, `frontend/static/js/auth.js`
+**Local**: `frontend/library.html`, `frontend/dashboard.html`, `frontend/perfil.html`, `frontend/chat.html`, `frontend/static/js/auth.js`
 
 **Descricao**:
 - Uso extensivo de `innerHTML` com dados vindos da API/usuario (`url`, `titulo`, `descricao`, campos de veiculo).
@@ -319,7 +319,7 @@ Severidade:
 
 ### 17. `target="_blank"` sem `rel="noopener noreferrer"` em links dinamicos
 
-**Local**: `frontend/chat.html`, `frontend/videos.html`
+**Local**: `frontend/chat.html`, `frontend/library.html`
 
 **Descricao**:
 - Links externos abrem nova aba sem protecao consistente.
