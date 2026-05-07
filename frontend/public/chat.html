@@ -558,6 +558,21 @@
         color: var(--text-primary);
       }
 
+      .btn-icon:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .btn-icon:disabled:hover {
+        background: transparent;
+        color: var(--text-muted);
+      }
+
+      .btn-icon.is-recording {
+        background: rgba(242, 85, 85, 0.1);
+        color: var(--danger);
+      }
+
       .send-btn {
         background: linear-gradient(135deg, var(--accent), var(--accent-strong)) !important;
         color: white !important;
@@ -667,7 +682,7 @@
             <i class="fas fa-plus"></i>
           </button>
           <input id="messageInput" placeholder="Pergunte sobre seu veículo..." autocomplete="off" />
-          <button id="btnVoice" class="btn-icon" style="display: none" title="Usar voz">
+          <button id="btnVoice" class="btn-icon" title="Usar voz" aria-label="Usar voz" type="button">
             <i class="fas fa-microphone"></i>
           </button>
           <button id="send" class="btn-icon send-btn" title="Enviar">
@@ -704,9 +719,18 @@
         }
       }
 
-      // Voice support
-      if ("webkitSpeechRecognition" in window) {
-        btnVoice.style.display = "flex";
+      // Voice support: o fluxo usa MediaRecorder/getUserMedia, nao Web Speech.
+      const supportsVoiceInput = Boolean(
+        navigator.mediaDevices &&
+        navigator.mediaDevices.getUserMedia &&
+        window.MediaRecorder &&
+        (window.AudioContext || window.webkitAudioContext)
+      );
+
+      if (!supportsVoiceInput) {
+        btnVoice.disabled = true;
+        btnVoice.title = "Voz indisponivel neste navegador ou conexao.";
+        btnVoice.setAttribute("aria-label", "Voz indisponivel");
       }
 
       // Voice handlers
@@ -721,6 +745,11 @@
       let hasDetectedSoundInSegment = false;
 
       btnVoice.addEventListener("click", async () => {
+        if (!supportsVoiceInput) {
+          input.placeholder = "Voz indisponivel neste navegador.";
+          return;
+        }
+
         if (!isHandsFreeActive) {
           startHandsFree();
         } else {
@@ -733,7 +762,7 @@
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           streamGlobal = stream;
           isHandsFreeActive = true;
-          btnVoice.style.color = "var(--danger)";
+          btnVoice.classList.add("is-recording");
           
           setupSilenceDetection(stream);
           startRecordingSegment();
@@ -820,7 +849,7 @@
           clearTimeout(silenceTimeout);
           silenceTimeout = null;
         }
-        btnVoice.style.color = "";
+        btnVoice.classList.remove("is-recording");
         input.placeholder = "Pergunte sobre seu veículo...";
       }
 
