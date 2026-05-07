@@ -37,6 +37,7 @@ pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
 
 PREMIUM_ONLY_ERROR = "Recurso exclusivo para Premium"
+INVALID_SESSION_ERROR = "Sessao invalida. Faca login novamente."
 
 def get_dashboard_url() -> str:
     frontend_url = (os.getenv("URL_PROD") or "").strip()
@@ -51,8 +52,13 @@ def get_user_by_id(cursor, user_id):
     cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
     return cursor.fetchone()
 
+def invalid_session_response():
+    return jsonify(error=INVALID_SESSION_ERROR), 401
+
 def ensure_premium_user(user):
-    if user and bool(user.get("is_premium")):
+    if not user:
+        return invalid_session_response()
+    if bool(user.get("is_premium")):
         return None
     return jsonify(error=PREMIUM_ONLY_ERROR), 403
 
@@ -246,7 +252,7 @@ def get_user():
         """, (user_id,))
         user = cursor.fetchone()
         if not user:
-            return jsonify(error="Usuário não encontrado"), 404
+            return invalid_session_response()
         user["maintenance_email_last_sent"] = serialize_datetime_field(user.get("maintenance_email_last_sent"))
 
         cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
@@ -292,7 +298,7 @@ def update_user():
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
-                return jsonify(error="Usuário não encontrado"), 404
+                return invalid_session_response()
             
             cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
             total = cursor.fetchone()
@@ -738,7 +744,7 @@ def get_email_settings():
             cursor.execute("SELECT maintenance_email_enabled FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
-                return jsonify(error="Usuario nao encontrado"), 404
+                return invalid_session_response()
             return jsonify(enabled=bool(user["maintenance_email_enabled"])), 200
     except Exception as e:
         logger.error(f"Erro ao buscar configuracao de email: {e}")
@@ -777,7 +783,7 @@ def send_maintenance_email_now():
             cursor.execute("SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
-                return jsonify(error="Usuario nao encontrado"), 404
+                return invalid_session_response()
             result = send_maintenance_alert_email_for_user(cursor, user, force=True)
             return jsonify(success=result["sent"], reason=result["reason"], alerts_count=result["alerts_count"]), (200 if result["sent"] else 202)
     except Exception as e:
@@ -871,6 +877,10 @@ def get_chat_history():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            if not user:
+                return invalid_session_response()
+
             cursor.execute("SELECT mensagem_usuario, resposta_ia, created_at, videos FROM chats WHERE user_id = %s ORDER BY created_at ASC", (user_id,))
             rows = cursor.fetchall()
             chats = []
@@ -1016,7 +1026,7 @@ def chat():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
-            if not user: return jsonify(error="Usuário não encontrado"), 404
+            if not user: return invalid_session_response()
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
             if veiculos: user['lista_veiculos'] = veiculos
@@ -1100,7 +1110,7 @@ def handle_voice():
         # Gerar resposta da IA
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
-            if not user: return jsonify(error="Usuário não encontrado"), 404
+            if not user: return invalid_session_response()
             
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()

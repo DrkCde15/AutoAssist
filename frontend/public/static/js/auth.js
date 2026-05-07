@@ -26,10 +26,13 @@ const Auth = (() => {
       sessionStorage.removeItem(KEYS.VEHICLES);
     }
   };
+  let refreshPromise = null;
+  let invalidSessionHandled = false;
 
   // ─── Persistência ─────────────────────────────────────────────────────────
 
   function saveSession(accessToken, refreshToken, user) {
+    invalidSessionHandled = false;
     localStorage.setItem(KEYS.ACCESS, accessToken);
     if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
     if (user) localStorage.setItem(KEYS.USER, JSON.stringify(user));
@@ -38,6 +41,22 @@ const Auth = (() => {
   function clearSession() {
     Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
     Cache.clear();
+  }
+
+  function redirectToLogin() {
+    if (typeof window === "undefined") return;
+    const currentPage = (window.location.pathname.split("/").pop() || "").toLowerCase();
+    if (currentPage !== "login.html") {
+      window.location.href = "login.html";
+    }
+  }
+
+  function handleInvalidSession({ redirect = true } = {}) {
+    if (!invalidSessionHandled) {
+      invalidSessionHandled = true;
+      clearSession();
+    }
+    if (redirect) redirectToLogin();
   }
 
   function getAccessToken() {
@@ -64,12 +83,30 @@ const Auth = (() => {
    * Sincroniza os dados do usuário com o banco de dados.
    * Útil para atualizar o status Premium sem precisar de re-login.
    */
-  async function syncUser() {
+  async function syncUser({ redirectOnInvalid = false } = {}) {
     if (!isAuthenticated()) return null;
     try {
-      const res = await fetch(`${CONFIG.API_URL}/api/user`, {
-        headers: { Authorization: `Bearer ${getAccessToken()}` }
+      let token = getAccessToken();
+      let res = await fetch(`${CONFIG.API_URL}/api/user`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
+
+      if (res.status === 401) {
+        try {
+          token = await refreshAccessToken({ redirectOnFailure: redirectOnInvalid });
+          res = await fetch(`${CONFIG.API_URL}/api/user`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } catch {
+          return null;
+        }
+      }
+
+      if (res.status === 401 || res.status === 404) {
+        handleInvalidSession({ redirect: redirectOnInvalid });
+        return null;
+      }
+
       if (res.ok) {
         const data = await res.json();
         // Atualiza o localStorage com os dados frescos do banco
@@ -84,27 +121,42 @@ const Auth = (() => {
 
   // ─── Renovação de token ───────────────────────────────────────────────────
 
-  async function refreshAccessToken() {
+  async function refreshAccessToken({ redirectOnFailure = true } = {}) {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) throw new Error("Sem refresh token.");
-
-    const res = await fetch(`${CONFIG.API_URL}/api/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${refreshToken}`,
-      },
-    });
-
-    if (!res.ok) {
-      clearSession();
-      window.location.href = "login.html";
-      throw new Error("Sessão expirada. Faça login novamente.");
+    if (!refreshToken) {
+      handleInvalidSession({ redirect: redirectOnFailure });
+      throw new Error("Sem refresh token.");
     }
 
-    const data = await res.json();
-    localStorage.setItem(KEYS.ACCESS, data.access_token);
-    return data.access_token;
+    if (!refreshPromise) {
+      refreshPromise = (async () => {
+        const res = await fetch(`${CONFIG.API_URL}/api/refresh`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${refreshToken}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error("refresh_failed");
+        }
+
+        const data = await res.json();
+        localStorage.setItem(KEYS.ACCESS, data.access_token);
+        invalidSessionHandled = false;
+        return data.access_token;
+      })().finally(() => {
+        refreshPromise = null;
+      });
+    }
+
+    try {
+      return await refreshPromise;
+    } catch {
+      handleInvalidSession({ redirect: redirectOnFailure });
+      throw new Error("Sessao expirada. Faca login novamente.");
+    }
   }
 
   // ─── Fetch autenticado ────────────────────────────────────────────────────
@@ -120,6 +172,7 @@ const Auth = (() => {
    */
   async function authenticatedFetch(endpoint, options = {}) {
     const url = `${CONFIG.API_URL}${endpoint}`;
+    const method = (options.method || "GET").toUpperCase();
     let token = getAccessToken();
 
     const buildHeaders = (tok, extra = {}) => ({
@@ -148,9 +201,15 @@ const Auth = (() => {
         throw new Error("Sessão encerrada.");
       }
     }
-      if (res.status === 200 && endpoint === "/api/user" && options.method === "GET") {
-        const data = await res.clone().json();
-        localStorage.setItem(KEYS.USER, JSON.stringify(data));
+
+    if (res.status === 401 || (res.status === 404 && endpoint === "/api/user")) {
+      handleInvalidSession();
+      throw new Error("Sessao encerrada.");
+    }
+
+    if (res.status === 200 && endpoint === "/api/user" && method === "GET") {
+      const data = await res.clone().json();
+      localStorage.setItem(KEYS.USER, JSON.stringify(data));
     }
 
     return res;
@@ -570,6 +629,13 @@ const Auth = (() => {
 })();
 
 // Sincronização automática ao carregar o script (se autenticado)
-if (Auth.isAuthenticated()) {
+const autoassistCurrentPage = (window.location.pathname.split("/").pop() || "").toLowerCase();
+const autoassistPublicPages = new Set([
+  "login.html",
+  "cadastro.html",
+  "esqueci-senha.html",
+  "redefinir-senha.html",
+]);
+if (Auth.isAuthenticated() && !autoassistPublicPages.has(autoassistCurrentPage)) {
   Auth.syncUser();
 }

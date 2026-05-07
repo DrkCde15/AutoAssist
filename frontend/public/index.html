@@ -909,21 +909,25 @@
             const cachedAlerts = Auth.Cache.get('autoassist_alerts_cache');
             if (cachedUser) renderDashboard(cachedUser, cachedAlerts || []);
 
-            // Busca dados atualizados em paralelo
+            // Busca dados atualizados; alertas existem apenas para usuarios Premium.
             try {
-                const [userRes, alertsRes] = await Promise.all([
-                    Auth.authenticatedFetch('/api/user'),
-                    Auth.authenticatedFetch('/api/maintenance/alerts')
-                ]);
+                const userRes = await Auth.authenticatedFetch('/api/user');
 
                 if (userRes.ok) {
                     const userData = await userRes.json();
                     let maintenanceAlerts = [];
-                    if (alertsRes.ok) {
-                        const alertsData = await alertsRes.json();
-                        maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
-                        Auth.Cache.set('autoassist_alerts_cache', maintenanceAlerts);
+
+                    if (userData.is_premium) {
+                        const alertsRes = await Auth.authenticatedFetch('/api/maintenance/alerts');
+                        if (alertsRes.ok) {
+                            const alertsData = await alertsRes.json();
+                            maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
+                            Auth.Cache.set('autoassist_alerts_cache', maintenanceAlerts);
+                        }
+                    } else {
+                        Auth.Cache.set('autoassist_alerts_cache', []);
                     }
+
                     renderDashboard(userData, maintenanceAlerts);
                 }
             } catch (error) {

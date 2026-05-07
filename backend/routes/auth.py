@@ -515,6 +515,11 @@ def verify_2fa_login():
 @jwt_required(refresh=True)
 def refresh():
     user_id = get_jwt_identity()
+    with get_db() as (cursor, conn):
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            return jsonify(error="Sessao invalida. Faca login novamente."), 401
+
     access_token = create_access_token(identity=str(user_id))
     resp = jsonify(access_token=access_token)
     set_access_cookies(resp, access_token)
