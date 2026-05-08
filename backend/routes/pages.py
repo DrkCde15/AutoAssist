@@ -1103,6 +1103,11 @@ def get_video_library():
     user_id = get_jwt_identity()
     try:
         with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            premium_error = ensure_premium_user(user)
+            if premium_error:
+                return premium_error
+
             cursor.execute("""
                 SELECT topic, videos, links, created_at 
                 FROM chats 

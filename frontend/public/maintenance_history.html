@@ -1075,6 +1075,9 @@
             return;
         }
 
+        const user = await Auth.syncUser({ redirectOnInvalid: true });
+        if (!user) return;
+
         if (!Auth.requirePremiumPage({
             title: "Anotações Premium",
             message: "Para acessar suas anotações de manutenção, ative o plano Premium.",
@@ -1083,7 +1086,6 @@
             return;
         }
 
-        const user = Auth.getUser();
         if (user && user.is_premium) {
             document.getElementById('navDashboard').style.display = 'inline-flex';
             document.getElementById('btnMyVideos').style.display = 'inline-flex';

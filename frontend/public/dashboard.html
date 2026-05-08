@@ -383,6 +383,9 @@
                 return;
             }
 
+            const user = await Auth.syncUser({ redirectOnInvalid: true });
+            if (!user) return;
+
             if (!Auth.requirePremiumPage({
                 title: 'Dashboard Premium',
                 message: 'Para acessar o Dashboard, ative o plano Premium.',
@@ -391,7 +394,6 @@
                 return;
             }
 
-            const currentUser = Auth.getUser();
             document.getElementById('premiumVideosLink').style.display = 'flex';
 
             const content = document.getElementById('dashboardContent');
