@@ -729,7 +729,7 @@
         document.getElementById('infoEmail').value = user.email || '';
         document.getElementById('infoStatus').textContent = user.is_premium ? 'Premium' : 'Gratuito';
         document.getElementById('infoStatus').className = user.is_premium ? 'field-value premium' : 'field-value';
-        document.getElementById('infoConsultas').textContent = user.total_chats || '0';
+        document.getElementById('infoConsultas').textContent = user.total_consultas ?? user.total_chats ?? '0';
 
         renderVehiclesList(user.veiculos || []);
     }

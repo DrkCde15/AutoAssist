@@ -423,6 +423,15 @@
         });
     }
 
+    function escapeHTML(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     async function loadFeedbacks() {
         try {
             const res = await fetch(`${API_BASE}/api/feedbacks`);
@@ -434,18 +443,21 @@
                 return;
             }
 
-            container.innerHTML = data.feedbacks.map(f => `
+            container.innerHTML = data.feedbacks.map(f => {
+                const stars = Math.max(1, Math.min(Number(f.estrelas) || 5, 5));
+                const createdAt = f.created_at ? new Date(f.created_at).toLocaleDateString('pt-BR') : '';
+                return `
                 <div class="feedback-item">
                     <div class="feedback-meta">
-                        <span class="feedback-user">${f.nome || 'Usuario Anonimo'}</span>
+                        <span class="feedback-user">${escapeHTML(f.nome || 'Usuario Anonimo')}</span>
                         <div class="feedback-stars">
-                            ${Array(5).fill(0).map((_, i) => `<i class="${i < f.estrelas ? 'fas' : 'far'} fa-star"></i>`).join('')}
+                            ${Array(5).fill(0).map((_, i) => `<i class="${i < stars ? 'fas' : 'far'} fa-star"></i>`).join('')}
                         </div>
                     </div>
-                    <div class="feedback-text">${f.comentario}</div>
-                    <div class="feedback-date">${new Date(f.created_at).toLocaleDateString('pt-BR')}</div>
+                    <div class="feedback-text">${escapeHTML(f.comentario)}</div>
+                    <div class="feedback-date">${escapeHTML(createdAt)}</div>
                 </div>
-            `).join('');
+            `}).join('');
         } catch (err) {
             console.error('Erro ao carregar feedbacks:', err);
         }

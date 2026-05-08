@@ -190,6 +190,8 @@ def init_db():
                 next_due_date DATE NULL,
                 next_due_km INT NULL,
                 parser_metadata JSON NULL,
+                alert_last_status_code VARCHAR(30) NULL,
+                alert_last_sent_at DATETIME NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_maintenance_user_date (user_id, service_date),
                 INDEX idx_maintenance_vehicle (vehicle_id),
@@ -198,6 +200,15 @@ def init_db():
                 FOREIGN KEY (vehicle_id) REFERENCES veiculos(id) ON DELETE SET NULL
             )
         """)
+        maintenance_columns = [
+            ("alert_last_status_code", "VARCHAR(30) NULL"),
+            ("alert_last_sent_at", "DATETIME NULL"),
+        ]
+        for col, dtype in maintenance_columns:
+            try:
+                cursor.execute(f"ALTER TABLE maintenance_history ADD COLUMN {col} {dtype}")
+            except Exception:
+                pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS payments_orders (
                 id VARCHAR(100) PRIMARY KEY,

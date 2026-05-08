@@ -2,17 +2,18 @@
  * AutoAssist — Módulo de Autenticação
  *
  * Responsabilidades:
- *  - Persistir e recuperar access_token / refresh_token no localStorage.
- *  - Fornecer Auth.authenticatedFetch() que adiciona o Bearer automaticamente
- *    e renova o token silenciosamente quando ele expira (401).
+ *  - Usar cookies HttpOnly como sessao principal e aceitar tokens legados.
+ *  - Fornecer Auth.authenticatedFetch() que envia CSRF/cookies automaticamente
+ *    e renova a sessao silenciosamente quando ela expira (401).
  *  - Expor Auth.login(), Auth.logout(), Auth.isAuthenticated().
- *  - Processar o retorno de OAuth2 (Google) via query-string na URL.
+ *  - Processar o retorno de OAuth2 (Google) sem expor tokens na URL.
  */
 const Auth = (() => {
   const KEYS = {
     ACCESS: "autoassist_access_token",
     REFRESH: "autoassist_refresh_token",
     USER: "autoassist_user",
+    COOKIE_SESSION: "autoassist_cookie_session",
     VEHICLES: "autoassist_veiculos_cache",
   };
 
@@ -31,10 +32,16 @@ const Auth = (() => {
 
   // ─── Persistência ─────────────────────────────────────────────────────────
 
-  function saveSession(accessToken, refreshToken, user) {
+  function saveSession(accessToken, refreshToken, user, options = {}) {
     invalidSessionHandled = false;
-    localStorage.setItem(KEYS.ACCESS, accessToken);
-    if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
+    localStorage.setItem(KEYS.COOKIE_SESSION, "1");
+    if (options.persistTokens) {
+      if (accessToken) localStorage.setItem(KEYS.ACCESS, accessToken);
+      if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
+    } else {
+      localStorage.removeItem(KEYS.ACCESS);
+      localStorage.removeItem(KEYS.REFRESH);
+    }
     if (user) localStorage.setItem(KEYS.USER, JSON.stringify(user));
   }
 
@@ -67,6 +74,23 @@ const Auth = (() => {
     return localStorage.getItem(KEYS.REFRESH);
   }
 
+  function hasCookieSession() {
+    return localStorage.getItem(KEYS.COOKIE_SESSION) === "1";
+  }
+
+  function getCookie(name) {
+    const encoded = `${encodeURIComponent(name)}=`;
+    return document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(encoded))
+      ?.slice(encoded.length) || "";
+  }
+
+  function getCsrfToken(endpoint = "") {
+    return getCookie(endpoint === "/api/refresh" ? "csrf_refresh_token" : "csrf_access_token");
+  }
+
   function getUser() {
     try {
       return JSON.parse(localStorage.getItem(KEYS.USER)) || null;
@@ -76,7 +100,7 @@ const Auth = (() => {
   }
 
   function isAuthenticated() {
-    return !!getAccessToken();
+    return !!getAccessToken() || hasCookieSession();
   }
 
   /**
@@ -87,15 +111,18 @@ const Auth = (() => {
     if (!isAuthenticated()) return null;
     try {
       let token = getAccessToken();
+      const buildUserHeaders = (tok) => tok ? { Authorization: `Bearer ${tok}` } : {};
       let res = await fetch(`${CONFIG.API_URL}/api/user`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: "include",
+        headers: buildUserHeaders(token)
       });
 
       if (res.status === 401) {
         try {
           token = await refreshAccessToken({ redirectOnFailure: redirectOnInvalid });
           res = await fetch(`${CONFIG.API_URL}/api/user`, {
-            headers: { Authorization: `Bearer ${token}` }
+            credentials: "include",
+            headers: buildUserHeaders(token)
           });
         } catch {
           return null;
@@ -110,6 +137,7 @@ const Auth = (() => {
       if (res.ok) {
         const data = await res.json();
         // Atualiza o localStorage com os dados frescos do banco
+        localStorage.setItem(KEYS.COOKIE_SESSION, "1");
         localStorage.setItem(KEYS.USER, JSON.stringify(data));
         return data;
       }
@@ -123,19 +151,22 @@ const Auth = (() => {
 
   async function refreshAccessToken({ redirectOnFailure = true } = {}) {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) {
+    if (!refreshToken && !hasCookieSession()) {
       handleInvalidSession({ redirect: redirectOnFailure });
       throw new Error("Sem refresh token.");
     }
 
     if (!refreshPromise) {
       refreshPromise = (async () => {
+        const headers = { "Content-Type": "application/json" };
+        if (refreshToken) headers.Authorization = `Bearer ${refreshToken}`;
+        const csrfToken = getCsrfToken("/api/refresh");
+        if (csrfToken) headers["X-CSRF-TOKEN"] = csrfToken;
+
         const res = await fetch(`${CONFIG.API_URL}/api/refresh`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${refreshToken}`,
-          },
+          credentials: "include",
+          headers,
         });
 
         if (!res.ok) {
@@ -143,7 +174,10 @@ const Auth = (() => {
         }
 
         const data = await res.json();
-        localStorage.setItem(KEYS.ACCESS, data.access_token);
+        if (refreshToken && data.access_token) {
+          localStorage.setItem(KEYS.ACCESS, data.access_token);
+        }
+        localStorage.setItem(KEYS.COOKIE_SESSION, "1");
         invalidSessionHandled = false;
         return data.access_token;
       })().finally(() => {
@@ -175,10 +209,15 @@ const Auth = (() => {
     const method = (options.method || "GET").toUpperCase();
     let token = getAccessToken();
 
-    const buildHeaders = (tok, extra = {}) => ({
-      ...extra,
-      Authorization: `Bearer ${tok}`,
-    });
+    const buildHeaders = (tok, extra = {}) => {
+      const headers = { ...extra };
+      if (tok) headers.Authorization = `Bearer ${tok}`;
+      const csrfToken = getCsrfToken(endpoint);
+      if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+        headers["X-CSRF-TOKEN"] = csrfToken;
+      }
+      return headers;
+    };
 
     // Não sobrescrevemos Content-Type se for FormData (multipart)
     const isFormData = options.body instanceof FormData;
@@ -186,7 +225,7 @@ const Auth = (() => {
       ? buildHeaders(token, options.headers || {})
       : buildHeaders(token, { "Content-Type": "application/json", ...(options.headers || {}) });
 
-    let res = await fetch(url, { ...options, headers: baseHeaders });
+    let res = await fetch(url, { ...options, credentials: "include", headers: baseHeaders });
 
     // Tenta renovar o token se expirado
     if (res.status === 401) {
@@ -195,7 +234,7 @@ const Auth = (() => {
         const retryHeaders = isFormData
           ? buildHeaders(token, options.headers || {})
           : buildHeaders(token, { "Content-Type": "application/json", ...(options.headers || {}) });
-        res = await fetch(url, { ...options, headers: retryHeaders });
+        res = await fetch(url, { ...options, credentials: "include", headers: retryHeaders });
       } catch {
         // refreshAccessToken já faz o redirect
         throw new Error("Sessão encerrada.");
@@ -225,6 +264,7 @@ const Auth = (() => {
   async function login(email, password) {
     const res = await fetch(`${CONFIG.API_URL}/api/login`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
@@ -249,6 +289,7 @@ const Auth = (() => {
   async function verify2FA(pendingToken, code) {
     const res = await fetch(`${CONFIG.API_URL}/api/auth/2fa/verify`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pending_token: pendingToken, code }),
     });
@@ -266,22 +307,37 @@ const Auth = (() => {
   // ─── Logout ───────────────────────────────────────────────────────────────
 
   function logout() {
-    clearSession();
-    window.location.href = "login.html";
+    const csrfToken = getCsrfToken();
+    const headers = csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {};
+    fetch(`${CONFIG.API_URL}/api/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers,
+    }).finally(() => {
+      clearSession();
+      window.location.href = "login.html";
+    });
   }
 
   // ─── Callback OAuth2 (Google) ─────────────────────────────────────────────
   //
-  // O backend redireciona para:
-  //   /index.html?access_token=...&refresh_token=...&user=...
+  // O backend novo redireciona para /index.html?oauth=success.
   //
   // Este bloco processa esses parâmetros assim que o script carrega.
 
   (function processOAuthCallback() {
     const params = new URLSearchParams(window.location.search);
+    const oauthSuccess = params.get("oauth") === "success";
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
     const userRaw = params.get("user");
+
+    if (oauthSuccess) {
+      localStorage.setItem(KEYS.COOKIE_SESSION, "1");
+      window.history.replaceState({}, document.title, window.location.pathname);
+      syncUser({ redirectOnInvalid: false });
+      return;
+    }
 
     if (accessToken) {
       let user = null;
@@ -311,6 +367,7 @@ const Auth = (() => {
   async function register(nome, email, password, veiculos = []) {
     const res = await fetch(`${CONFIG.API_URL}/api/cadastro`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome, email, password, veiculos }),
     });
@@ -333,6 +390,7 @@ const Auth = (() => {
   async function forgotPassword(email) {
     const res = await fetch(`${CONFIG.API_URL}/api/auth/forgot-password`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
@@ -356,6 +414,7 @@ const Auth = (() => {
   async function resetPassword(token, newPassword) {
     const res = await fetch(`${CONFIG.API_URL}/api/auth/reset-password`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, password: newPassword }),
     });

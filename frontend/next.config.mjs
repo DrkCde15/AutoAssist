@@ -2,9 +2,6 @@
 const FLASK_URL = process.env.FLASK_URL || "http://localhost:5000";
 
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
   },

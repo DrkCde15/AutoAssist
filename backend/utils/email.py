@@ -1,4 +1,5 @@
 import os
+import logging
 import smtplib
 import time
 from email.mime.multipart import MIMEMultipart
@@ -6,6 +7,8 @@ from email.mime.text import MIMEText
 
 import requests
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Carrega variaveis de ambiente
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -81,6 +84,7 @@ def _from_string() -> str:
 
 def _send_via_resend(destinatario: str, assunto: str, html_final: str) -> bool:
     if not RESEND_API_KEY or not EMAIL_FROM:
+        logger.warning("Resend nao configurado: defina RESEND_API_KEY e EMAIL_FROM.")
         return False
 
     payload = {
@@ -96,12 +100,13 @@ def _send_via_resend(destinatario: str, assunto: str, html_final: str) -> bool:
     resp = _post_with_retry("https://api.resend.com/emails", payload, headers)
     if 200 <= resp.status_code < 300:
         return True
-    print(f"Erro ao enviar e-mail via Resend: HTTP {resp.status_code} - {resp.text}")
+    logger.warning("Erro ao enviar e-mail via Resend: HTTP %s - %s", resp.status_code, resp.text)
     return False
 
 
 def _send_via_brevo(destinatario: str, assunto: str, html_final: str) -> bool:
     if not BREVO_API_KEY or not EMAIL_FROM:
+        logger.warning("Brevo nao configurado: defina BREVO_API_KEY e EMAIL_FROM.")
         return False
 
     payload = {
@@ -117,12 +122,13 @@ def _send_via_brevo(destinatario: str, assunto: str, html_final: str) -> bool:
     resp = _post_with_retry("https://api.brevo.com/v3/smtp/email", payload, headers)
     if 200 <= resp.status_code < 300:
         return True
-    print(f"Erro ao enviar e-mail via Brevo: HTTP {resp.status_code} - {resp.text}")
+    logger.warning("Erro ao enviar e-mail via Brevo: HTTP %s - %s", resp.status_code, resp.text)
     return False
 
 
 def _send_via_sendgrid(destinatario: str, assunto: str, html_final: str) -> bool:
     if not SENDGRID_API_KEY or not EMAIL_FROM:
+        logger.warning("SendGrid nao configurado: defina SENDGRID_API_KEY e EMAIL_FROM.")
         return False
 
     payload = {
@@ -138,12 +144,13 @@ def _send_via_sendgrid(destinatario: str, assunto: str, html_final: str) -> bool
     resp = _post_with_retry("https://api.sendgrid.com/v3/mail/send", payload, headers)
     if 200 <= resp.status_code < 300:
         return True
-    print(f"Erro ao enviar e-mail via SendGrid: HTTP {resp.status_code} - {resp.text}")
+    logger.warning("Erro ao enviar e-mail via SendGrid: HTTP %s - %s", resp.status_code, resp.text)
     return False
 
 
 def _send_via_webhook(destinatario: str, assunto: str, html_final: str) -> bool:
     if not WEBHOOK_EMAIL_URL:
+        logger.warning("Webhook de e-mail nao configurado: defina WEBHOOK_EMAIL_URL.")
         return False
 
     payload = {
@@ -160,12 +167,13 @@ def _send_via_webhook(destinatario: str, assunto: str, html_final: str) -> bool:
     resp = _post_with_retry(WEBHOOK_EMAIL_URL, payload, headers)
     if 200 <= resp.status_code < 300:
         return True
-    print(f"Erro ao enviar e-mail via Webhook: HTTP {resp.status_code} - {resp.text}")
+    logger.warning("Erro ao enviar e-mail via Webhook: HTTP %s - %s", resp.status_code, resp.text)
     return False
 
 
 def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
     if not EMAIL_REMETENTE or not EMAIL_SENHA_APP:
+        logger.warning("SMTP nao configurado: defina EMAIL_REMETENTE e EMAIL_SENHA_APP.")
         return False
 
     msg = MIMEMultipart()
@@ -175,7 +183,7 @@ def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
     msg.attach(MIMEText(html_final, "html"))
 
     try:
-        print(f"--- Tentando enviar email SMTP para: {destinatario} ---")
+        logger.info("Tentando enviar e-mail SMTP para: %s", destinatario)
         with smtplib.SMTP("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT_SECONDS) as server:
             server.ehlo()
             server.starttls()
@@ -184,15 +192,27 @@ def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
             server.send_message(msg)
         return True
     except Exception as exc:
-        print(f"Erro ao enviar e-mail via SMTP: {exc}")
+        logger.warning("Erro ao enviar e-mail via SMTP: %s", exc)
         return False
 
 
 def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     """
-    Envia e-mail somente via SMTP.
+    Envia e-mail pelo provedor configurado em EMAIL_PROVIDER.
     """
     html_final = _wrap_email_html(mensagem_html)
-    if EMAIL_PROVIDER != "smtp":
-        print("EMAIL_PROVIDER diferente de smtp foi ignorado; envio usando SMTP apenas.")
-    return _send_via_smtp(destinatario, assunto, html_final)
+    providers = {
+        "smtp": _send_via_smtp,
+        "resend": _send_via_resend,
+        "brevo": _send_via_brevo,
+        "sendgrid": _send_via_sendgrid,
+        "webhook": _send_via_webhook,
+    }
+    sender = providers.get(EMAIL_PROVIDER)
+    if not sender:
+        logger.warning(
+            "EMAIL_PROVIDER invalido (%s). Use smtp, resend, brevo, sendgrid ou webhook.",
+            EMAIL_PROVIDER,
+        )
+        return False
+    return sender(destinatario, assunto, html_final)

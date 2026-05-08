@@ -25,11 +25,26 @@ const CONFIG = (() => {
   const isFlaskSameOrigin = isLocal && window.location.port === "5000";
 
   const query = new URLSearchParams(window.location.search);
+  const isAllowedOverride = (value) => {
+    if (!isLocal || !value) return false;
+    try {
+      const parsed = new URL(value, window.location.origin);
+      return ["http:", "https:"].includes(parsed.protocol) &&
+        ["localhost", "127.0.0.1"].includes(parsed.hostname);
+    } catch {
+      return false;
+    }
+  };
+
   const queryApi = (query.get("api") || "").trim();
-  if (queryApi) {
+  if (isAllowedOverride(queryApi)) {
     localStorage.setItem(API_OVERRIDE_KEY, queryApi);
   }
-  const overrideApi = (localStorage.getItem(API_OVERRIDE_KEY) || "").trim();
+  const storedOverrideApi = (localStorage.getItem(API_OVERRIDE_KEY) || "").trim();
+  if (storedOverrideApi && !isAllowedOverride(storedOverrideApi)) {
+    localStorage.removeItem(API_OVERRIDE_KEY);
+  }
+  const overrideApi = isAllowedOverride(storedOverrideApi) ? storedOverrideApi : "";
 
   return {
     API_URL: overrideApi || (

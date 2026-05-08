@@ -6,7 +6,8 @@ from flask_jwt_extended import (
     get_jwt_identity,
     decode_token,
     set_access_cookies,
-    set_refresh_cookies
+    set_refresh_cookies,
+    unset_jwt_cookies
 )
 from passlib.hash import bcrypt
 import secrets
@@ -180,6 +181,7 @@ def get_google_oauth_hosts():
         return None
 
 @auth_bp.route("/api/auth/google/login")
+@limiter.limit("20 per minute")
 def google_login():
     hosts = get_google_oauth_hosts()
     if not hosts or not google_client:
@@ -214,6 +216,7 @@ def google_login():
     return resp
 
 @auth_bp.route("/api/auth/google/callback")
+@limiter.limit("30 per minute")
 def google_callback():
     code = request.args.get("code")
     state = request.args.get("state")
@@ -287,7 +290,6 @@ def google_callback():
                 
             cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cursor.fetchone()
-            veiculos = fetch_veiculos_user(cursor, user["id"])
 
         # Gerar tokens JWT (iguais ao login regular)
         access_token = create_access_token(identity=str(user["id"]))
@@ -303,24 +305,8 @@ def google_callback():
             base = frontend_base if frontend_base.endswith("/") else f"{frontend_base}/"
             redirect_url = f"{base}index.html"
             
-        # Preparar dados do usuÃ¡rio para o frontend
-        user_data = {
-            "id": user["id"],
-            "nome": user["nome"],
-            "email": user["email"],
-            "is_premium": bool(user["is_premium"]),
-            "profile_pic": user.get("profile_pic")
-        }
-        
-        import urllib.parse
-        params = {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": json.dumps(user_data)
-        }
-        
-        # ConstrÃ³i a URL final com os parÃ¢metros para o auth.js processar
-        final_redirect_url = f"{redirect_url}?{urllib.parse.urlencode(params)}"
+        separator = "&" if "?" in redirect_url else "?"
+        final_redirect_url = f"{redirect_url}{separator}oauth=success"
         
         from flask import make_response
         resp = make_response(redirect(final_redirect_url))
@@ -446,6 +432,7 @@ def login():
         return jsonify(error="Erro ao processar login"), 500
     
 @auth_bp.route("/api/auth/2fa/verify", methods=["POST"])
+@limiter.limit("10 per minute")
 def verify_2fa_login():
     data = request.get_json()
     pending_token = data.get("pending_token")
@@ -512,6 +499,7 @@ def verify_2fa_login():
         return jsonify(error="Erro interno na verificaÃƒÂ§ÃƒÂ£o"), 500
 
 @auth_bp.route("/api/refresh", methods=["POST"])
+@limiter.limit("60 per minute")
 @jwt_required(refresh=True)
 def refresh():
     user_id = get_jwt_identity()
@@ -523,6 +511,14 @@ def refresh():
     access_token = create_access_token(identity=str(user_id))
     resp = jsonify(access_token=access_token)
     set_access_cookies(resp, access_token)
+    return resp, 200
+
+
+@auth_bp.route("/api/logout", methods=["POST"])
+@limiter.limit("30 per minute")
+def logout():
+    resp = jsonify(success=True)
+    unset_jwt_cookies(resp)
     return resp, 200
 
 @auth_bp.route("/api/auth/2fa/setup", methods=["GET"])
@@ -546,6 +542,7 @@ def setup_2fa():
         return jsonify(error="Erro ao configurar 2FA"), 500
 
 @auth_bp.route("/api/auth/2fa/confirm", methods=["POST"])
+@limiter.limit("10 per minute")
 @jwt_required()
 def confirm_2fa():
     user_id = get_jwt_identity()
@@ -574,6 +571,7 @@ def confirm_2fa():
         return jsonify(error="Erro ao confirmar 2FA"), 500
 
 @auth_bp.route("/api/auth/2fa/disable", methods=["POST"])
+@limiter.limit("10 per minute")
 @jwt_required()
 def disable_2fa():
     user_id = get_jwt_identity()
@@ -605,6 +603,7 @@ def disable_2fa():
         return jsonify(error="Erro ao desativar 2FA"), 500
 
 @auth_bp.route("/api/auth/forgot-password", methods=["POST"])
+@limiter.limit("5 per minute")
 def forgot_password():
     data = request.get_json()
     email = data.get("email")
@@ -648,6 +647,7 @@ def forgot_password():
         return jsonify({"error": "Erro interno do servidor"}), 500
 
 @auth_bp.route("/api/auth/reset-password", methods=["POST"])
+@limiter.limit("5 per minute")
 def reset_password():
     data = request.get_json()
     token = data.get("token")

@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 PREMIUM_ONLY_ERROR = "Recurso exclusivo para Premium"
 INVALID_SESSION_ERROR = "Sessao invalida. Faca login novamente."
+CRITICAL_MAINTENANCE_STATUSES = ("overdue",)
+ACTIONABLE_MAINTENANCE_STATUSES = ("overdue", "due_soon")
 
 def get_dashboard_url() -> str:
     frontend_url = (os.getenv("URL_PROD") or "").strip()
@@ -121,8 +123,63 @@ def fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=None, only_actiona
     alerts = build_maintenance_alerts(active_records, vehicle_km_map=vehicle_km_map)
 
     if only_actionable:
-        alerts = [a for a in alerts if a.get("status_code") in ("overdue", "due_soon")]
+        alerts = [a for a in alerts if a.get("status_code") in ACTIONABLE_MAINTENANCE_STATUSES]
     return alerts
+
+def filter_alerts_for_email(cursor, user_id, status_codes=None, transition_only=False):
+    alerts = fetch_user_maintenance_alerts(
+        cursor,
+        user_id=user_id,
+        only_actionable=True
+    )
+    if status_codes:
+        allowed_statuses = set(status_codes)
+        alerts = [a for a in alerts if a.get("status_code") in allowed_statuses]
+
+    if not transition_only or not alerts:
+        return alerts
+
+    maintenance_ids = [
+        int(alert["maintenance_id"])
+        for alert in alerts
+        if alert.get("maintenance_id") is not None
+    ]
+    if not maintenance_ids:
+        return []
+
+    placeholders = ", ".join(["%s"] * len(maintenance_ids))
+    cursor.execute(
+        f"""
+        SELECT id, alert_last_status_code
+        FROM maintenance_history
+        WHERE user_id = %s AND id IN ({placeholders})
+        """,
+        tuple([user_id, *maintenance_ids])
+    )
+    previous_status = {
+        int(row["id"]): row.get("alert_last_status_code")
+        for row in (cursor.fetchall() or [])
+    }
+    return [
+        alert for alert in alerts
+        if previous_status.get(int(alert["maintenance_id"])) != alert.get("status_code")
+    ]
+
+def mark_maintenance_alerts_sent(cursor, user_id, alerts):
+    for alert in alerts:
+        maintenance_id = alert.get("maintenance_id")
+        status_code = alert.get("status_code")
+        if maintenance_id is None or not status_code:
+            continue
+        cursor.execute(
+            """
+            UPDATE maintenance_history
+            SET alert_last_status_code = %s,
+                alert_last_sent_at = NOW()
+            WHERE id = %s AND user_id = %s
+            """,
+            (status_code, maintenance_id, user_id)
+        )
 
 def should_send_maintenance_email(user_row, force=False):
     if force:
@@ -201,29 +258,55 @@ def render_maintenance_email_html(user_name, alerts):
         </div>
     """
 
-def send_maintenance_alert_email_for_user(cursor, user_row, force=False):
+def send_maintenance_alert_email_for_user(
+    cursor,
+    user_row,
+    force=False,
+    status_codes=None,
+    transition_only=False,
+):
     if not user_row.get("email"):
         return {"sent": False, "reason": "missing_email", "alerts_count": 0}
     if not user_row.get("maintenance_email_enabled", True) and not force:
         return {"sent": False, "reason": "disabled", "alerts_count": 0}
-    if not should_send_maintenance_email(user_row, force=force):
+    if not transition_only and not should_send_maintenance_email(user_row, force=force):
         return {"sent": False, "reason": "already_sent_today", "alerts_count": 0}
 
     # Se chamado de uma thread sem cursor, abre nova conexão
     if cursor is None:
         with get_db() as (new_cursor, conn):
-            return _send_maintenance_alert_logic(new_cursor, user_row, force)
+            return _send_maintenance_alert_logic(
+                new_cursor,
+                user_row,
+                force,
+                status_codes=status_codes,
+                transition_only=transition_only,
+            )
     else:
-        return _send_maintenance_alert_logic(cursor, user_row, force)
+        return _send_maintenance_alert_logic(
+            cursor,
+            user_row,
+            force,
+            status_codes=status_codes,
+            transition_only=transition_only,
+        )
 
-def _send_maintenance_alert_logic(cursor, user_row, force):
-    alerts = fetch_user_maintenance_alerts(
+def _send_maintenance_alert_logic(
+    cursor,
+    user_row,
+    force,
+    status_codes=None,
+    transition_only=False,
+):
+    alerts = filter_alerts_for_email(
         cursor,
         user_id=user_row["id"],
-        only_actionable=True
+        status_codes=status_codes,
+        transition_only=transition_only,
     )
     if not alerts:
-        return {"sent": False, "reason": "no_actionable_alerts", "alerts_count": 0}
+        reason = "no_new_critical_alerts" if status_codes == CRITICAL_MAINTENANCE_STATUSES else "no_actionable_alerts"
+        return {"sent": False, "reason": reason, "alerts_count": 0}
 
     subject = f"AutoAssist: {len(alerts)} alerta(s) de manutencao para revisar"
     html_body = render_maintenance_email_html(user_row.get("nome"), alerts)
@@ -231,6 +314,7 @@ def _send_maintenance_alert_logic(cursor, user_row, force):
     if not sent_ok:
         return {"sent": False, "reason": "send_failed", "alerts_count": len(alerts)}
 
+    mark_maintenance_alerts_sent(cursor, user_row["id"], alerts)
     cursor.execute(
         "UPDATE users SET maintenance_email_last_sent = NOW() WHERE id = %s",
         (user_row["id"],)
@@ -338,7 +422,13 @@ def add_veiculo():
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    send_maintenance_alert_email_for_user(cursor, user_row, force=False)
+                    send_maintenance_alert_email_for_user(
+                        cursor,
+                        user_row,
+                        force=False,
+                        status_codes=CRITICAL_MAINTENANCE_STATUSES,
+                        transition_only=True,
+                    )
             except Exception as email_err:
                 logger.warning(f"Falha no gatilho imediato de email: {email_err}")
 
@@ -397,7 +487,11 @@ def edit_veiculo(v_id):
                     threading.Thread(
                         target=send_maintenance_alert_email_for_user,
                         args=(None, user_row), # Cursor None pois abriremos nova conexão na thread
-                        kwargs={"force": False}
+                        kwargs={
+                            "force": False,
+                            "status_codes": CRITICAL_MAINTENANCE_STATUSES,
+                            "transition_only": True,
+                        }
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
@@ -529,7 +623,11 @@ def register_maintenance_history():
                     threading.Thread(
                         target=send_maintenance_alert_email_for_user,
                         args=(None, user_row),
-                        kwargs={"force": True} # Forçamos o envio para dar feedback imediato ao usuário
+                        kwargs={
+                            "force": False,
+                            "status_codes": CRITICAL_MAINTENANCE_STATUSES,
+                            "transition_only": True,
+                        }
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
@@ -662,7 +760,8 @@ def update_maintenance_history(maintenance_id):
                 UPDATE maintenance_history
                 SET vehicle_id = %s, description = %s, maintenance_type = %s, maintenance_label = %s,
                     service_date = %s, service_km = %s, cost = %s, currency = %s, interval_days = %s,
-                    interval_km = %s, next_due_date = %s, next_due_km = %s, parser_metadata = %s
+                    interval_km = %s, next_due_date = %s, next_due_km = %s, parser_metadata = %s,
+                    alert_last_status_code = NULL, alert_last_sent_at = NULL
                 WHERE id = %s AND user_id = %s
             """, (vehicle_id, parsed["description"], parsed["maintenance_type"], parsed["maintenance_label"],
                   parsed["service_date"], parsed["service_km"], parsed["cost"], currency, parsed["interval_days"],
@@ -676,7 +775,11 @@ def update_maintenance_history(maintenance_id):
                     threading.Thread(
                         target=send_maintenance_alert_email_for_user,
                         args=(None, user_row),
-                        kwargs={"force": False}
+                        kwargs={
+                            "force": False,
+                            "status_codes": CRITICAL_MAINTENANCE_STATUSES,
+                            "transition_only": True,
+                        }
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
@@ -809,21 +912,49 @@ def dispatch_maintenance_email_batch():
 
     payload = request.get_json(silent=True) or {}
     force = bool(payload.get("force", False))
+    transition_only = bool(payload.get("transition_only", True))
+    include_due_soon = bool(payload.get("include_due_soon", False))
+    status_codes = (
+        ACTIONABLE_MAINTENANCE_STATUSES
+        if include_due_soon
+        else CRITICAL_MAINTENANCE_STATUSES
+    )
     limit = max(1, min(int(payload.get("limit", 500)), 2000))
 
     try:
         with get_db() as (cursor, conn):
             cursor.execute("SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent FROM users WHERE email IS NOT NULL AND email <> '' AND maintenance_email_enabled = TRUE ORDER BY id ASC LIMIT %s", (limit,))
             users = cursor.fetchall()
-            summary = {"processed": 0, "sent": 0, "no_actionable_alerts": 0, "already_sent_today": 0, "failed": 0}
+            summary = {
+                "processed": 0,
+                "sent": 0,
+                "no_new_critical_alerts": 0,
+                "no_actionable_alerts": 0,
+                "already_sent_today": 0,
+                "failed": 0,
+            }
             for user in users:
                 summary["processed"] += 1
-                result = send_maintenance_alert_email_for_user(cursor, user, force=force)
+                result = send_maintenance_alert_email_for_user(
+                    cursor,
+                    user,
+                    force=force,
+                    status_codes=status_codes,
+                    transition_only=transition_only,
+                )
                 if result["sent"]: summary["sent"] += 1
+                elif result["reason"] == "no_new_critical_alerts": summary["no_new_critical_alerts"] += 1
                 elif result["reason"] == "no_actionable_alerts": summary["no_actionable_alerts"] += 1
                 elif result["reason"] == "already_sent_today": summary["already_sent_today"] += 1
                 else: summary["failed"] += 1
-            return jsonify(success=True, force=force, resumo=summary), 200
+            return jsonify(
+                success=True,
+                force=force,
+                transition_only=transition_only,
+                include_due_soon=include_due_soon,
+                status_codes=list(status_codes),
+                resumo=summary,
+            ), 200
     except Exception as e:
         logger.error(f"Erro no dispatch automatico de emails: {e}")
         return jsonify(error="Erro ao executar dispatch"), 500

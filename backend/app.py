@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 
 from routes.gateway import gateway_bp
@@ -33,6 +31,7 @@ from routes import auth_bp, pages_bp, payment_bp, feedback_bp, init_db
 
 # [SEGURANCA] Cabecalhos HTTP Seguros e CSP
 is_production = os.getenv("FLASK_ENV") == "production"
+local_testing = os.getenv("LOCAL_TESTING") == "1"
 # Helper para saber se estamos rodando localmente
 def is_localhost():
     # Nota: Em produção real, o request.host virá do domínio real.
@@ -117,24 +116,12 @@ app.config.update(
     JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=7),
     JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=365),
     JWT_TOKEN_LOCATION=['headers', 'cookies'],
-    # Importante: se for localhost, o Secure deve ser False mesmo em prod para não sumir o cookie no HTTP
-    JWT_COOKIE_SECURE=is_production and not (os.getenv("LOCAL_TESTING") == "1" or True), # Forçando False para teste do usuário
+    JWT_COOKIE_SECURE=is_production and not local_testing,
     JWT_ACCESS_COOKIE_PATH='/',
     JWT_REFRESH_COOKIE_PATH='/',
-    JWT_COOKIE_CSRF_PROTECT=False,
+    JWT_COOKIE_CSRF_PROTECT=True,
     JWT_COOKIE_SAMESITE='Lax',
 )
-
-# sobrescrever dinamicamente para localhost no contexto de request se necessário
-# Mas como config é global, vamos apenas garantir que se estivermos em dev/local, não quebre.
-# Se o usuário setou FLASK_ENV=production no windows, vamos assumir que ele quer comportamento de prod.
-# Para facilitar o teste do usuário, vamos ser mais permissivos com Secure cookies em localhost.
-
-if is_production:
-    # Se o host for local, vamos forçar Secure=False para os cookies do JWT não sumirem
-    # No Flask-JWT-Extended isso é chato de mudar por request.
-    # Vamos apenas sugerir que o usuário não use FLASK_ENV=production em localhost se não tiver HTTPS.
-    pass
 
 jwt = JWTManager(app)
 
@@ -154,7 +141,14 @@ extra_allowed_origins = [item.strip() for item in extra_origins_raw.split(",") i
 allowed_origins = [*base_allowed_origins, *extra_allowed_origins]
 
 allowed_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-allowed_headers = ["Content-Type", "Authorization", "X-Requested-With", "X-Cron-Secret"]
+allowed_headers = [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "X-Cron-Secret",
+    "X-CSRF-TOKEN",
+    "X-CSRF-Token",
+]
 
 CORS(
     app,
@@ -164,7 +158,7 @@ CORS(
     },
     methods=allowed_methods,
     allow_headers=allowed_headers,
-    supports_credentials=False,
+    supports_credentials=True,
 )
 
 
@@ -186,6 +180,8 @@ def ensure_cors_headers(response):
         response.headers.setdefault("Vary", "Origin")
         response.headers.setdefault("Access-Control-Allow-Methods", ", ".join(allowed_methods))
         response.headers.setdefault("Access-Control-Allow-Headers", ", ".join(allowed_headers))
+        if origin_allowed:
+            response.headers.setdefault("Access-Control-Allow-Credentials", "true")
         # Necessario para requests de paginas publicas HTTPS para backend local
         # (Private Network Access preflight no Chrome).
         if request.headers.get("Access-Control-Request-Private-Network") == "true":
@@ -194,15 +190,28 @@ def ensure_cors_headers(response):
     return response
 
 
-# Inicializacao do Banco de Dados
-@app.before_request
-def first_request():
-    if not hasattr(app, "_db_initialized"):
-        try:
-            init_db()
-            app._db_initialized = True
-        except Exception as e:
-            logging.error(f"Falha ao inicializar banco: {e}")
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+@app.cli.command("init-db")
+def init_db_command():
+    """Inicializa/atualiza o schema do banco fora do ciclo de request."""
+    init_db()
+    print("Banco de dados inicializado.")
+
+
+if _env_flag("AUTO_INIT_DB", default=not is_production):
+    try:
+        init_db()
+        logger.info("Banco de dados inicializado no startup.")
+    except Exception as e:
+        logger.error("Falha ao inicializar banco no startup: %s", e, exc_info=True)
+        if is_production:
+            raise
 
 # Rota de Health Check
 @app.route("/health")
@@ -253,6 +262,7 @@ def cors_preflight(_):
     if origin_allowed:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Vary"] = "Origin"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
 
     response.headers["Access-Control-Allow-Methods"] = ", ".join(allowed_methods)
     response.headers["Access-Control-Allow-Headers"] = ", ".join(allowed_headers)
