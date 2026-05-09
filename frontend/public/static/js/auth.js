@@ -600,7 +600,6 @@ const Auth = (() => {
     if (backBtn) {
       backBtn.addEventListener("click", () => {
         closePremiumPaywall();
-        window.location.href = backHref;
       });
     }
   }

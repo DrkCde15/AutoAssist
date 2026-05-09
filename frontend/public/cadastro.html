@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
+    <meta charset="UTF-8" />
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>AutoAssist • Cadastro</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
@@ -261,26 +262,38 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 16px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius);
+        padding: 4px 0;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
         cursor: pointer;
         transition: var(--transition);
         margin: 20px 0;
       }
 
       .checkbox-wrapper:hover {
-        background: var(--accent-soft);
-        border-color: var(--accent);
+        background: transparent;
       }
 
       .checkbox-wrapper input[type="checkbox"] {
+        flex: 0 0 20px;
         width: 20px;
         height: 20px;
+        min-width: 20px;
+        min-height: 20px;
+        margin: 0;
         padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
         accent-color: var(--accent);
         cursor: pointer;
+      }
+
+      .checkbox-wrapper input[type="checkbox"]:focus {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
       }
 
       .checkbox-wrapper label {

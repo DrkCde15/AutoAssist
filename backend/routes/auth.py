@@ -41,15 +41,15 @@ def _get_frontend_base_url_for_email() -> str:
 
 def _build_reset_password_email_html(reset_link: str) -> str:
     return f"""
-        <h2 style="margin-top: 0; color: #111827; font-size: 20px;">RedefiniÃ§Ã£o de Senha</h2>
+        <h2 style="margin-top: 0; color: #111827; font-size: 20px;">Redefinição de Senha</h2>
         <p style="color: #4b5563; font-size: 16px; margin-bottom: 25px;">
-            OlÃ¡! Recebemos uma solicitaÃ§Ã£o para redefinir a senha da sua conta no <strong>AutoAssist</strong>.
+            Olá! Recebemos uma solicitação para redefinir a senha da sua conta no <strong>AutoAssist</strong>.
         </p>
         <div style="text-align: center; margin: 30px 0;">
             <a href="{reset_link}" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Redefinir Minha Senha</a>
         </div>
         <p style="color: #6b7280; font-size: 14px; margin-top: 25px;">
-            Este link Ã© vÃ¡lido por <strong>15 minutos</strong>. Se vocÃª nÃ£o solicitou esta alteraÃ§Ã£o, pode ignorar este e-mail com seguranÃ§a.
+            Este link é válido por <strong>15 minutos</strong>. Se você não solicitou esta alteração, pode ignorar este e-mail com segurança.
         </p>
     """
 
@@ -57,7 +57,7 @@ def _send_password_reset_email(dest_email: str, token: str) -> bool:
     frontend_base = _get_frontend_base_url_for_email()
     reset_link = f"{frontend_base}redefinir-senha.html?token={token}"
     mensagem = _build_reset_password_email_html(reset_link)
-    return enviar_email(dest_email, "RedefiniÃ§Ã£o de senha", mensagem)
+    return enviar_email(dest_email, "Redefinição de senha", mensagem)
 
 def process_pending_password_reset_emails(batch_size: int = 20):
     retry_seconds = max(1, int(os.getenv("RESET_EMAIL_RETRY_SECONDS", "15")))
@@ -143,7 +143,7 @@ def get_frontend_url() -> str:
     if frontend_env:
         return frontend_env
 
-    # Fallback seguro quando nÃ£o houver variÃ¡vel de frontend definida.
+    # Fallback seguro quando não houver variável de frontend definida.
     return request.host_url
 
 
@@ -152,7 +152,7 @@ def fetch_veiculos_user(cursor, user_id):
     return cursor.fetchall()
 
 
-# ConfiguraÃƒÂ§ÃƒÂ£o Google OAuth2
+# Configuração Google OAuth2
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
@@ -185,8 +185,8 @@ def get_google_oauth_hosts():
 def google_login():
     hosts = get_google_oauth_hosts()
     if not hosts or not google_client:
-        logger.error("ConfiguraÃ§Ã£o Google OAuth2 ausente ou incompleta")
-        return jsonify(error="ConfiguraÃ§Ã£o do Google OAuth2 incompleta"), 500
+        logger.error("Configuração Google OAuth2 ausente ou incompleta")
+        return jsonify(error="Configuração do Google OAuth2 incompleta"), 500
 
     state = secrets.token_urlsafe(16)
     
@@ -201,7 +201,7 @@ def google_login():
     resp = make_response(redirect(authorization_url))
     
     # State cookie expira em 10 minutos
-    # SÃ³ forÃ§a Secure se for produÃ§Ã£o E nÃ£o for localhost/127.0.0.1
+    # Só força Secure se for produção E não for localhost/127.0.0.1
     is_prod = os.getenv("FLASK_ENV") == "production"
     is_secure = is_prod and not (request.host.startswith("localhost") or request.host.startswith("127.0.0.1"))
     
@@ -226,13 +226,13 @@ def google_callback():
     
     if not state or state != cookie_state:
         logger.error(f"Estado OAuth invalido. State: {state}, Cookie: {cookie_state}")
-        return jsonify(error="Estado OAuth invÃƒÂ¡lido ou expirado. Tente novamente."), 400
+        return jsonify(error="Estado OAuth inválido ou expirado. Tente novamente."), 400
 
     if not hosts or not google_client or not code:
-        return jsonify(error="Dados de callback invÃƒÂ¡lidos"), 400
+        return jsonify(error="Dados de callback inválidos"), 400
 
     try:
-        # Trocar cÃƒÂ³digo por token
+        # Trocar código por token
         token_url, headers, body = google_client.prepare_token_request(
             token_url=hosts.token_endpoint,
             authorization_response=request.url.replace("http://", "https://") if os.getenv('FLASK_ENV') == 'production' else request.url,
@@ -249,20 +249,20 @@ def google_callback():
 
         if token_response.status_code != 200:
             logger.error(f"Erro ao trocar token: {token_response.text}")
-            return jsonify(error="Falha na autenticaÃƒÂ§ÃƒÂ£o com Google"), 400
+            return jsonify(error="Falha na autenticação com Google"), 400
 
         google_client.parse_request_body_response(json.dumps(token_response.json()))
 
-        # Pegar dados do usuÃƒÂ¡rio
+        # Pegar dados do usuário
         uri, headers, body = google_client.add_token(hosts.userinfo_endpoint)
         user_info_response = requests.get(uri, headers=headers, data=body)
         
         if user_info_response.status_code != 200:
-            return jsonify(error="Falha ao obter dados do usuÃƒÂ¡rio"), 400
+            return jsonify(error="Falha ao obter dados do usuário"), 400
 
         user_info = user_info_response.json()
         if not user_info.get("email_verified"):
-            return jsonify(error="Email Google nÃƒÂ£o verificado"), 400
+            return jsonify(error="Email Google não verificado"), 400
 
         google_id = user_info["sub"]
         email = user_info["email"].lower()
@@ -275,14 +275,14 @@ def google_callback():
             user = cursor.fetchone()
 
             if user:
-                # Atualiza usuÃƒÂ¡rio existente com info do Google
+                # Atualiza usuário existente com info do Google
                 cursor.execute("""
                     UPDATE users 
                     SET google_id = %s, profile_pic = %s 
                     WHERE email = %s
                 """, (google_id, picture, email))
             else:
-                # Cria novo usuÃƒÂ¡rio sem senha (Login Social) e ativa e-mails por padrÃ£o
+                # Cria novo usuário sem senha (Login Social) e ativa e-mails por padrão
                 cursor.execute("""
                     INSERT INTO users (nome, email, google_id, profile_pic, maintenance_email_enabled) 
                     VALUES (%s, %s, %s, %s, TRUE)
@@ -311,7 +311,7 @@ def google_callback():
         from flask import make_response
         resp = make_response(redirect(final_redirect_url))
         
-        # MantÃ©m os cookies JWT como camada extra de seguranÃ§a (HttpOnly)
+        # Mantém os cookies JWT como camada extra de segurança (HttpOnly)
         set_access_cookies(resp, access_token)
         set_refresh_cookies(resp, refresh_token)
         
@@ -337,10 +337,10 @@ def cadastro():
     
     possui_veiculo = len(veiculos) > 0
     
-    if not nome or not email or len(password) < 6: return jsonify(error="Dados invÃƒÂ¡lidos"), 400
+    if not nome or not email or len(password) < 6: return jsonify(error="Dados inválidos"), 400
     
     if not is_valid_email_domain(email):
-        return jsonify(error="Insira um endereÃƒÂ§o de email valido"), 400
+        return jsonify(error="Insira um endereço de email válido"), 400
     try:
         with get_db() as (cursor, conn):
             cursor.execute("""
@@ -367,8 +367,8 @@ def cadastro():
                 ))
         return jsonify(success=True), 201
     except Exception as e:
-        logger.error(f"Ã¢ Å’ Erro no cadastro: {e}")
-        return jsonify(error="Erro ao processar cadastro ou email jÃƒÂ¡ existe"), 409
+        logger.error(f"Erro no cadastro: {e}")
+        return jsonify(error="Erro ao processar cadastro ou email já existe"), 409
 
 @auth_bp.route("/api/login", methods=["POST"])
 @limiter.limit("10 per minute")
@@ -377,9 +377,9 @@ def login():
     email, password = data.get("email"), data.get("password")
 
     if not email or not is_valid_email_domain(email):
-        return jsonify(error="Insira um endereÃ§o de email valido"), 401
+        return jsonify(error="Insira um endereço de email válido"), 401
     if not password or not isinstance(password, str):
-        return jsonify(error="Credenciais invÃ¡lidas"), 401
+        return jsonify(error="Credenciais inválidas"), 401
 
     try:
         with get_db() as (cursor, conn):
@@ -387,14 +387,14 @@ def login():
             user = cursor.fetchone()
 
             if not user:
-                return jsonify(error="Credenciais invÃ¡lidas"), 401
+                return jsonify(error="Credenciais inválidas"), 401
 
             password_hash = user.get("password")
             if not password_hash:
                 return jsonify(error="Esta conta usa login social. Entre com Google."), 401
 
             if not bcrypt.verify(password, password_hash):
-                return jsonify(error="Credenciais invÃ¡lidas"), 401
+                return jsonify(error="Credenciais inválidas"), 401
 
             if user.get("is_two_factor_enabled"):
                 pending_token = create_access_token(
@@ -428,7 +428,7 @@ def login():
             set_refresh_cookies(resp, refresh_token)
             return resp, 200
     except Exception as e:
-        logger.error(f"âŒ Erro no login: {e}")
+        logger.error(f"Erro no login: {e}")
         return jsonify(error="Erro ao processar login"), 500
     
 @auth_bp.route("/api/auth/2fa/verify", methods=["POST"])
@@ -439,13 +439,13 @@ def verify_2fa_login():
     code = data.get("code")
     
     if not pending_token or not code:
-        return jsonify(error="Token e cÃƒÂ³digo sÃƒÂ£o obrigatÃƒÂ³rios"), 400
+        return jsonify(error="Token e código são obrigatórios"), 400
         
     try:
         decoded = decode_token(pending_token)
         
         if not decoded.get("sub") or not decoded.get("2fa_pending"):
-            return jsonify(error="Token invÃƒÂ¡lido ou expirado"), 401
+            return jsonify(error="Token inválido ou expirado"), 401
             
         user_id = decoded["sub"]
         with get_db() as (cursor, conn):
@@ -453,20 +453,20 @@ def verify_2fa_login():
             user = cursor.fetchone()
             
             if not user or not user["is_two_factor_enabled"]:
-                return jsonify(error="2FA nÃ£o configurado"), 400
+                return jsonify(error="2FA não configurado"), 400
                 
             secret = user.get("two_factor_secret")
             if not secret:
-                return jsonify(error="ConfiguraÃ§Ã£o de 2FA corrompida"), 500
+                return jsonify(error="Configuração de 2FA corrompida"), 500
                 
-            # Verificar se o segredo Ã© um hash bcrypt (antigo) ou base32 (novo)
-            is_totp = not secret.startswith("$2") # Bcrypt hashes comeÃ§am com $2
+            # Verificar se o segredo é um hash bcrypt (antigo) ou base32 (novo)
+            is_totp = not secret.startswith("$2") # Bcrypt hashes começam com $2
             
             if is_totp:
                 totp = pyotp.TOTP(secret)
                 is_valid = totp.verify(code)
             else:
-                # Fallback para o sistema antigo de senha secundÃ¡ria durante a transiÃ§Ã£o
+                # Fallback para o sistema antigo de senha secundária durante a transição
                 try:
                     is_valid = bcrypt.verify(code, secret)
                 except Exception:
@@ -493,10 +493,10 @@ def verify_2fa_login():
                 set_refresh_cookies(resp, refresh_token)
                 return resp, 200
             else:
-                return jsonify(error="CÃ³digo 2FA ou senha secundÃ¡ria invÃ¡lida"), 401
+                return jsonify(error="Código 2FA ou senha secundária inválida"), 401
     except Exception as e:
-        logger.error(f"Erro na verificaÃƒÂ§ÃƒÂ£o 2FA: {e}")
-        return jsonify(error="Erro interno na verificaÃƒÂ§ÃƒÂ£o"), 500
+        logger.error(f"Erro na verificação 2FA: {e}")
+        return jsonify(error="Erro interno na verificação"), 500
 
 @auth_bp.route("/api/refresh", methods=["POST"])
 @limiter.limit("60 per minute")
@@ -530,7 +530,7 @@ def setup_2fa():
             cursor.execute("SELECT email FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
-                return jsonify(error="UsuÃ¡rio nÃ£o encontrado"), 404
+                return jsonify(error="Usuário não encontrado"), 404
             
             secret = pyotp.random_base32()
             totp = pyotp.TOTP(secret)
@@ -551,7 +551,7 @@ def confirm_2fa():
     code = data.get("code")
     
     if not secret or not code:
-        return jsonify(error="Secret e cÃ³digo sÃ£o obrigatÃ³rios"), 400
+        return jsonify(error="Secret e código são obrigatórios"), 400
         
     try:
         totp = pyotp.TOTP(secret)
@@ -565,7 +565,7 @@ def confirm_2fa():
                 conn.commit()
             return jsonify(message="2FA (TOTP) ativado com sucesso"), 200
         else:
-            return jsonify(error="CÃ³digo invÃ¡lido. Verifique se o relÃ³gio do seu celular estÃ¡ correto."), 400
+            return jsonify(error="Código inválido. Verifique se o relógio do seu celular está correto."), 400
     except Exception as e:
         logger.error(f"Erro ao confirmar 2FA: {e}")
         return jsonify(error="Erro ao confirmar 2FA"), 500
@@ -579,7 +579,7 @@ def disable_2fa():
     password = data.get("password")
     
     if not password:
-        return jsonify(error="Senha secundÃƒÂ¡ria ÃƒÂ© necessÃƒÂ¡ria para desativar"), 400
+        return jsonify(error="Senha secundária é necessária para desativar"), 400
         
     try:
         with get_db() as (cursor, conn):
@@ -587,17 +587,17 @@ def disable_2fa():
             user = cursor.fetchone()
             
             if not user or not user["two_factor_secret"]:
-                return jsonify(error="ConfiguraÃ§Ã£o de 2FA nÃ£o encontrada"), 404
+                return jsonify(error="Configuração de 2FA não encontrada"), 404
             
-            # Para desativar, podemos exigir o cÃ³digo TOTP ou a senha principal
-            # Aqui vamos exigir o cÃ³digo TOTP para confirmar posse do dispositivo
+            # Para desativar, podemos exigir o código TOTP ou a senha principal
+            # Aqui vamos exigir o código TOTP para confirmar posse do dispositivo
             totp = pyotp.TOTP(user["two_factor_secret"])
-            if totp.verify(password): # O campo 'password' aqui serÃ¡ o cÃ³digo de 6 dÃ­gitos
+            if totp.verify(password): # O campo 'password' aqui será o código de 6 dígitos
                 cursor.execute("UPDATE users SET is_two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = %s", (user_id,))
                 conn.commit()
                 return jsonify(message="2FA desativado com sucesso"), 200
             else:
-                return jsonify(error="CÃ³digo TOTP invÃ¡lido"), 400
+                return jsonify(error="Código TOTP inválido"), 400
     except Exception as e:
         logger.error(f"Erro ao desativar 2FA: {e}")
         return jsonify(error="Erro ao desativar 2FA"), 500
@@ -654,7 +654,7 @@ def reset_password():
     new_password = data.get("password")
 
     if not token or not new_password or len(new_password) < 6:
-        return jsonify(error="Senha invÃƒÂ¡lida"), 400
+        return jsonify(error="Senha inválida"), 400
 
     try:
         with get_db() as (cursor, conn):
@@ -667,7 +667,7 @@ def reset_password():
             registro = cursor.fetchone()
 
             if not registro:
-                return jsonify(error="Token invÃƒÂ¡lido ou expirado"), 400
+                return jsonify(error="Token inválido ou expirado"), 400
 
             hashed = bcrypt.hash(new_password)
             cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, registro["usuario_id"]))
