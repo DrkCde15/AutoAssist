@@ -2,18 +2,21 @@
 # backend/services/nogai.py
 import logging
 import os
-import pymysql
-from pymysql.cursors import DictCursor
 import requests
 import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import json
+from functools import lru_cache
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+HTTP_TIMEOUT = (3.05, 8)
+FIPE_BASE_URL = "https://parallelum.com.br/fipe/api/v1"
+FIPE_CACHE_TTL_SECONDS = max(60, int(os.getenv("FIPE_CACHE_TTL_SECONDS", "86400")))
 
 SYSTEM_PROMPT = """
 Você é o NOG, um consultor automotivo profissional e mentor didático com ampla experiência no mercado brasileiro. 
@@ -48,40 +51,63 @@ PREMIUM_TUTORIAL_PROMPT = """
 - **VÍDEOS TUTORIAIS**: O sistema em anexo vai capturar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você "não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo sobre o assunto, confirme educadamente: "Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e termine o aviso, prosseguindo com dicas em texto.
 """
 
+@lru_cache(maxsize=512)
+def _cached_fipe_json(url: str, cache_bucket: int):
+    response = requests.get(url, timeout=HTTP_TIMEOUT)
+    response.raise_for_status()
+    return response.json()
+
+
+def _get_fipe_json(path: str):
+    cache_bucket = int(time.time() // FIPE_CACHE_TTL_SECONDS)
+    url = f"{FIPE_BASE_URL}/{path.lstrip('/')}"
+    return _cached_fipe_json(url, cache_bucket)
+
+
 def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
-    """Busca o valor médio de mercado via API externa FIPE (Parallelum)."""
-    # Normalização para a API Parallelum
-    tipo_norm = str(tipo).lower()
-    if tipo_norm == "carro": tipo_norm = "carros"
-    elif tipo_norm == "moto": tipo_norm = "motos"
-    elif tipo_norm == "caminhao": tipo_norm = "caminhoes"
-    
-    BASE_URL = "https://parallelum.com.br/fipe/api/v1"
+    """Busca o valor medio de mercado via API FIPE com cache curto."""
+    tipo_norm = str(tipo or "").lower()
+    if tipo_norm == "carro":
+        tipo_norm = "carros"
+    elif tipo_norm == "moto":
+        tipo_norm = "motos"
+    elif tipo_norm == "caminhao":
+        tipo_norm = "caminhoes"
+    if tipo_norm not in {"carros", "motos", "caminhoes"}:
+        return None
+
+    marca_query = str(marca_nome or "").strip().lower()
+    modelo_query = str(modelo_nome or "").strip().lower()
+    ano_query = str(ano or "").strip()
+    if not marca_query or not modelo_query or not ano_query:
+        return None
+
     try:
-        response = requests.get(f"{BASE_URL}/{tipo_norm}/marcas", timeout=10)
-        if response.status_code != 200: return None
-        marcas = response.json()
-        marca_obj = next((m for m in marcas if marca_nome.lower() in m["nome"].lower()), None)
-        if not marca_obj: return None
-        response = requests.get(f"{BASE_URL}/{tipo_norm}/marcas/{marca_obj['codigo']}/modelos", timeout=10)
-        if response.status_code != 200: return None
-        modelos_resp = response.json()
-        candidatos = [m for m in modelos_resp.get("modelos", []) if modelo_nome.lower() in m["nome"].lower()]
-        if not candidatos: return None
+        marcas = _get_fipe_json(f"{tipo_norm}/marcas")
+        marca_obj = next((m for m in marcas if marca_query in m["nome"].lower()), None)
+        if not marca_obj:
+            return None
+
+        modelos_resp = _get_fipe_json(f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos")
+        candidatos = [m for m in modelos_resp.get("modelos", []) if modelo_query in m["nome"].lower()]
+        if not candidatos:
+            return None
+
         for modelo in candidatos:
-            response = requests.get(f"{BASE_URL}/{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos", timeout=10)
-            if response.status_code != 200: continue
-            anos_disponiveis = response.json()
-            ano_obj = next((a for a in anos_disponiveis if a["nome"].startswith(str(ano))), None)
+            anos_disponiveis = _get_fipe_json(
+                f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos"
+            )
+            ano_obj = next((a for a in anos_disponiveis if a["nome"].startswith(ano_query)), None)
             if ano_obj:
-                valor_resp = requests.get(f"{BASE_URL}/{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}", timeout=10)
-                if valor_resp.status_code == 200: return valor_resp.json()
+                return _get_fipe_json(
+                    f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}"
+                )
         return None
     except Exception as e:
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
 
-from routes.database import get_db, get_mysql_history
+from routes.database import get_mysql_history
 
 # Inicializa o cliente Gemini (Deixando o SDK escolher a melhor versão estável)
 client = genai.Client(api_key=os.getenv("API_GEMINI"))
@@ -101,11 +127,52 @@ def transformar_historico_gemini(historico_mysql):
 # Ordem de preferência dos modelos
 MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"]
 
-def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
+
+def _is_retryable_model_error(error: Exception) -> bool:
+    error_str = str(error)
+    return (
+        "503" in error_str
+        or "UNAVAILABLE" in error_str
+        or "high demand" in error_str.lower()
+    )
+
+
+def _generate_content_with_fallback(
+    *,
+    contents,
+    config=None,
+    primary_model="gemini-2.5-flash",
+    log_context="Gemini",
+):
+    try:
+        return client.models.generate_content(
+            model=primary_model,
+            config=config,
+            contents=contents,
+        )
+    except Exception as e:
+        if not _is_retryable_model_error(e):
+            raise e
+
+        logger.warning("%s indisponivel. Tentando modelos de fallback...", log_context)
+        for model_name in MODELS_TO_TRY:
+            try:
+                return client.models.generate_content(
+                    model=model_name,
+                    config=config,
+                    contents=contents,
+                )
+            except Exception as fallback_err:
+                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, fallback_err)
+                continue
+        raise e
+
+
+def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historico: list | None = None) -> str:
     try:
         logger.info(f"NOG Gemini: Processando msg do usuário {user_id}")
         
-        historico_mysql = get_mysql_history(user_id)
+        historico_mysql = historico if historico is not None else get_mysql_history(user_id)
         historico_gemini = transformar_historico_gemini(historico_mysql)
         
         prompt_instrucoes = SYSTEM_PROMPT
@@ -166,6 +233,63 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None) -> str:
     except Exception as e:
         logger.error(f"❌ Erro no NOG (Gemini New SDK): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
+
+def _clean_search_term(value):
+    if value is None:
+        return None
+    term = str(value).strip().replace('"', '').replace("'", "")
+    if not term or term.upper() == "NONE":
+        return None
+    return term[:120]
+
+
+def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
+    """
+    Extrai, em uma unica chamada ao Gemini, os termos de busca usados para
+    videos, compra de veiculos e compra de pecas.
+    """
+    try:
+        contexto_historico = ""
+        if historico:
+            resumo = "\n".join([
+                f"{'Usuario' if m['role'] == 'user' else 'IA'}: {m['content']}"
+                for m in historico[-3:]
+            ])
+            contexto_historico = f"\nHistorico recente:\n{resumo}\n"
+
+        prompt = f"""
+        Voce extrai termos curtos de busca a partir de conversas automotivas.
+
+        {contexto_historico}
+
+        Mensagem atual do usuario: "{mensagem}"
+
+        Regras:
+        - youtube: termo especifico para tutorial no YouTube se houver ajuda tecnica automotiva; senao null.
+        - loja: termo de veiculo se o usuario quer comprar, comparar modelos ou ver precos; senao null.
+        - pecas: termo de peca/acessorio automotivo se houver intencao de comprar ou pesquisar peca; senao null.
+        - Use termos em portugues, curtos e seguros para URL.
+        - Nao invente termos para conversa generica como oi, obrigado ou assunto fora de automoveis.
+
+        Retorne APENAS JSON valido neste formato:
+        {{"youtube": string|null, "loja": string|null, "pecas": string|null}}
+        """
+
+        response = _generate_content_with_fallback(
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            log_context="Extracao de termos",
+        )
+        data = json.loads(response.text)
+        return {
+            "youtube": _clean_search_term(data.get("youtube")),
+            "loja": _clean_search_term(data.get("loja")),
+            "pecas": _clean_search_term(data.get("pecas")),
+        }
+    except Exception as e:
+        logger.error(f"Erro ao gerar termos de busca consolidados: {e}")
+        return {"youtube": None, "loja": None, "pecas": None}
+
 
 def gerar_termo_busca_youtube(mensagem: str, historico: list = None) -> str | None:
     """

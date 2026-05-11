@@ -1,4 +1,4 @@
-﻿from flask import Blueprint, request, jsonify, redirect, url_for
+from flask import Blueprint, request, jsonify, redirect, url_for
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -19,6 +19,7 @@ import requests
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from time import monotonic
 from oauthlib.oauth2 import WebApplicationClient
 from .database import get_db, is_valid_email_domain, is_trial_expired, get_trial_days_remaining
 from utils.email import enviar_email
@@ -165,17 +166,32 @@ class GoogleHosts:
     token_endpoint: str
     userinfo_endpoint: str
 
+GOOGLE_DISCOVERY_TTL_SECONDS = 3600
+_google_hosts_cache = {"expires_at": 0.0, "hosts": None}
+
+
 def get_google_oauth_hosts():
+    now = monotonic()
+    cached_hosts = _google_hosts_cache.get("hosts")
+    if cached_hosts and _google_hosts_cache.get("expires_at", 0) > now:
+        return cached_hosts
+
     try:
-        response = requests.get("https://accounts.google.com/.well-known/openid-configuration")
+        response = requests.get(
+            "https://accounts.google.com/.well-known/openid-configuration",
+            timeout=(3.05, 8),
+        )
         if response.status_code != 200:
             return None
         data = response.json()
-        return GoogleHosts(
+        hosts = GoogleHosts(
             authorization_endpoint=data.get("authorization_endpoint"), 
             token_endpoint=data.get("token_endpoint"), 
             userinfo_endpoint=data.get("userinfo_endpoint")
         )
+        _google_hosts_cache["hosts"] = hosts
+        _google_hosts_cache["expires_at"] = now + GOOGLE_DISCOVERY_TTL_SECONDS
+        return hosts
     except Exception as e:
         logger.error(f"Erro ao buscar endpoints do Google: {e}")
         return None
@@ -245,17 +261,18 @@ def google_callback():
             headers=headers,
             data=body,
             auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+            timeout=(3.05, 10),
         )
 
         if token_response.status_code != 200:
-            logger.error(f"Erro ao trocar token: {token_response.text}")
+            logger.error("Erro ao trocar token com Google: status=%s", token_response.status_code)
             return jsonify(error="Falha na autenticação com Google"), 400
 
         google_client.parse_request_body_response(json.dumps(token_response.json()))
 
         # Pegar dados do usuário
         uri, headers, body = google_client.add_token(hosts.userinfo_endpoint)
-        user_info_response = requests.get(uri, headers=headers, data=body)
+        user_info_response = requests.get(uri, headers=headers, data=body, timeout=(3.05, 10))
         
         if user_info_response.status_code != 200:
             return jsonify(error="Falha ao obter dados do usuário"), 400
@@ -416,6 +433,7 @@ def login():
                 access_token=access_token,
                 refresh_token=refresh_token,
                 user={
+                    "id": user["id"],
                     "nome": user["nome"],
                     "is_premium": bool(user.get("is_premium")),
                     "trial_expired": is_trial_expired(user),
@@ -481,6 +499,7 @@ def verify_2fa_login():
                     access_token=access_token,
                     refresh_token=refresh_token,
                     user={
+                        "id": user_id,
                         "nome": user["nome"], 
                         "is_premium": bool(user.get("is_premium")),
                         "trial_expired": is_trial_expired(user),

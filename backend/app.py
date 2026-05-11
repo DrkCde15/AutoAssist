@@ -18,6 +18,8 @@ from extensions import limiter
 
 app = Flask(__name__, static_folder="../frontend/public", static_url_path="")
 limiter.init_app(app)
+app.json.sort_keys = False
+app.json.compact = True
 
 # [SEGURANCA] Limite de upload (16MB) e protecao DoS
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -150,6 +152,20 @@ allowed_headers = [
     "X-CSRF-Token",
 ]
 
+STATIC_CACHE_SECONDS = max(0, int(os.getenv("STATIC_CACHE_SECONDS", "86400")))
+STATIC_CACHE_EXTENSIONS = {
+    ".css",
+    ".js",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".svg",
+    ".webp",
+    ".ico",
+    ".woff",
+    ".woff2",
+}
+
 CORS(
     app,
     resources={
@@ -165,12 +181,21 @@ CORS(
 @app.after_request
 def ensure_cors_headers(response):
     """Fallback para garantir headers CORS validos em respostas e preflight."""
+    path = request.path or ""
+    if request.method == "GET" and response.status_code < 400:
+        _, ext = os.path.splitext(path.lower())
+        if ext in STATIC_CACHE_EXTENSIONS and not path.startswith("/api/"):
+            response.cache_control.public = True
+            response.cache_control.max_age = STATIC_CACHE_SECONDS
+            response.headers.setdefault("Vary", "Accept-Encoding")
+        elif not path.startswith("/api/") and not path.startswith("/pagamentos/"):
+            response.headers.setdefault("Cache-Control", "no-cache")
+
     origin = (request.headers.get("Origin") or "").strip()
     if not origin:
         return response
 
     origin_allowed = origin in allowed_origins
-    path = request.path or ""
     cors_path = path.startswith("/api/") or path.startswith("/pagamentos/")
 
     if origin_allowed and cors_path and not response.headers.get("Access-Control-Allow-Origin"):

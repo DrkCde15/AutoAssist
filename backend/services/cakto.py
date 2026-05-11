@@ -1,5 +1,6 @@
 import logging
 import os
+import secrets
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from dotenv import load_dotenv
@@ -230,6 +231,6 @@ class CaktoService:
         if not normalized:
             return False, "Secret do webhook ausente."
 
-        if self.webhook_secret in normalized:
+        if any(secrets.compare_digest(self.webhook_secret, value) for value in normalized):
             return True, "ok"
         return False, "Secret do webhook invalido."

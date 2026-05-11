@@ -3,24 +3,23 @@ import io
 import html
 import logging
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import uuid
 import speech_recognition as sr
 from pydub import AudioSegment
 from services.nogai import (
-    gerar_resposta, 
-    get_fipe_value, 
-    gerar_termo_busca_youtube, 
-    gerar_termo_busca_loja, 
-    gerar_termo_busca_pecas,
+    gerar_resposta,
+    get_fipe_value,
+    gerar_termos_busca,
     prever_intervalo_manutencao
 )
 
 import json
 from services.youtube_service import buscar_videos_youtube
-from services.web_scraping import WebScraper
 from services.vision_ai import analisar_imagem
 from services.report_generator import criar_relatorio_pdf
 from services.maintenance_service import (
@@ -87,6 +86,70 @@ def build_spending_summary(history_rows):
         "quantidade_registros": len(history_rows),
         "gastos_por_tipo": gastos_por_tipo,
     }
+
+
+def build_recommendations(message, historico_recente, default_topic="Consultoria Geral"):
+    if not (message or "").strip():
+        return [], [], default_topic
+
+    termos = gerar_termos_busca(message, historico=historico_recente)
+    termo_yt = termos.get("youtube")
+    termo_loja = termos.get("loja")
+    termo_pecas = termos.get("pecas")
+
+    videos = []
+    links = []
+
+    if termo_yt:
+        try:
+            videos = buscar_videos_youtube(termo_yt)
+        except Exception as e:
+            logger.warning(f"Erro ao buscar videos: {e}")
+
+    if termo_loja:
+        links.append({
+            "titulo": f"Ver ofertas de {termo_loja}",
+            "url": f"https://www.webmotors.com.br/carros/estoque?q={quote_plus(termo_loja)}",
+            "tipo": "veiculo",
+            "icon": "fas fa-car"
+        })
+
+    if termo_pecas:
+        links.append({
+            "titulo": f"Comprar {termo_pecas} no Mercado Livre",
+            "url": f"https://lista.mercadolivre.com.br/{quote(termo_pecas.replace(' ', '-'), safe='')}",
+            "tipo": "peca",
+            "icon": "fas fa-tools"
+        })
+
+    topic = termo_yt or termo_loja or termo_pecas or default_topic
+    return videos, links, topic
+
+
+def generate_assistant_payload(message, user_id, user, historico_recente, image_b64=None, default_topic="Consultoria Geral"):
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        resposta_future = executor.submit(
+            analisar_imagem,
+            image_b64,
+            message
+        ) if image_b64 else executor.submit(
+            gerar_resposta,
+            message,
+            user_id,
+            user_data=user,
+            historico=historico_recente,
+        )
+        recommendations_future = executor.submit(
+            build_recommendations,
+            message,
+            historico_recente,
+            default_topic,
+        )
+
+        resposta = resposta_future.result()
+        videos, links, topic = recommendations_future.result()
+
+    return resposta, videos, links, topic or default_topic
 
 def serialize_datetime_field(value):
     if isinstance(value, datetime):
@@ -209,7 +272,7 @@ def render_maintenance_email_html(user_name, alerts):
         item = html.escape(str(alert.get("item") or "Manutenção"))
         msg = html.escape(str(alert.get("msg") or ""))
         status_code = alert.get("status_code")
-        
+
         if status_code == "overdue":
             color = "#dc2626"  # Vermelho forte
             bg = "#fee2e2"
@@ -242,17 +305,17 @@ def render_maintenance_email_html(user_name, alerts):
         <p style="color: #4b5563; font-size: 16px; margin-bottom: 25px;">
             Identificamos alguns itens de manutenção que precisam da sua atenção para garantir a segurança e o bom funcionamento do seu veículo.
         </p>
-        
+
         <div style="margin-top: 20px;">
             {rows_html}
         </div>
-        
+
         <div style="margin-top: 30px; padding: 20px; background-color: #f0f9ff; border-radius: 12px; border: 1px solid #bae6fd;">
             <p style="margin: 0; font-size: 14px; color: #0369a1;">
                 <strong>Dica AutoAssist:</strong> Manter a manutenção em dia economiza até 30% em reparos futuros e valoriza seu veículo na hora da revenda.
             </p>
         </div>
-        
+
         <div style="text-align: center; margin-top: 35px;">
             <a href="{html.escape(get_dashboard_url())}" style="display: inline-block; padding: 14px 28px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Ver Painel Completo</a>
         </div>
@@ -328,7 +391,7 @@ def get_user():
     user_id = get_jwt_identity()
     with get_db() as (cursor, conn):
         cursor.execute("""
-            SELECT nome, email, is_premium, created_at, possui_veiculo,
+            SELECT id, nome, email, is_premium, created_at, possui_veiculo,
                    veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao,
                    veiculo_ano_compra, veiculo_tipo, veiculo_quilometragem, is_two_factor_enabled,
                    maintenance_email_enabled, maintenance_email_last_sent
@@ -341,10 +404,10 @@ def get_user():
 
         cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
-        
+
         cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
         veiculos = cursor.fetchall()
-        
+
         return jsonify({
             **user,
             "trial_expired": is_trial_expired(user),
@@ -373,17 +436,17 @@ def update_user():
                 return jsonify(error="Email já está em uso"), 409
 
             cursor.execute("""
-                UPDATE users SET 
+                UPDATE users SET
                     nome = %s, email = %s
                 WHERE id = %s
             """, (nome, email, user_id))
             conn.commit()
-            
+
             cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
             user = cursor.fetchone()
             if not user:
                 return invalid_session_response()
-            
+
             cursor.execute("SELECT COUNT(*) AS total FROM chats WHERE user_id = %s", (user_id,))
             total = cursor.fetchone()
 
@@ -410,14 +473,14 @@ def add_veiculo():
             ano_compra = data.get("ano_compra")
             ano_fab = int(ano_fab) if ano_fab else None
             ano_compra = int(ano_compra) if ano_compra else None
-            
+
             cursor.execute("""
                 INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (user_id, data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, data.get("quilometragem")))
             v_id = cursor.lastrowid
             cursor.execute("UPDATE users SET possui_veiculo = TRUE WHERE id = %s", (user_id,))
-            
+
             # Gatilho imediato de e-mail se houver algo crítico
             try:
                 user_row = get_user_by_id(cursor, user_id)
@@ -468,18 +531,18 @@ def edit_veiculo(v_id):
             cursor.execute("SELECT id FROM veiculos WHERE id = %s AND user_id = %s", (v_id, user_id))
             if not cursor.fetchone():
                 return jsonify(error="Veículo não encontrado"), 404
-                
+
             ano_fab = data.get("ano_fabricacao")
             ano_compra = data.get("ano_compra")
             ano_fab = int(ano_fab) if ano_fab else None
             ano_compra = int(ano_compra) if ano_compra else None
-            
+
             cursor.execute("""
-                UPDATE veiculos 
+                UPDATE veiculos
                 SET tipo = %s, marca = %s, modelo = %s, ano_fabricacao = %s, ano_compra = %s, quilometragem = %s
                 WHERE id = %s AND user_id = %s
             """, (data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, data.get("quilometragem"), v_id, user_id))
-            
+
             # Gatilho imediato de e-mail em segundo plano (Não trava o usuário)
             try:
                 user_row = get_user_by_id(cursor, user_id)
@@ -491,7 +554,8 @@ def edit_veiculo(v_id):
                             "force": False,
                             "status_codes": CRITICAL_MAINTENANCE_STATUSES,
                             "transition_only": True,
-                        }
+                        },
+                        daemon=True,
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
@@ -510,7 +574,7 @@ def delete_veiculo(v_id):
             cursor.execute("DELETE FROM veiculos WHERE id = %s AND user_id = %s", (v_id, user_id))
             if cursor.rowcount == 0:
                 return jsonify(error="Veículo não encontrado"), 404
-            
+
             cursor.execute("SELECT COUNT(*) as count FROM veiculos WHERE user_id = %s", (user_id,))
             if cursor.fetchone()["count"] == 0:
                 cursor.execute("UPDATE users SET possui_veiculo = FALSE WHERE id = %s", (user_id,))
@@ -567,20 +631,20 @@ def register_maintenance_history():
                     vehicle = None
 
             parsed = parse_maintenance_entry(description)
-            
+
             if parsed.get("interval_days") is None and parsed.get("interval_km") is None:
                 veiculo_str = f"{vehicle.get('marca', '')} {vehicle.get('modelo', '')}".strip() if vehicle else ""
                 ai_previsao = prever_intervalo_manutencao(description, veiculo_str)
-                
+
                 if ai_previsao.get("intervalo_dias"):
                     parsed["interval_days"] = ai_previsao["intervalo_dias"]
                     parsed["next_due_date"] = parsed["service_date"] + timedelta(days=ai_previsao["intervalo_dias"])
-                
+
                 if ai_previsao.get("intervalo_km"):
                     parsed["interval_km"] = ai_previsao["intervalo_km"]
                     if parsed.get("service_km") is not None:
                         parsed["next_due_km"] = parsed["service_km"] + ai_previsao["intervalo_km"]
-                
+
                 parsed["parser_metadata"]["ai_enhanced"] = True
                 parsed["parser_metadata"]["ai_justificativa"] = ai_previsao.get("justificativa")
 
@@ -615,7 +679,7 @@ def register_maintenance_history():
                 )
             )
             maintenance_id = cursor.lastrowid
-            
+
             # Gatilho imediato de e-mail em segundo plano
             try:
                 user_row = get_user_by_id(cursor, user_id)
@@ -627,7 +691,8 @@ def register_maintenance_history():
                             "force": False,
                             "status_codes": CRITICAL_MAINTENANCE_STATUSES,
                             "transition_only": True,
-                        }
+                        },
+                        daemon=True,
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
@@ -716,7 +781,7 @@ def update_maintenance_history(maintenance_id):
 
             current_description = (existing.get("description") or "").strip()
             new_description = (data.get("descricao") or data.get("texto") or current_description).strip()
-            
+
             raw_vehicle = data.get("veiculo_id", "__UNCHANGED__")
             vehicle_id = existing.get("vehicle_id")
             fallback_vehicle_km = None
@@ -765,9 +830,9 @@ def update_maintenance_history(maintenance_id):
                 WHERE id = %s AND user_id = %s
             """, (vehicle_id, parsed["description"], parsed["maintenance_type"], parsed["maintenance_label"],
                   parsed["service_date"], parsed["service_km"], parsed["cost"], currency, parsed["interval_days"],
-                  parsed["interval_km"], parsed["next_due_date"], parsed["next_due_km"], 
+                  parsed["interval_km"], parsed["next_due_date"], parsed["next_due_km"],
                   json.dumps(parser_metadata, ensure_ascii=False), maintenance_id, user_id))
-            
+
             # Gatilho imediato de e-mail em segundo plano
             try:
                 user_row = get_user_by_id(cursor, user_id)
@@ -779,7 +844,8 @@ def update_maintenance_history(maintenance_id):
                             "force": False,
                             "status_codes": CRITICAL_MAINTENANCE_STATUSES,
                             "transition_only": True,
-                        }
+                        },
+                        daemon=True,
                     ).start()
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
@@ -905,7 +971,7 @@ def dispatch_maintenance_email_batch():
     import secrets
     if not cron_secret:
         return jsonify(error="MAINTENANCE_EMAIL_CRON_SECRET nao configurado"), 500
-    
+
     is_valid = secrets.compare_digest(cron_secret, sent_secret) or secrets.compare_digest(cron_secret, bearer_secret)
     if not is_valid:
         return jsonify(error="Nao autorizado"), 401
@@ -987,7 +1053,7 @@ def get_dashboard_data():
             veiculos = cursor.fetchall()
             if not veiculos:
                 return jsonify([]), 404
-            
+
             dashboard_data = []
             for v in veiculos:
                 fipe = get_fipe_value(v["tipo"], v["marca"], v["modelo"], v["ano_fabricacao"])
@@ -1109,31 +1175,31 @@ def get_video_library():
                 return premium_error
 
             cursor.execute("""
-                SELECT topic, videos, links, created_at 
-                FROM chats 
+                SELECT topic, videos, links, created_at
+                FROM chats
                 WHERE user_id = %s AND (videos != '[]' OR links != '[]')
                 ORDER BY created_at DESC
             """, (user_id,))
             rows = cursor.fetchall()
-            
+
             library = {}
             for row in rows:
                 topic = row['topic'] or "Outros"
                 if topic not in library:
                     library[topic] = {"videos": [], "links": [], "date": row['created_at']}
-                
+
                 v_list = json.loads(row['videos']) if row['videos'] else []
                 l_list = json.loads(row['links']) if row['links'] else []
-                
+
                 # Evitar duplicatas no mesmo tópico
                 for v in v_list:
                     if not any(item['url'] == v['url'] for item in library[topic]["videos"]):
                         library[topic]["videos"].append(v)
-                
+
                 for l in l_list:
                     if not any(item['url'] == l['url'] for item in library[topic]["links"]):
                         library[topic]["links"].append(l)
-            
+
             # Converter para lista para o frontend
             result = []
             for topic, data in library.items():
@@ -1144,7 +1210,7 @@ def get_video_library():
                         "links": data["links"],
                         "last_updated": data["date"]
                     })
-            
+
             return jsonify(library=result), 200
     except Exception as e:
         logger.error(f"Erro na biblioteca de videos: {e}")
@@ -1157,64 +1223,39 @@ from extensions import limiter
 @limiter.limit("20 per hour")
 def chat():
     user_id = get_jwt_identity()
-    data = request.get_json()
-    msg, img_b64 = data.get("message"), data.get("image")
+    data = request.get_json(silent=True) or {}
+    msg = (data.get("message") or "").strip()
+    img_b64 = data.get("image")
+    if not msg and not img_b64:
+        return jsonify(error="Mensagem ou imagem e obrigatoria"), 400
+
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
-            if not user: return invalid_session_response()
+            if not user:
+                return invalid_session_response()
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
-            if veiculos: user['lista_veiculos'] = veiculos
+            if veiculos:
+                user['lista_veiculos'] = veiculos
+            historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
 
-            # Recuperar histórico para contextualizar a busca de vídeos e links
-            historico_recente = get_mysql_history(user_id, limit=3)
-            
-            resposta = analisar_imagem(img_b64, msg) if img_b64 else gerar_resposta(msg, user_id, user_data=user)
-            videos = []
-            links = [] # Novos links de recomendação
-            
-            # 1. Busca de Vídeos Contextual
-            termo_yt = gerar_termo_busca_youtube(msg, historico=historico_recente)
-            if termo_yt:
-                try:
-                    videos_yt = buscar_videos_youtube(termo_yt)
-                    if videos_yt:
-                        videos.extend(videos_yt)
-                except Exception as e:
-                    logger.warning(f"Erro ao buscar videos: {e}")
+        resposta, videos, links, topic = generate_assistant_payload(
+            msg,
+            user_id,
+            user,
+            historico_recente,
+            image_b64=img_b64,
+            default_topic="Consultoria Geral",
+        )
 
-            # 2. Busca de Veículos (Links)
-            termo_loja = gerar_termo_busca_loja(msg, historico=historico_recente)
-            if termo_loja:
-                links.append({
-                    "titulo": f"Ver ofertas de {termo_loja}",
-                    "url": f"https://www.webmotors.com.br/carros/estoque?q={termo_loja.replace(' ', '%20')}",
-                    "tipo": "veiculo",
-                    "icon": "fas fa-car"
-                })
-
-            # 3. Busca de Peças (Links)
-            termo_pecas = gerar_termo_busca_pecas(msg, historico=historico_recente)
-            if termo_pecas:
-                links.append({
-                    "titulo": f"Comprar {termo_pecas} no Mercado Livre",
-                    "url": f"https://lista.mercadolivre.com.br/{termo_pecas.replace(' ', '-')}",
-                    "tipo": "peca",
-                    "icon": "fas fa-tools"
-                })
-
-            # Determinar o tópico da conversa para a biblioteca
-            topic = termo_yt or termo_loja or termo_pecas or "Consultoria Geral"
-
-            # Salvar no histórico
+        with get_db() as (cursor, conn):
             cursor.execute(
                 "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
                 (user_id, msg, resposta, json.dumps(videos), json.dumps(links), topic)
             )
-            conn.commit()
 
-            return jsonify(response=resposta, videos=videos, links=links)
+        return jsonify(response=resposta, videos=videos, links=links)
     except Exception as e:
         logger.error(f"Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno"), 500
@@ -1225,83 +1266,51 @@ def handle_voice():
     user_id = get_jwt_identity()
     if 'audio' not in request.files:
         return jsonify(error="Nenhum áudio recebido"), 400
-        
+
     audio_file = request.files['audio']
     img_b64 = request.form.get("image")
-    
+
     try:
         # Converter webm para wav usando pydub
         audio_segment = AudioSegment.from_file(audio_file, format="webm")
         wav_io = io.BytesIO()
         audio_segment.export(wav_io, format="wav")
         wav_io.seek(0)
-        
+
         # Reconhecimento de fala
         recognizer = sr.Recognizer()
         with sr.AudioFile(wav_io) as source:
             audio_data = recognizer.record(source)
-            
+
         text = recognizer.recognize_google(audio_data, language="pt-BR")
-        
-        # Gerar resposta da IA
+
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
-            if not user: return invalid_session_response()
-            
+            if not user:
+                return invalid_session_response()
             cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
             veiculos = cursor.fetchall()
-            if veiculos: user['lista_veiculos'] = veiculos
+            if veiculos:
+                user['lista_veiculos'] = veiculos
+            historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
 
-            # Recuperar histórico para contextualizar a busca de vídeos e links
-            historico_recente = get_mysql_history(user_id, limit=3)
+        resposta, videos, links, topic = generate_assistant_payload(
+            text,
+            user_id,
+            user,
+            historico_recente,
+            image_b64=img_b64,
+            default_topic="Consultoria por Voz",
+        )
 
-            resposta = analisar_imagem(img_b64, text) if img_b64 else gerar_resposta(text, user_id, user_data=user)
-            videos = []
-            links = []
-
-            # 1. Busca de Vídeos
-            termo_yt = gerar_termo_busca_youtube(text, historico=historico_recente)
-            if termo_yt:
-                try:
-                    videos_yt = buscar_videos_youtube(termo_yt)
-                    if videos_yt:
-                        videos.extend(videos_yt)
-                except Exception as e:
-                    logger.warning(f"Erro ao buscar videos (voz): {e}")
-
-            # 2. Busca de Veículos (Links)
-            termo_loja = gerar_termo_busca_loja(text, historico=historico_recente)
-            if termo_loja:
-                links.append({
-                    "titulo": f"Ver ofertas de {termo_loja}",
-                    "url": f"https://www.webmotors.com.br/carros/estoque?q={termo_loja.replace(' ', '%20')}",
-                    "tipo": "veiculo",
-                    "icon": "fas fa-car"
-                })
-
-            # 3. Busca de Peças (Links)
-            termo_pecas = gerar_termo_busca_pecas(text, historico=historico_recente)
-            if termo_pecas:
-                links.append({
-                    "titulo": f"Comprar {termo_pecas} no Mercado Livre",
-                    "url": f"https://lista.mercadolivre.com.br/{termo_pecas.replace(' ', '-')}",
-                    "tipo": "peca",
-                    "icon": "fas fa-tools"
-                })
-
-            # Determinar o tópico da conversa
-            topic = termo_yt or termo_loja or termo_pecas or "Consultoria por Voz"
-
-            # Salvar no histórico
+        with get_db() as (cursor, conn):
             cursor.execute(
                 "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
                 (user_id, text, resposta, json.dumps(videos), json.dumps(links), topic)
             )
-            conn.commit()
-            
-            return jsonify(text=text, response=resposta, videos=videos, links=links)
 
-            
+        return jsonify(text=text, response=resposta, videos=videos, links=links)
+
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que foi falado. Pode repetir?"), 400
     except sr.RequestError as e:
@@ -1339,7 +1348,7 @@ def generate_report():
 
             # Gerar o PDF
             success = criar_relatorio_pdf(user, text, filepath)
-            
+
             if success:
                 # Retornar URL da rota que serve o arquivo (com auth)
                 return jsonify(url=f"/api/report/{filename}"), 200
@@ -1353,11 +1362,11 @@ def generate_report():
 @jwt_required()
 def serve_report(filename):
     user_id = str(get_jwt_identity())
-    
+
     # Segurança básica contra Path Traversal
     if ".." in filename or "/" in filename or "\\" in filename:
         return jsonify(error="Nome de arquivo inválido"), 400
-    
+
     # Verificar se o arquivo pertence ao usuário (prefixo report_USERID_)
     if not filename.startswith(f"report_{user_id}_"):
         logger.warning(f"Tentativa de IDOR: Usuário {user_id} tentou acessar {filename}")

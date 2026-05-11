@@ -15,6 +15,7 @@ const Auth = (() => {
     USER: "autoassist_user",
     COOKIE_SESSION: "autoassist_cookie_session",
     VEHICLES: "autoassist_veiculos_cache",
+    USER_SYNC: "autoassist_user_sync_cache",
   };
 
   // ─── Cache de Sessão (Otimização) ──────────────────────────────────────────
@@ -23,10 +24,13 @@ const Auth = (() => {
     get: (key) => {
       try { return JSON.parse(sessionStorage.getItem(key)); } catch { return null; }
     },
+    remove: (key) => sessionStorage.removeItem(key),
     clear: () => {
       sessionStorage.removeItem(KEYS.VEHICLES);
+      sessionStorage.removeItem(KEYS.USER_SYNC);
     }
   };
+  const USER_SYNC_TTL_MS = 30000;
   let refreshPromise = null;
   let invalidSessionHandled = false;
 
@@ -42,7 +46,10 @@ const Auth = (() => {
       localStorage.removeItem(KEYS.ACCESS);
       localStorage.removeItem(KEYS.REFRESH);
     }
-    if (user) localStorage.setItem(KEYS.USER, JSON.stringify(user));
+    if (user) {
+      localStorage.setItem(KEYS.USER, JSON.stringify(user));
+      Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data: user });
+    }
   }
 
   function clearSession() {
@@ -103,12 +110,27 @@ const Auth = (() => {
     return !!getAccessToken() || hasCookieSession();
   }
 
+  function escapeHTML(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   /**
    * Sincroniza os dados do usuário com o banco de dados.
    * Útil para atualizar o status Premium sem precisar de re-login.
    */
-  async function syncUser({ redirectOnInvalid = false } = {}) {
+  async function syncUser({ redirectOnInvalid = false, force = false } = {}) {
     if (!isAuthenticated()) return null;
+    if (!force) {
+      const cached = Cache.get(KEYS.USER_SYNC);
+      if (cached && cached.data && Date.now() - cached.ts < USER_SYNC_TTL_MS) {
+        return cached.data;
+      }
+    }
     try {
       let token = getAccessToken();
       const buildUserHeaders = (tok) => tok ? { Authorization: `Bearer ${tok}` } : {};
@@ -139,6 +161,7 @@ const Auth = (() => {
         // Atualiza o localStorage com os dados frescos do banco
         localStorage.setItem(KEYS.COOKIE_SESSION, "1");
         localStorage.setItem(KEYS.USER, JSON.stringify(data));
+        Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data });
         return data;
       }
     } catch (e) {
@@ -249,6 +272,9 @@ const Auth = (() => {
     if (res.status === 200 && endpoint === "/api/user" && method === "GET") {
       const data = await res.clone().json();
       localStorage.setItem(KEYS.USER, JSON.stringify(data));
+      Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data });
+    } else if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      Cache.remove(KEYS.USER_SYNC);
     }
 
     return res;
@@ -335,7 +361,7 @@ const Auth = (() => {
     if (oauthSuccess) {
       localStorage.setItem(KEYS.COOKIE_SESSION, "1");
       window.history.replaceState({}, document.title, window.location.pathname);
-      syncUser({ redirectOnInvalid: false });
+      syncUser({ redirectOnInvalid: false, force: true });
       return;
     }
 
@@ -569,8 +595,8 @@ const Auth = (() => {
     overlay.innerHTML = `
       <div class="autoassist-premium-modal" role="dialog" aria-modal="true" aria-label="Premium">
         <div class="autoassist-premium-badge">Plano Premium</div>
-        <h2 class="autoassist-premium-title">${title}</h2>
-        <p class="autoassist-premium-text">${message}</p>
+        <h2 class="autoassist-premium-title">${escapeHTML(title)}</h2>
+        <p class="autoassist-premium-text">${escapeHTML(message)}</p>
         <div class="autoassist-premium-actions">
           ${showBackButton ? '<button type="button" class="autoassist-premium-btn autoassist-premium-btn-back" id="autoassist-premium-back">Voltar</button>' : ""}
           <button type="button" class="autoassist-premium-btn autoassist-premium-btn-pay" id="autoassist-premium-pay">Pagar</button>

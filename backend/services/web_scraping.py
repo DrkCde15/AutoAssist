@@ -11,7 +11,7 @@ class WebScraper:
         """Faz a requisição HTTP e inicializa o objeto BeautifulSoup"""
         if not self.url:
             raise ValueError("URL não definida.")
-        response = requests.get(self.url)
+        response = requests.get(self.url, timeout=(3.05, 10))
         response.raise_for_status()  # lança erro se status != 200
         self.soup = BeautifulSoup(response.text, "html.parser")
 

@@ -80,7 +80,7 @@ def init_db():
             ("veiculo_ano_compra", "INT"),
             ("veiculo_tipo", "VARCHAR(50)"),
             ("veiculo_quilometragem", "INT"),
-            ("two_factor_secret", "VARCHAR(255)"), 
+            ("two_factor_secret", "VARCHAR(255)"),
             ("is_two_factor_enabled", "BOOLEAN DEFAULT FALSE"),
             ("google_id", "VARCHAR(255)"),
             ("profile_pic", "VARCHAR(500)"),
@@ -91,7 +91,7 @@ def init_db():
         for col, dtype in columns:
             try:
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
-            except Exception: 
+            except Exception:
                 pass
 
         veiculos_columns = [
@@ -107,14 +107,14 @@ def init_db():
             cursor.execute("""
                 INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
                 SELECT id, veiculo_tipo, veiculo_marca, veiculo_modelo, veiculo_ano_fabricacao, veiculo_ano_compra, veiculo_quilometragem
-                FROM users 
-                WHERE possui_veiculo = TRUE 
+                FROM users
+                WHERE possui_veiculo = TRUE
                 AND veiculo_marca IS NOT NULL
                 AND id NOT IN (SELECT DISTINCT user_id FROM veiculos)
             """)
         except Exception as e:
             print(f"Aviso migração veículos: {e}")
-        
+
         try:
             cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")
         except Exception as e:
@@ -234,21 +234,42 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             )
         """)
+
+        # Otimizações de Banco de Dados: Adicionando Índices para consultas frequentes
+        indexes = [
+            "CREATE INDEX idx_chats_user_created ON chats (user_id, created_at DESC)",
+            "CREATE INDEX idx_feedbacks_created ON feedbacks (created_at DESC)",
+            "CREATE INDEX idx_veiculos_user ON veiculos (user_id)",
+            "CREATE INDEX idx_videos_user ON videos (user_id)",
+            "CREATE INDEX idx_videos_user_created ON videos (user_id, created_at DESC)",
+            "CREATE INDEX idx_redefinicao_token ON redefinicao_senha (token)",
+            "CREATE INDEX idx_redefinicao_queue ON redefinicao_senha (email_sent, data_expiracao, last_attempt_at, id)",
+            "CREATE INDEX idx_users_email ON users (email)",
+            "CREATE INDEX idx_users_google_id ON users (google_id)",
+            "CREATE INDEX idx_maintenance_user_vehicle_date ON maintenance_history (user_id, vehicle_id, service_date DESC, created_at DESC)"
+        ]
+        for idx_query in indexes:
+            try:
+                cursor.execute(idx_query)
+            except Exception:
+                pass # Ignora se o índice já existir
+
         print("✅ Banco de dados inicializado com sucesso!")
+
 
 # (enviar_email removido daqui e movido para utils.email)
 
 def is_trial_expired(user):
     if not user or not user.get("created_at"):
         return True
-    
+
     created_at = user["created_at"]
     if isinstance(created_at, str):
         try:
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         except ValueError:
             return True
-            
+
     # Trial de 7 dias
     expiry_date = created_at + timedelta(days=7)
     return datetime.now(timezone.utc if created_at.tzinfo else None) > expiry_date
@@ -256,26 +277,44 @@ def is_trial_expired(user):
 def get_trial_days_remaining(user):
     if not user or not user.get("created_at"):
         return 0
-        
+
     created_at = user["created_at"]
     if isinstance(created_at, str):
         try:
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         except ValueError:
             return 0
-            
+
     expiry_date = created_at + timedelta(days=7)
     delta = expiry_date - datetime.now(timezone.utc if created_at.tzinfo else None)
     return max(0, delta.days)
 
-def get_mysql_history(user_id: int, limit: int = 5):
+def get_mysql_history(user_id: int, limit: int = 5, cursor=None):
     """Recupera o histórico de conversas do MySQL."""
+    if cursor is not None:
+        try:
+            cursor.execute(
+                "SELECT mensagem_usuario, resposta_ia FROM chats WHERE user_id = %s ORDER BY created_at DESC LIMIT %s",
+                (user_id, limit)
+            )
+            rows = cursor.fetchall()
+            history = []
+            for row in reversed(rows):
+                if row['mensagem_usuario']:
+                    history.append({"role": "user", "content": row['mensagem_usuario']})
+                if row['resposta_ia']:
+                    history.append({"role": "model", "content": row['resposta_ia']})
+            return history
+        except Exception as e:
+            logging.error(f"Erro histórico MySQL: {e}")
+            return []
+
     try:
         from database import get_db
     except ImportError:
         # Fallback se for chamado de dentro do próprio módulo
         from .database import get_db
-        
+
     try:
         with get_db() as (cursor, conn):
             cursor.execute(
