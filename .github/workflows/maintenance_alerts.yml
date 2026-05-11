@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Dispatch critical maintenance emails
         env:
-          AUTOASSIST_APP_URL: ${{ secrets.AUTOASSIST_APP_URL }}
+          AUTOASSIST_APP_URL: ${{ secrets.AUTOASSIST_APP_URL || vars.AUTOASSIST_APP_URL || 'https://autoassist-l9lr.onrender.com' }}
           MAINTENANCE_EMAIL_CRON_SECRET: ${{ secrets.MAINTENANCE_EMAIL_CRON_SECRET }}
           LIMIT: ${{ github.event.inputs.limit || '500' }}
           INCLUDE_DUE_SOON: ${{ github.event.inputs.include_due_soon || 'false' }}
@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
 
           if [ -z "${AUTOASSIST_APP_URL}" ]; then
-            echo "AUTOASSIST_APP_URL secret is missing."
+            echo "AUTOASSIST_APP_URL is missing. Configure it as a repository secret or variable."
             exit 1
           fi
 
