@@ -7,6 +7,7 @@ from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
+from flask_compress import Compress
 
 from routes.gateway import gateway_bp
 
@@ -16,8 +17,12 @@ load_dotenv(os.path.join(basedir, ".env"))
 
 from extensions import limiter
 
+print("Iniciando carregamento do Flask...")
 app = Flask(__name__, static_folder="../frontend/public", static_url_path="")
+print("Flask instanciado.")
+Compress(app)
 limiter.init_app(app)
+print("Extensoes inicializadas.")
 app.json.sort_keys = False
 app.json.compact = True
 
@@ -28,8 +33,9 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Importando as rotas e inicializacao do banco
+print("Importando rotas...")
 from routes import auth_bp, pages_bp, payment_bp, feedback_bp, init_db
+print("Rotas importadas.")
 
 # [SEGURANCA] Cabecalhos HTTP Seguros e CSP
 is_production = os.getenv("FLASK_ENV") == "production"
@@ -231,7 +237,9 @@ def init_db_command():
 
 if _env_flag("AUTO_INIT_DB", default=not is_production):
     try:
+        print("Iniciando init_db()...")
         init_db()
+        print("init_db() concluido.")
         logger.info("Banco de dados inicializado no startup.")
     except Exception as e:
         logger.error("Falha ao inicializar banco no startup: %s", e, exc_info=True)

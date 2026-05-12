@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
-const FLASK_URL = process.env.FLASK_URL || "http://localhost:5000";
+const FLASK_URL = process.env.FLASK_URL || "http://127.0.0.1:5000";
 
 const nextConfig = {
   images: {
-    unoptimized: true,
+    formats: ["image/avif", "image/webp"],
   },
 
   /**

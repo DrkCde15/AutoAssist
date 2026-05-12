@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import json
+import re
 from functools import lru_cache
 
 load_dotenv()
@@ -109,14 +110,52 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
 
 from routes.database import get_mysql_history
 
-# Inicializa o cliente Gemini (Deixando o SDK escolher a melhor versão estável)
+# Inicializa o cliente Gemini
 client = genai.Client(api_key=os.getenv("API_GEMINI"))
+
+DEFAULT_GEMINI_TEXT_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-2.0-flash", "gemini-2.0-flash-lite")
+
+
+def _read_int_env(name, default, minimum=0):
+    try:
+        return max(minimum, int(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
+GEMINI_QUOTA_COOLDOWN_SECONDS = _read_int_env("GEMINI_QUOTA_COOLDOWN_SECONDS", 60, minimum=5)
+GEMINI_FALLBACK_ON_QUOTA = os.getenv("GEMINI_FALLBACK_ON_QUOTA", "").strip().lower() in {"1", "true", "yes", "on"}
+GEMINI_QUOTA_MESSAGE = (
+    "O NOG atingiu o limite de uso da API do Gemini no momento. "
+    "Verifique a cota/billing do projeto no Google AI Studio ou tente novamente mais tarde."
+)
+_gemini_quota_blocked_until = 0.0
+
+
+class GeminiQuotaError(RuntimeError):
+    pass
+
+
+def _parse_model_list(raw_value, default_models):
+    source = raw_value if raw_value is not None else ",".join(default_models)
+    models = []
+    seen = set()
+    for item in str(source).split(","):
+        model = item.strip()
+        if model and model not in seen:
+            seen.add(model)
+            models.append(model)
+    return tuple(models)
+
+
+GEMINI_TEXT_MODEL = (os.getenv("GEMINI_TEXT_MODEL") or os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_TEXT_MODEL).strip()
+MODELS_TO_TRY = _parse_model_list(os.getenv("GEMINI_FALLBACK_MODELS"), DEFAULT_GEMINI_FALLBACK_MODELS)
 
 def transformar_historico_gemini(historico_mysql):
     """Converte o histórico do MySQL para o formato do novo SDK."""
     gemini_history = []
     for msg in historico_mysql:
-        # No novo SDK, o assistente é 'model'
         role = "user" if msg["role"] == "user" else "model"
         gemini_history.append(types.Content(
             role=role,
@@ -124,49 +163,155 @@ def transformar_historico_gemini(historico_mysql):
         ))
     return gemini_history
 
-# Ordem de preferência dos modelos
-MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"]
+def _model_chain(primary_model=None):
+    seen = set()
+    for model in (primary_model or GEMINI_TEXT_MODEL, *MODELS_TO_TRY):
+        model_name = str(model or "").strip()
+        if model_name and model_name not in seen:
+            seen.add(model_name)
+            yield model_name
+
+
+def _error_text(error: Exception) -> str:
+    return str(error or "")
+
+
+def _error_status_code(error: Exception) -> int | None:
+    status_code = getattr(error, "status_code", None) or getattr(error, "code", None)
+    try:
+        return int(status_code)
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_retry_delay_seconds(error: Exception) -> int | None:
+    match = re.search(r"retryDelay['\"]?\s*:\s*['\"]?(\d+)s", _error_text(error))
+    if match:
+        return int(match.group(1))
+
+    match = re.search(r"retry in\s+(\d+(?:\.\d+)?)s", _error_text(error), flags=re.IGNORECASE)
+    if match:
+        return max(1, int(float(match.group(1))))
+
+    return None
+
+
+def _is_quota_error(error: Exception) -> bool:
+    if isinstance(error, GeminiQuotaError):
+        return True
+
+    error_str = _error_text(error).lower()
+    return (
+        _error_status_code(error) == 429
+        or "resource_exhausted" in error_str
+        or "quota exceeded" in error_str
+        or "rate limit" in error_str
+    )
+
+
+def _is_model_not_found_error(error: Exception) -> bool:
+    error_str = _error_text(error).lower()
+    return _error_status_code(error) == 404 or ("not_found" in error_str and "not found" in error_str)
 
 
 def _is_retryable_model_error(error: Exception) -> bool:
-    error_str = str(error)
+    error_str = _error_text(error)
     return (
-        "503" in error_str
+        _error_status_code(error) in {500, 502, 503, 504}
+        or "503" in error_str
         or "UNAVAILABLE" in error_str
         or "high demand" in error_str.lower()
+        or "overloaded" in error_str.lower()
+        or "timeout" in error_str.lower()
     )
+
+
+def _should_try_fallback(error: Exception) -> bool:
+    if _is_quota_error(error):
+        return GEMINI_FALLBACK_ON_QUOTA
+
+    return _is_retryable_model_error(error) or _is_model_not_found_error(error)
+
+
+def _mark_quota_limited(error: Exception):
+    global _gemini_quota_blocked_until
+
+    retry_delay = _extract_retry_delay_seconds(error) or GEMINI_QUOTA_COOLDOWN_SECONDS
+    _gemini_quota_blocked_until = max(_gemini_quota_blocked_until, time.time() + retry_delay)
+
+
+def _raise_if_quota_cooldown_active():
+    if time.time() < _gemini_quota_blocked_until:
+        raise GeminiQuotaError("Gemini quota cooldown active")
 
 
 def _generate_content_with_fallback(
     *,
     contents,
     config=None,
-    primary_model="gemini-2.5-flash",
+    primary_model=None,
     log_context="Gemini",
 ):
-    try:
-        return client.models.generate_content(
-            model=primary_model,
-            config=config,
-            contents=contents,
-        )
-    except Exception as e:
-        if not _is_retryable_model_error(e):
-            raise e
+    _raise_if_quota_cooldown_active()
+    last_error = None
 
-        logger.warning("%s indisponivel. Tentando modelos de fallback...", log_context)
-        for model_name in MODELS_TO_TRY:
-            try:
-                return client.models.generate_content(
-                    model=model_name,
-                    config=config,
-                    contents=contents,
-                )
-            except Exception as fallback_err:
-                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, fallback_err)
-                continue
-        raise e
+    for attempt, model_name in enumerate(_model_chain(primary_model)):
+        try:
+            return client.models.generate_content(
+                model=model_name,
+                config=config,
+                contents=contents,
+            )
+        except Exception as e:
+            last_error = e
+            if _is_quota_error(e):
+                _mark_quota_limited(e)
 
+            if not _should_try_fallback(e):
+                if _is_quota_error(e):
+                    logger.warning("%s bloqueado por quota do Gemini; fallback nao tentado.", log_context)
+                raise e
+
+            if attempt == 0:
+                logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
+            else:
+                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, e)
+
+    raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
+
+
+def _send_chat_with_fallback(*, prompt, system_instruction, history, log_context="NOG Gemini"):
+    _raise_if_quota_cooldown_active()
+    last_error = None
+
+    for attempt, model_name in enumerate(_model_chain()):
+        try:
+            chat = client.chats.create(
+                model=model_name,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.7,
+                ),
+                history=history,
+            )
+            response = chat.send_message(message=prompt)
+            return response.text
+        except Exception as e:
+            last_error = e
+            if _is_quota_error(e):
+                _mark_quota_limited(e)
+
+            if not _should_try_fallback(e):
+                if _is_quota_error(e):
+                    logger.warning("%s bloqueado por quota do Gemini; fallback nao tentado.", log_context)
+                raise e
+
+            if attempt == 0:
+                logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
+            else:
+                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, e)
+
+    raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
 
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historico: list | None = None) -> str:
     try:
@@ -192,46 +337,18 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
                                     f"Responda considerando este veículo se for relevante.")
             prompt_final = contexto_veiculo + "\n\nPergunta do usuário: " + mensagem
             
-        # Tentativa inicial com Gemini 2.5 Flash
-        try:
-            chat = client.chats.create(
-                model="gemini-2.5-flash",
-                config=types.GenerateContentConfig(
-                    system_instruction=prompt_instrucoes,
-                    temperature=0.7,
-                ),
-                history=historico_gemini
-            )
-            response = chat.send_message(message=prompt_final)
-            return response.text
-        except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
-                logger.warning(f"⚠️ Gemini 2.5 Flash indisponível (503). Tentando modelos estáveis...")
-                time.sleep(1) # Pequeno atraso antes do fallback
-                
-                for model_name in MODELS_TO_TRY:
-                    try:
-                        logger.info(f"Tentando fallback para {model_name}...")
-                        chat = client.chats.create(
-                            model=model_name,
-                            config=types.GenerateContentConfig(
-                                system_instruction=prompt_instrucoes,
-                                temperature=0.7,
-                            ),
-                            history=historico_gemini
-                        )
-                        response = chat.send_message(message=prompt_final)
-                        return response.text
-                    except Exception as fallback_err:
-                        logger.error(f"❌ Fallback para {model_name} também falhou: {fallback_err}")
-                        continue
-            
-            # Se não for erro 503 ou todos fallbacks falharem
-            raise e
+        return _send_chat_with_fallback(
+            prompt=prompt_final,
+            system_instruction=prompt_instrucoes,
+            history=historico_gemini,
+        )
         
     except Exception as e:
-        logger.error(f"❌ Erro no NOG (Gemini New SDK): {e}", exc_info=True)
+        if _is_quota_error(e):
+            logger.error(f"Quota do Gemini esgotada no NOG: {e}", exc_info=True)
+            return GEMINI_QUOTA_MESSAGE
+
+        logger.error(f"❌ Erro no NOG (Gemini): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
 
 def _clean_search_term(value):
@@ -242,39 +359,20 @@ def _clean_search_term(value):
         return None
     return term[:120]
 
-
 def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
-    """
-    Extrai, em uma unica chamada ao Gemini, os termos de busca usados para
-    videos, compra de veiculos e compra de pecas.
-    """
+    """Extrai termos de busca em uma única chamada."""
     try:
         contexto_historico = ""
         if historico:
-            resumo = "\n".join([
-                f"{'Usuario' if m['role'] == 'user' else 'IA'}: {m['content']}"
-                for m in historico[-3:]
-            ])
+            resumo = "\n".join([f"{'Usuario' if m['role'] == 'user' else 'IA'}: {m['content']}" for m in historico[-3:]])
             contexto_historico = f"\nHistorico recente:\n{resumo}\n"
 
         prompt = f"""
-        Voce extrai termos curtos de busca a partir de conversas automotivas.
-
+        Extraia termos de busca a partir de conversas automotivas.
         {contexto_historico}
-
-        Mensagem atual do usuario: "{mensagem}"
-
-        Regras:
-        - youtube: termo especifico para tutorial no YouTube se houver ajuda tecnica automotiva; senao null.
-        - loja: termo de veiculo se o usuario quer comprar, comparar modelos ou ver precos; senao null.
-        - pecas: termo de peca/acessorio automotivo se houver intencao de comprar ou pesquisar peca; senao null.
-        - Use termos em portugues, curtos e seguros para URL.
-        - Nao invente termos para conversa generica como oi, obrigado ou assunto fora de automoveis.
-
-        Retorne APENAS JSON valido neste formato:
-        {{"youtube": string|null, "loja": string|null, "pecas": string|null}}
+        Mensagem atual: "{mensagem}"
+        Retorne JSON: {{"youtube": string|null, "loja": string|null, "pecas": string|null}}
         """
-
         response = _generate_content_with_fallback(
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json"),
@@ -286,214 +384,32 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
             "loja": _clean_search_term(data.get("loja")),
             "pecas": _clean_search_term(data.get("pecas")),
         }
-    except Exception as e:
-        logger.error(f"Erro ao gerar termos de busca consolidados: {e}")
+    except Exception:
         return {"youtube": None, "loja": None, "pecas": None}
 
-
 def gerar_termo_busca_youtube(mensagem: str, historico: list = None) -> str | None:
-    """
-    Avalia a mensagem do usuário e o histórico para decidir se 
-    há necessidade de recomendar um vídeo de tutorial.
-    Retorna uma string curta para pesquisa no YouTube ou None.
-    """
-    try:
-        contexto_historico = ""
-        if historico:
-            # Pega as últimas 3 interações para contexto
-            resumo = "\n".join([f"{'Usuário' if m['role']=='user' else 'IA'}: {m['content']}" for m in historico[-3:]])
-            contexto_historico = f"\nHistórico recente da conversa:\n{resumo}\n"
-
-        prompt = f"""
-        Você é um assistente que extrai termos de pesquisa do YouTube focados EXCLUSIVAMENTE em mecânica automotiva.
-        Analise a mensagem do usuário e o histórico da conversa abaixo.
-        
-        {contexto_historico}
-        
-        Mensagem atual do Usuário: "{mensagem}"
-        
-        Sua tarefa:
-        1. Se a mensagem pedir ajuda técnica, gere UM termo de pesquisa específico.
-        2. Se o assunto for recorrente, gere um termo MAIS ESPECÍFICO ou uma variação (ex: em vez de apenas "óleo", use "viscosidade óleo motor" ou "melhores marcas óleo").
-        3. O termo DEVE incluir palavras de contexto como "carro", "motor", "mecânica" ou o modelo do veículo.
-        4. Se for apenas conversa genérica (oi, obrigado), retorne APENAS a palavra NONE.
-        
-        Retorne APENAS o termo de pesquisa ou NONE. Sem aspas ou explicações.
-        """
-        
-        # Tentativa inicial com Gemini 2.5 Flash
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-        except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
-                logger.warning(f"⚠️ YouTube Search LLM indisponível (503). Tentando modelos estáveis...")
-                
-                response = None
-                for model_name in MODELS_TO_TRY:
-                    try:
-                        logger.info(f"Tentando fallback para {model_name} (YouTube Search)...")
-                        response = client.models.generate_content(
-                            model=model_name,
-                            contents=prompt,
-                        )
-                        if response: break
-                    except Exception as fallback_err:
-                        logger.error(f"❌ Fallback para {model_name} (YouTube) falhou: {fallback_err}")
-                        continue
-                
-                if not response: raise e
-            else:
-                raise e
-        
-        termo = response.text.strip().replace('"', '').replace("'", "")
-        if termo.upper() == "NONE" or not termo:
-            return None
-            
-        logger.info(f"Termo de busca YouTube extraído: {termo}")
-        return termo
-        
-    except Exception as e:
-        logger.error(f"❌ Erro ao gerar termo de busca YouTube: {e}")
-        return None
+    return gerar_termos_busca(mensagem, historico).get("youtube")
 
 def gerar_termo_busca_loja(mensagem: str, historico: list = None) -> str | None:
-    """
-    Avalia a mensagem e o histórico para sugerir links de compra de veículos.
-    """
-    try:
-        contexto_historico = ""
-        if historico:
-            resumo = "\n".join([f"{m['role']}: {m['content']}" for m in historico[-2:]])
-            contexto_historico = f"\nContexto anterior:\n{resumo}\n"
-
-        prompt = f"""
-        Você é um especialista em mercado automotivo.
-        Analise se o usuário quer comprar um veículo, sugerir modelos ou ver preços.
-        
-        {contexto_historico}
-        
-        Mensagem atual: "{mensagem}"
-        
-        Gere UM termo de busca curto e variado. Se ele já perguntou de um carro, tente sugerir um comparativo ou versão específica.
-        Se não for sobre compra, retorne APENAS: NONE.
-        """
-        try:
-            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
-                response = None
-                for model_name in MODELS_TO_TRY:
-                    try:
-                        response = client.models.generate_content(model=model_name, contents=prompt)
-                        if response: break
-                    except:
-                        continue
-                if not response: raise e
-            else:
-                raise e
-        
-        termo = response.text.strip().replace('"', '').replace("'", "")
-        if termo.upper() == "NONE" or not termo:
-            return None
-        return termo
-    except Exception as e:
-        logger.error(f"Erro ao gerar termo busca loja: {e}")
-        return None
+    return gerar_termos_busca(mensagem, historico).get("loja")
 
 def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> str | None:
-    """
-    Avalia a mensagem e o histórico para sugerir compra de peças.
-    """
-    try:
-        contexto_historico = ""
-        if historico:
-            resumo = "\n".join([f"{m['role']}: {m['content']}" for m in historico[-2:]])
-            contexto_historico = f"\nContexto anterior:\n{resumo}\n"
-
-        prompt = f"""
-        Extraia UM termo de busca de PEÇAS automotivas.
-        
-        {contexto_historico}
-        
-        Mensagem atual: "{mensagem}"
-        
-        Se o usuário já perguntou de uma peça, gere um termo para uma marca específica ou componente relacionado.
-        Se não for sobre peças, retorne APENAS: NONE.
-        """
-        try:
-            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        except Exception as e:
-            error_str = str(e)
-            if "503" in error_str or "UNAVAILABLE" in error_str or "high demand" in error_str.lower():
-                response = None
-                for model_name in MODELS_TO_TRY:
-                    try:
-                        response = client.models.generate_content(model=model_name, contents=prompt)
-                        if response: break
-                    except:
-                        continue
-                if not response: raise e
-            else:
-                raise e
-        
-        termo = response.text.strip().replace('"', '').replace("'", "")
-        if termo.upper() == "NONE" or not termo:
-            return None
-        return termo
-    except Exception as e:
-        logger.error(f"Erro ao gerar termo busca pecas: {e}")
-        return None
+    return gerar_termos_busca(mensagem, historico).get("pecas")
 
 def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
-    """
-    Usa IA para prever o intervalo de manutenção (dias e km) com base na descrição.
-    Retorna um dicionário com 'intervalo_dias' e 'intervalo_km'.
-    """
+    """Preve o intervalo de manutenção com base na descrição."""
     try:
         prompt = f"""
-        Você é um especialista em manutenção automotiva.
-        Analise a seguinte descrição de um serviço realizado e preveja quando deve ser o próximo retorno (intervalo em dias e quilometragem).
-        
-        Considere as melhores práticas do mercado brasileiro.
-        Se a descrição não der pistas suficientes, use padrões comuns para o tipo de serviço detectado.
-        
+        Especialista automotivo: preveja o próximo retorno (dias e km).
         Descrição: "{descricao}"
         {f"Veículo: {veiculo_info}" if veiculo_info else ""}
-        
-        Retorne APENAS um JSON no formato:
-        {{
-          "intervalo_dias": int ou null,
-          "intervalo_km": int ou null,
-          "justificativa": "breve explicação"
-        }}
+        Retorne JSON: {{"intervalo_dias": int|null, "intervalo_km": int|null, "justificativa": str}}
         """
-        
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                ),
-                contents=prompt
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            logger.warning(f"Falha na previsão de intervalo com Gemini 2.0: {e}")
-            # Fallback se o 2.0 falhar
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-lite",
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                ),
-                contents=prompt
-            )
-            return json.loads(response.text)
-            
-    except Exception as e:
-        logger.error(f"Erro ao prever intervalo com IA: {e}")
+        response = _generate_content_with_fallback(
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            log_context="Previsao manutencao",
+        )
+        return json.loads(response.text)
+    except Exception:
         return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}

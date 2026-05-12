@@ -5,6 +5,8 @@
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoAssist - Dashboard</title>
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
@@ -349,7 +351,7 @@
                 </a>
                 <a href="chat.html" class="nav-link">
                     <i class="fas fa-comments"></i>
-                    <span>Chat IA</span>
+                    <span>Chat</span>
                 </a>
                 <a href="library.html" id="premiumVideosLink" class="nav-link" style="display: none;">
                     <i class="fas fa-book"></i>
@@ -376,7 +378,7 @@
 
     <script src="static/js/config.js"></script>
     <script src="static/js/auth.js"></script>
-    <script src="static/js/responsive.js"></script>
+    <script src="static/js/responsive.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {

@@ -91,6 +91,9 @@ Crie um arquivo `.env` na pasta `backend/` com:
 
 ```env
 API_GEMINI=sua_chave_aqui
+GEMINI_TEXT_MODEL=gemini-2.5-flash
+GEMINI_FALLBACK_MODELS=gemini-2.0-flash,gemini-2.0-flash-lite
+GEMINI_FALLBACK_ON_QUOTA=false
 DB_HOST=seu_host
 DB_USER=seu_usuario
 DB_PASSWORD=sua_senha

@@ -431,12 +431,14 @@
     <script src="./static/js/config.js"></script>
     <script src="./static/js/auth.js"></script>
     <script>
-      // Valida a sessao antes de redirecionar; tokens antigos sao descartados.
-      Auth.syncUser({ redirectOnInvalid: false }).then((user) => {
-        if (user) window.location.href = "index.html";
-      });
-
       document.addEventListener("DOMContentLoaded", () => {
+        // Valida a sessao antes de redirecionar; tokens antigos sao descartados.
+        if (typeof Auth !== 'undefined') {
+          Auth.syncUser({ redirectOnInvalid: false }).then((user) => {
+            if (user) window.location.href = "index.html";
+          });
+        }
+
         const form = document.getElementById("loginForm");
         const twoFactorForm = document.getElementById("twoFactorForm");
         const errorBox = document.getElementById("error");

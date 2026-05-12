@@ -6,6 +6,8 @@ from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 from pymysql.cursors import DictCursor
 
+from dbutils.pooled_db import PooledDB
+
 # Carrega variáveis de ambiente procurando o .env na pasta pai (backend/)
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '..', '.env'))
@@ -24,9 +26,19 @@ MYSQL_CONFIG = {
     'ssl': {'ssl_disabled': False}
 }
 
+# Inicializa o Pool de Conexões
+pool = PooledDB(
+    creator=pymysql,
+    mincached=2,
+    maxcached=10,
+    maxconnections=20,
+    blocking=True,
+    **MYSQL_CONFIG
+)
+
 @contextmanager
 def get_db():
-    conn = pymysql.connect(**MYSQL_CONFIG)
+    conn = pool.connection()
     cursor = conn.cursor()
     try:
         yield cursor, conn
@@ -35,7 +47,7 @@ def get_db():
         raise e
     finally:
         cursor.close()
-        conn.close()
+        conn.close() # Retorna a conexão ao pool
 
 def init_db():
     with get_db() as (cursor, conn):
@@ -71,7 +83,10 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
-        # Adiciona colunas para usuários existentes
+        # Otimização: Busca colunas existentes para evitar ALTER TABLE desnecessário
+        cursor.execute("SHOW COLUMNS FROM users")
+        existing_columns = {row['Field'] for row in cursor.fetchall()}
+        
         columns = [
             ("possui_veiculo", "BOOLEAN DEFAULT FALSE"),
             ("veiculo_marca", "VARCHAR(50)"),
@@ -89,19 +104,24 @@ def init_db():
             ("is_admin", "BOOLEAN DEFAULT FALSE")
         ]
         for col, dtype in columns:
-            try:
-                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
-            except Exception:
-                pass
-
+            if col not in existing_columns:
+                try:
+                    print(f"Adicionando coluna faltante {col} em users...")
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
+                except Exception as e:
+                    print(f"Erro ao adicionar coluna {col}: {e}")
+        
+        cursor.execute("SHOW COLUMNS FROM veiculos")
+        existing_veiculos_columns = {row['Field'] for row in cursor.fetchall()}
         veiculos_columns = [
             ("quilometragem", "INT")
         ]
         for col, dtype in veiculos_columns:
-            try:
-                cursor.execute(f"ALTER TABLE veiculos ADD COLUMN {col} {dtype}")
-            except Exception:
-                pass
+            if col not in existing_veiculos_columns:
+                try:
+                    cursor.execute(f"ALTER TABLE veiculos ADD COLUMN {col} {dtype}")
+                except Exception:
+                    pass
 
         try:
             cursor.execute("""
