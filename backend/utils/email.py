@@ -1,4 +1,5 @@
 import os
+import base64
 import logging
 import smtplib
 import time
@@ -24,11 +25,24 @@ EMAIL_API_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_TIMEOUT_SECONDS", "8"))
 EMAIL_API_CONNECT_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_CONNECT_TIMEOUT_SECONDS", "5"))
 EMAIL_API_RETRIES = int(os.getenv("EMAIL_API_RETRIES", "2"))
 
-RESEND_API_KEY = (os.getenv("RESEND_API_KEY") or "").strip()
-BREVO_API_KEY = (os.getenv("BREVO_API_KEY") or "").strip()
-SENDGRID_API_KEY = (os.getenv("SENDGRID_API_KEY") or "").strip()
-WEBHOOK_EMAIL_URL = (os.getenv("WEBHOOK_EMAIL_URL") or "").strip()
-WEBHOOK_EMAIL_SECRET = (os.getenv("WEBHOOK_EMAIL_SECRET") or "").strip()
+GMAIL_OAUTH_CLIENT_ID = (
+    os.getenv("GMAIL_OAUTH_CLIENT_ID")
+    or os.getenv("GOOGLE_CLIENT_ID")
+    or ""
+).strip()
+GMAIL_OAUTH_CLIENT_SECRET = (
+    os.getenv("GMAIL_OAUTH_CLIENT_SECRET")
+    or os.getenv("GOOGLE_CLIENT_SECRET")
+    or ""
+).strip()
+GMAIL_OAUTH_REFRESH_TOKEN = (os.getenv("GMAIL_OAUTH_REFRESH_TOKEN") or "").strip()
+GMAIL_OAUTH_TOKEN_URI = (
+    os.getenv("GMAIL_OAUTH_TOKEN_URI")
+    or "https://oauth2.googleapis.com/token"
+).strip()
+
+_gmail_access_token = None
+_gmail_token_expires_at = 0
 
 
 def _post_with_retry(url: str, payload: dict, headers: dict):
@@ -51,6 +65,64 @@ def _post_with_retry(url: str, payload: dict, headers: dict):
     if last_exc:
         raise last_exc
     raise RuntimeError("Falha inesperada no envio HTTP")
+
+
+def _base64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
+
+
+def _get_gmail_access_token() -> str | None:
+    global _gmail_access_token, _gmail_token_expires_at
+
+    now = int(time.time())
+    if _gmail_access_token and now < (_gmail_token_expires_at - 60):
+        return _gmail_access_token
+
+    if not all(
+        [
+            GMAIL_OAUTH_CLIENT_ID,
+            GMAIL_OAUTH_CLIENT_SECRET,
+            GMAIL_OAUTH_REFRESH_TOKEN,
+        ]
+    ):
+        logger.warning(
+            "Gmail OAuth nao configurado: defina GMAIL_OAUTH_CLIENT_ID, "
+            "GMAIL_OAUTH_CLIENT_SECRET e GMAIL_OAUTH_REFRESH_TOKEN."
+        )
+        return None
+
+    try:
+        resp = requests.post(
+            GMAIL_OAUTH_TOKEN_URI,
+            data={
+                "client_id": GMAIL_OAUTH_CLIENT_ID,
+                "client_secret": GMAIL_OAUTH_CLIENT_SECRET,
+                "refresh_token": GMAIL_OAUTH_REFRESH_TOKEN,
+                "grant_type": "refresh_token",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=(EMAIL_API_CONNECT_TIMEOUT_SECONDS, EMAIL_API_TIMEOUT_SECONDS),
+        )
+    except requests.exceptions.RequestException as exc:
+        logger.warning("Erro ao renovar token OAuth do Gmail: %s", exc)
+        return None
+
+    if not 200 <= resp.status_code < 300:
+        logger.warning(
+            "Erro ao renovar token OAuth do Gmail: HTTP %s - %s",
+            resp.status_code,
+            resp.text,
+        )
+        return None
+
+    data = resp.json()
+    _gmail_access_token = data.get("access_token")
+    if not _gmail_access_token:
+        logger.warning("Resposta OAuth do Gmail sem access_token.")
+        return None
+
+    _gmail_token_expires_at = int(time.time()) + int(data.get("expires_in", 3600))
+    return _gmail_access_token
 
 
 def _wrap_email_html(content_html: str) -> str:
@@ -82,92 +154,33 @@ def _from_string() -> str:
     return EMAIL_FROM or EMAIL_REMETENTE or ""
 
 
-def _send_via_resend(destinatario: str, assunto: str, html_final: str) -> bool:
-    if not RESEND_API_KEY or not EMAIL_FROM:
-        logger.warning("Resend nao configurado: defina RESEND_API_KEY e EMAIL_FROM.")
+def _send_via_gmail_api(destinatario: str, assunto: str, html_final: str) -> bool:
+    token = _get_gmail_access_token()
+    if not token:
+        return False
+    if not (EMAIL_FROM or EMAIL_REMETENTE):
+        logger.warning("Gmail API nao configurada: defina EMAIL_FROM ou EMAIL_REMETENTE.")
         return False
 
-    payload = {
-        "from": _from_string(),
-        "to": [destinatario],
-        "subject": assunto,
-        "html": html_final,
-    }
+    msg = MIMEMultipart("alternative")
+    msg["From"] = _from_string() or EMAIL_REMETENTE
+    msg["To"] = destinatario
+    msg["Subject"] = assunto
+    msg.attach(MIMEText(html_final, "html", "utf-8"))
+
+    payload = {"raw": _base64url(msg.as_bytes())}
     headers = {
-        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
-    resp = _post_with_retry("https://api.resend.com/emails", payload, headers)
+    resp = _post_with_retry(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        payload,
+        headers,
+    )
     if 200 <= resp.status_code < 300:
         return True
-    logger.warning("Erro ao enviar e-mail via Resend: HTTP %s - %s", resp.status_code, resp.text)
-    return False
-
-
-def _send_via_brevo(destinatario: str, assunto: str, html_final: str) -> bool:
-    if not BREVO_API_KEY or not EMAIL_FROM:
-        logger.warning("Brevo nao configurado: defina BREVO_API_KEY e EMAIL_FROM.")
-        return False
-
-    payload = {
-        "sender": {"name": EMAIL_FROM_NAME or "AutoAssist", "email": EMAIL_FROM},
-        "to": [{"email": destinatario}],
-        "subject": assunto,
-        "htmlContent": html_final,
-    }
-    headers = {
-        "api-key": BREVO_API_KEY,
-        "Content-Type": "application/json",
-    }
-    resp = _post_with_retry("https://api.brevo.com/v3/smtp/email", payload, headers)
-    if 200 <= resp.status_code < 300:
-        return True
-    logger.warning("Erro ao enviar e-mail via Brevo: HTTP %s - %s", resp.status_code, resp.text)
-    return False
-
-
-def _send_via_sendgrid(destinatario: str, assunto: str, html_final: str) -> bool:
-    if not SENDGRID_API_KEY or not EMAIL_FROM:
-        logger.warning("SendGrid nao configurado: defina SENDGRID_API_KEY e EMAIL_FROM.")
-        return False
-
-    payload = {
-        "personalizations": [{"to": [{"email": destinatario}]}],
-        "from": {"email": EMAIL_FROM, "name": EMAIL_FROM_NAME or "AutoAssist"},
-        "subject": assunto,
-        "content": [{"type": "text/html", "value": html_final}],
-    }
-    headers = {
-        "Authorization": f"Bearer {SENDGRID_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    resp = _post_with_retry("https://api.sendgrid.com/v3/mail/send", payload, headers)
-    if 200 <= resp.status_code < 300:
-        return True
-    logger.warning("Erro ao enviar e-mail via SendGrid: HTTP %s - %s", resp.status_code, resp.text)
-    return False
-
-
-def _send_via_webhook(destinatario: str, assunto: str, html_final: str) -> bool:
-    if not WEBHOOK_EMAIL_URL:
-        logger.warning("Webhook de e-mail nao configurado: defina WEBHOOK_EMAIL_URL.")
-        return False
-
-    payload = {
-        "to": destinatario,
-        "subject": assunto,
-        "html": html_final,
-        "from": _from_string(),
-        "from_name": EMAIL_FROM_NAME or "AutoAssist",
-    }
-    headers = {"Content-Type": "application/json"}
-    if WEBHOOK_EMAIL_SECRET:
-        headers["X-Webhook-Secret"] = WEBHOOK_EMAIL_SECRET
-
-    resp = _post_with_retry(WEBHOOK_EMAIL_URL, payload, headers)
-    if 200 <= resp.status_code < 300:
-        return True
-    logger.warning("Erro ao enviar e-mail via Webhook: HTTP %s - %s", resp.status_code, resp.text)
+    logger.warning("Erro ao enviar e-mail via Gmail API: HTTP %s - %s", resp.status_code, resp.text)
     return False
 
 
@@ -203,15 +216,13 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     html_final = _wrap_email_html(mensagem_html)
     providers = {
         "smtp": _send_via_smtp,
-        "resend": _send_via_resend,
-        "brevo": _send_via_brevo,
-        "sendgrid": _send_via_sendgrid,
-        "webhook": _send_via_webhook,
+        "gmail": _send_via_gmail_api,
+        "gmail_api": _send_via_gmail_api,
     }
     sender = providers.get(EMAIL_PROVIDER)
     if not sender:
         logger.warning(
-            "EMAIL_PROVIDER invalido (%s). Use smtp, resend, brevo, sendgrid ou webhook.",
+            "EMAIL_PROVIDER invalido (%s). Use smtp ou gmail_api.",
             EMAIL_PROVIDER,
         )
         return False

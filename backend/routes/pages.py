@@ -5,6 +5,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from time import monotonic
 from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -39,6 +40,9 @@ PREMIUM_ONLY_ERROR = "Recurso exclusivo para Premium"
 INVALID_SESSION_ERROR = "Sessao invalida. Faca login novamente."
 CRITICAL_MAINTENANCE_STATUSES = ("overdue",)
 ACTIONABLE_MAINTENANCE_STATUSES = ("overdue", "due_soon")
+MAINTENANCE_DISPATCH_LOCK_NAME = "autoassist_maintenance_email_dispatcher"
+_maintenance_dispatch_thread_lock = threading.Lock()
+_maintenance_dispatch_last_started_at = 0.0
 
 def get_dashboard_url() -> str:
     frontend_url = (os.getenv("URL_PROD") or "").strip()
@@ -383,6 +387,133 @@ def _send_maintenance_alert_logic(
         (user_row["id"],)
     )
     return {"sent": True, "reason": "sent", "alerts_count": len(alerts)}
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+def run_maintenance_email_dispatch(
+    *,
+    force: bool = False,
+    transition_only: bool = True,
+    include_due_soon: bool = False,
+    limit: int | None = None,
+) -> dict:
+    status_codes = (
+        ACTIONABLE_MAINTENANCE_STATUSES
+        if include_due_soon
+        else CRITICAL_MAINTENANCE_STATUSES
+    )
+    scan_limit = limit if limit is not None else int(os.getenv("MAINTENANCE_EMAIL_DISPATCH_LIMIT", "500"))
+    scan_limit = max(1, min(int(scan_limit), 2000))
+    summary = {
+        "processed": 0,
+        "sent": 0,
+        "no_new_critical_alerts": 0,
+        "no_actionable_alerts": 0,
+        "already_sent_today": 0,
+        "failed": 0,
+        "lock_busy": 0,
+    }
+
+    with get_db() as (cursor, conn):
+        cursor.execute("SELECT GET_LOCK(%s, 0) AS got_lock", (MAINTENANCE_DISPATCH_LOCK_NAME,))
+        lock_row = cursor.fetchone() or {}
+        got_lock = int(lock_row.get("got_lock") or 0)
+        if got_lock != 1:
+            summary["lock_busy"] = 1
+            return {
+                "success": True,
+                "force": force,
+                "transition_only": transition_only,
+                "include_due_soon": include_due_soon,
+                "status_codes": list(status_codes),
+                "resumo": summary,
+            }
+
+        try:
+            cursor.execute(
+                """
+                SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent
+                FROM users
+                WHERE email IS NOT NULL
+                  AND email <> ''
+                  AND maintenance_email_enabled = TRUE
+                ORDER BY id ASC
+                LIMIT %s
+                """,
+                (scan_limit,),
+            )
+            users = cursor.fetchall() or []
+            for user in users:
+                summary["processed"] += 1
+                result = send_maintenance_alert_email_for_user(
+                    cursor,
+                    user,
+                    force=force,
+                    status_codes=status_codes,
+                    transition_only=transition_only,
+                )
+                if result["sent"]:
+                    summary["sent"] += 1
+                elif result["reason"] == "no_new_critical_alerts":
+                    summary["no_new_critical_alerts"] += 1
+                elif result["reason"] == "no_actionable_alerts":
+                    summary["no_actionable_alerts"] += 1
+                elif result["reason"] == "already_sent_today":
+                    summary["already_sent_today"] += 1
+                else:
+                    summary["failed"] += 1
+        finally:
+            cursor.execute("SELECT RELEASE_LOCK(%s)", (MAINTENANCE_DISPATCH_LOCK_NAME,))
+
+    return {
+        "success": True,
+        "force": force,
+        "transition_only": transition_only,
+        "include_due_soon": include_due_soon,
+        "status_codes": list(status_codes),
+        "resumo": summary,
+    }
+
+
+def _dispatch_maintenance_emails_background() -> None:
+    try:
+        result = run_maintenance_email_dispatch(
+            force=False,
+            transition_only=True,
+            include_due_soon=_env_bool("MAINTENANCE_EMAIL_INCLUDE_DUE_SOON", False),
+        )
+        logger.info("Dispatch interno de manutencao finalizado: %s", result.get("resumo"))
+    except Exception as exc:
+        logger.warning("Erro no dispatch interno de manutencao: %s", exc)
+
+
+@pages_bp.before_app_request
+def maybe_dispatch_maintenance_emails_from_backend():
+    if not _env_bool("MAINTENANCE_EMAIL_AUTODISPATCH_ENABLED", True):
+        return None
+    if request.path.startswith("/static/") or request.path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".webp", ".ico", ".woff", ".woff2")):
+        return None
+
+    interval = max(60, int(os.getenv("MAINTENANCE_EMAIL_AUTODISPATCH_INTERVAL_SECONDS", "1800")))
+    now = monotonic()
+
+    global _maintenance_dispatch_last_started_at
+    with _maintenance_dispatch_thread_lock:
+        if now - _maintenance_dispatch_last_started_at < interval:
+            return None
+        _maintenance_dispatch_last_started_at = now
+
+    threading.Thread(
+        target=_dispatch_maintenance_emails_background,
+        daemon=True,
+    ).start()
+    return None
 
 
 @pages_bp.route("/api/user", methods=["GET"])
@@ -958,73 +1089,6 @@ def send_maintenance_email_now():
     except Exception as e:
         logger.error(f"Erro no envio manual de email de manutencao: {e}")
         return jsonify(error="Erro ao enviar email de manutencao"), 500
-
-@pages_bp.route("/api/maintenance/email/dispatch", methods=["POST"])
-def dispatch_maintenance_email_batch():
-    cron_secret = os.getenv("MAINTENANCE_EMAIL_CRON_SECRET", "").strip()
-    sent_secret = (request.headers.get("X-Cron-Secret") or "").strip()
-    auth_header = request.headers.get("Authorization", "").strip()
-    bearer_secret = ""
-    if auth_header.lower().startswith("bearer "):
-        bearer_secret = auth_header[7:].strip()
-
-    import secrets
-    if not cron_secret:
-        return jsonify(error="MAINTENANCE_EMAIL_CRON_SECRET nao configurado"), 500
-
-    is_valid = secrets.compare_digest(cron_secret, sent_secret) or secrets.compare_digest(cron_secret, bearer_secret)
-    if not is_valid:
-        return jsonify(error="Nao autorizado"), 401
-
-    payload = request.get_json(silent=True) or {}
-    force = bool(payload.get("force", False))
-    transition_only = bool(payload.get("transition_only", True))
-    include_due_soon = bool(payload.get("include_due_soon", False))
-    status_codes = (
-        ACTIONABLE_MAINTENANCE_STATUSES
-        if include_due_soon
-        else CRITICAL_MAINTENANCE_STATUSES
-    )
-    limit = max(1, min(int(payload.get("limit", 500)), 2000))
-
-    try:
-        with get_db() as (cursor, conn):
-            cursor.execute("SELECT id, nome, email, maintenance_email_enabled, maintenance_email_last_sent FROM users WHERE email IS NOT NULL AND email <> '' AND maintenance_email_enabled = TRUE ORDER BY id ASC LIMIT %s", (limit,))
-            users = cursor.fetchall()
-            summary = {
-                "processed": 0,
-                "sent": 0,
-                "no_new_critical_alerts": 0,
-                "no_actionable_alerts": 0,
-                "already_sent_today": 0,
-                "failed": 0,
-            }
-            for user in users:
-                summary["processed"] += 1
-                result = send_maintenance_alert_email_for_user(
-                    cursor,
-                    user,
-                    force=force,
-                    status_codes=status_codes,
-                    transition_only=transition_only,
-                )
-                if result["sent"]: summary["sent"] += 1
-                elif result["reason"] == "no_new_critical_alerts": summary["no_new_critical_alerts"] += 1
-                elif result["reason"] == "no_actionable_alerts": summary["no_actionable_alerts"] += 1
-                elif result["reason"] == "already_sent_today": summary["already_sent_today"] += 1
-                else: summary["failed"] += 1
-            return jsonify(
-                success=True,
-                force=force,
-                transition_only=transition_only,
-                include_due_soon=include_due_soon,
-                status_codes=list(status_codes),
-                resumo=summary,
-            ), 200
-    except Exception as e:
-        logger.error(f"Erro no dispatch automatico de emails: {e}")
-        return jsonify(error="Erro ao executar dispatch"), 500
-
 
 @pages_bp.route("/api/user", methods=["DELETE"])
 @jwt_required()

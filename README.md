@@ -43,7 +43,7 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 | **Flask**             | Servidor robusto e orquestração de APIs REST.          |
 | **Google Gemini SDK** | Integração com Gemini 2.0 Flash (Texto e Visão).       |
 | **PyMySQL + SSL**     | Conexão segura e resiliente com o banco de dados.      |
-| **SMTP / Gmail**      | Motor de disparo de notificações proativas por e-mail. |
+| **SMTP / Gmail API**  | Motor de disparo de notificações proativas por e-mail. |
 | **JWT + Refresh**     | Autenticação moderna com Tokens de Acesso e Refresh.   |
 
 ### **Frontend**
@@ -101,6 +101,18 @@ DB_NAME=seu_banco
 GOOGLE_CLIENT_ID=seu_client_id_google
 EMAIL_REMETENTE=seu_email@gmail.com
 EMAIL_SENHA_APP=sua_senha_app_gmail
+
+# Opcao recomendada para Render Free: Gmail API via OAuth
+EMAIL_PROVIDER=gmail_api
+EMAIL_FROM=seu_email@gmail.com
+EMAIL_FROM_NAME=AutoAssist
+GMAIL_OAUTH_CLIENT_ID=seu_client_id_oauth
+GMAIL_OAUTH_CLIENT_SECRET=seu_client_secret_oauth
+GMAIL_OAUTH_REFRESH_TOKEN=seu_refresh_token_oauth
+
+# Alertas de manutencao enviados pelo proprio backend
+MAINTENANCE_EMAIL_AUTODISPATCH_ENABLED=true
+MAINTENANCE_EMAIL_AUTODISPATCH_INTERVAL_SECONDS=1800
 ```
 
 ### 3. Instalação e Execução

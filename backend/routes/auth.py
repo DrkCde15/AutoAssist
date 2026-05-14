@@ -651,11 +651,47 @@ def forgot_password():
                 (usuario_id, token, data_expiracao)
                 VALUES (%s,%s,%s)
             """, (user["id"], token, expiracao))
+            reset_id = cursor.lastrowid
+
+            sent_ok = False
+            err_msg = None
+            try:
+                sent_ok = bool(_send_password_reset_email(email.lower(), token))
+                if not sent_ok:
+                    err_msg = "send_failed"
+            except Exception as exc:
+                err_msg = str(exc)[:500]
+                sent_ok = False
+
+            if sent_ok:
+                cursor.execute(
+                    """
+                    UPDATE redefinicao_senha
+                    SET email_sent = TRUE,
+                        email_attempts = COALESCE(email_attempts, 0) + 1,
+                        last_attempt_at = NOW(),
+                        send_error = NULL
+                    WHERE id = %s
+                    """,
+                    (reset_id,)
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE redefinicao_senha
+                    SET email_attempts = COALESCE(email_attempts, 0) + 1,
+                        last_attempt_at = NOW(),
+                        send_error = %s
+                    WHERE id = %s
+                    """,
+                    ((err_msg or "send_failed")[:500], reset_id)
+                )
 
             logger.info(
-                "Solicitacao de reset enfileirada para envio externo (usuario_id=%s, email=%s).",
+                "Solicitacao de reset processada pelo backend (usuario_id=%s, email=%s, sent=%s).",
                 user["id"],
                 email,
+                sent_ok,
             )
 
             return jsonify({
