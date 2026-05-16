@@ -2,7 +2,9 @@ import os
 import io
 import html
 import logging
+import re
 import threading
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from time import monotonic
@@ -43,6 +45,25 @@ ACTIONABLE_MAINTENANCE_STATUSES = ("overdue", "due_soon")
 MAINTENANCE_DISPATCH_LOCK_NAME = "autoassist_maintenance_email_dispatcher"
 _maintenance_dispatch_thread_lock = threading.Lock()
 _maintenance_dispatch_last_started_at = 0.0
+
+GENERIC_CHAT_TOKENS = {
+    "ai",
+    "bem",
+    "boa",
+    "bom",
+    "dia",
+    "e",
+    "noite",
+    "obrigada",
+    "obrigado",
+    "oi",
+    "ola",
+    "opa",
+    "salve",
+    "tarde",
+    "tudo",
+    "valeu",
+}
 
 def get_dashboard_url() -> str:
     frontend_url = (os.getenv("URL_PROD") or "").strip()
@@ -92,8 +113,40 @@ def build_spending_summary(history_rows):
     }
 
 
+def normalize_chat_text(value):
+    normalized = unicodedata.normalize("NFD", (value or "").lower())
+    return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+
+
+def is_generic_chat_message(message):
+    normalized = normalize_chat_text(message)
+    tokens = re.findall(r"[a-z0-9]+", normalized)
+    return bool(tokens) and len(tokens) <= 5 and all(token in GENERIC_CHAT_TOKENS for token in tokens)
+
+
+def normalize_client_history(raw_history):
+    if not isinstance(raw_history, list):
+        return []
+
+    history = []
+    for item in raw_history[-8:]:
+        if not isinstance(item, dict):
+            continue
+
+        role = item.get("role")
+        content = (item.get("content") or "").strip()
+        if role not in ("user", "model") or not content:
+            continue
+
+        history.append({"role": role, "content": content[:4000]})
+
+    return history
+
+
 def build_recommendations(message, historico_recente, default_topic="Consultoria Geral"):
     if not (message or "").strip():
+        return [], [], default_topic
+    if is_generic_chat_message(message):
         return [], [], default_topic
 
     termos = gerar_termos_busca(message, historico=historico_recente)
@@ -1142,7 +1195,15 @@ def get_chat_history():
             if not user:
                 return invalid_session_response()
 
-            cursor.execute("SELECT mensagem_usuario, resposta_ia, created_at, videos FROM chats WHERE user_id = %s ORDER BY created_at ASC", (user_id,))
+            cursor.execute(
+                """
+                SELECT id, mensagem_usuario, resposta_ia, created_at, videos, links, topic
+                FROM chats
+                WHERE user_id = %s
+                ORDER BY created_at ASC
+                """,
+                (user_id,)
+            )
             rows = cursor.fetchall()
             chats = []
             for r in rows:
@@ -1150,16 +1211,45 @@ def get_chat_history():
                 if isinstance(v_data, str):
                     try: v_data = json.loads(v_data)
                     except: v_data = []
+                l_data = r.get("links")
+                if isinstance(l_data, str):
+                    try: l_data = json.loads(l_data)
+                    except: l_data = []
+                if is_generic_chat_message(r["mensagem_usuario"]):
+                    v_data = []
+                    l_data = []
                 chats.append({
+                    "id": r["id"],
                     "mensagem_usuario": r["mensagem_usuario"],
                     "resposta_ia": r["resposta_ia"],
                     "created_at": serialize_datetime_field(r["created_at"]),
-                    "videos": v_data or []
+                    "videos": v_data or [],
+                    "links": l_data or [],
+                    "topic": r.get("topic") or ""
                 })
             return jsonify(chats=chats), 200
     except Exception as e:
         logger.error(f"Erro no historico: {e}")
         return jsonify(error="Erro interno"), 500
+
+@pages_bp.route("/api/chat/history/<int:chat_id>", methods=["DELETE"])
+@jwt_required()
+def delete_chat_history(chat_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cursor, conn):
+            user = get_user_by_id(cursor, user_id)
+            if not user:
+                return invalid_session_response()
+
+            cursor.execute("DELETE FROM chats WHERE id = %s AND user_id = %s", (chat_id, user_id))
+            if cursor.rowcount == 0:
+                return jsonify(error="Chat nao encontrado"), 404
+
+        return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"Erro ao excluir chat: {e}")
+        return jsonify(error="Erro ao excluir chat"), 500
 
 @pages_bp.route("/api/videos", methods=["GET"])
 @jwt_required()
@@ -1290,6 +1380,8 @@ def chat():
     data = request.get_json(silent=True) or {}
     msg = (data.get("message") or "").strip()
     img_b64 = data.get("image")
+    client_history = normalize_client_history(data.get("client_history"))
+    ignore_global_history = bool(data.get("ignore_global_history"))
     if not msg and not img_b64:
         return jsonify(error="Mensagem ou imagem e obrigatoria"), 400
 
@@ -1302,7 +1394,12 @@ def chat():
             veiculos = cursor.fetchall()
             if veiculos:
                 user['lista_veiculos'] = veiculos
-            historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
+            if is_generic_chat_message(msg):
+                historico_recente = []
+            elif ignore_global_history:
+                historico_recente = client_history
+            else:
+                historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
 
         resposta, videos, links, topic = generate_assistant_payload(
             msg,
@@ -1318,8 +1415,22 @@ def chat():
                 "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
                 (user_id, msg, resposta, json.dumps(videos), json.dumps(links), topic)
             )
+            chat_id = cursor.lastrowid
 
-        return jsonify(response=resposta, videos=videos, links=links)
+        return jsonify(
+            response=resposta,
+            videos=videos,
+            links=links,
+            chat={
+                "id": chat_id,
+                "mensagem_usuario": msg,
+                "resposta_ia": resposta,
+                "created_at": datetime.now().isoformat(),
+                "videos": videos,
+                "links": links,
+                "topic": topic or "",
+            },
+        )
     except Exception as e:
         logger.error(f"Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno"), 500
@@ -1333,6 +1444,11 @@ def handle_voice():
 
     audio_file = request.files['audio']
     img_b64 = request.form.get("image")
+    ignore_global_history = (request.form.get("ignore_global_history") or "").lower() in ("1", "true", "yes")
+    try:
+        client_history = normalize_client_history(json.loads(request.form.get("client_history") or "[]"))
+    except Exception:
+        client_history = []
 
     try:
         # Converter webm para wav usando pydub
@@ -1356,7 +1472,12 @@ def handle_voice():
             veiculos = cursor.fetchall()
             if veiculos:
                 user['lista_veiculos'] = veiculos
-            historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
+            if is_generic_chat_message(text):
+                historico_recente = []
+            elif ignore_global_history:
+                historico_recente = client_history
+            else:
+                historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
 
         resposta, videos, links, topic = generate_assistant_payload(
             text,
@@ -1372,8 +1493,23 @@ def handle_voice():
                 "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
                 (user_id, text, resposta, json.dumps(videos), json.dumps(links), topic)
             )
+            chat_id = cursor.lastrowid
 
-        return jsonify(text=text, response=resposta, videos=videos, links=links)
+        return jsonify(
+            text=text,
+            response=resposta,
+            videos=videos,
+            links=links,
+            chat={
+                "id": chat_id,
+                "mensagem_usuario": text,
+                "resposta_ia": resposta,
+                "created_at": datetime.now().isoformat(),
+                "videos": videos,
+                "links": links,
+                "topic": topic or "",
+            },
+        )
 
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que foi falado. Pode repetir?"), 400
