@@ -1533,9 +1533,8 @@ def generate_report():
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
-            premium_error = ensure_premium_user(user)
-            if premium_error:
-                return premium_error
+            if not user:
+                return invalid_session_response()
 
             # Criar diretório seguro se não existir
             secure_reports_dir = os.path.join(current_app.root_path, "secure_reports")

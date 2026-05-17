@@ -1740,14 +1740,29 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: lastAnalysisText }),
           });
-          const data = await res.json();
+          let data = {};
+          try {
+            data = await res.json();
+          } catch {
+            data = {};
+          }
+
+          if (!res.ok) {
+            alert(data.error || "Erro ao gerar PDF.");
+            return;
+          }
+
           if (data.url && typeof CONFIG !== 'undefined') {
             window.open(`${CONFIG.API_URL}${data.url}`, "_blank");
+            return;
           }
+
+          alert("PDF gerado sem URL de download.");
         } catch (e) {
           alert("Erro ao gerar PDF.");
+        } finally {
+          btnReport.disabled = false;
         }
-        btnReport.disabled = false;
       });
 
       // Load history
