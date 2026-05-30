@@ -162,7 +162,8 @@ No projeto AutoAssist, o fluxo de pagamento funciona assim:
 - Seguranca 2 (Hardening): **Validacao ativa na API da Cakto** consultando o status real da transacao.
 
 Campos de ambiente usados no projeto:
-- `CLIENT_ID` e `CLIENT_SECRET` (para autenticacao OAuth2 na Cakto)
+- `CAKTO_CLIENT_ID` e `CAKTO_CLIENT_SECRET` (recomendado para autenticacao OAuth2 na Cakto)
+- `CLIENT_ID` e `CLIENT_SECRET` (fallback legado)
 - `CAKTO_CHECKOUT_URL`
 - `CAKTO_WEBHOOK_SECRET`
 - `CAKTO_APPEND_REF`

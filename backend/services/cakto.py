@@ -37,8 +37,8 @@ class CaktoService:
             (os.getenv("CAKTO_APPEND_REF") or "1").strip().lower()
             not in {"0", "false", "no", "off"}
         )
-        self.client_id = (os.getenv("CLIENT_ID") or "").strip()
-        self.client_secret = (os.getenv("CLIENT_SECRET") or "").strip()
+        self.client_id = (os.getenv("CAKTO_CLIENT_ID") or os.getenv("CLIENT_ID") or "").strip()
+        self.client_secret = (os.getenv("CAKTO_CLIENT_SECRET") or os.getenv("CLIENT_SECRET") or "").strip()
         self.api_base_url = "https://api.cakto.com.br"
         self._access_token = None
 
@@ -63,13 +63,17 @@ class CaktoService:
         parsed = urlparse(base_url)
         query_items = dict(parse_qsl(parsed.query, keep_blank_values=True))
         query_items.setdefault("src", "autoassist")
+        query_items.setdefault("utm_source", "autoassist")
         
         # Se tivermos um order_id interno, usamos ele como referência principal
         # para validar o webhook de forma estrita.
         if internal_order_id:
             query_items.setdefault("user_ref", str(internal_order_id))
+            query_items.setdefault("sck", str(internal_order_id))
+            query_items.setdefault("utm_content", str(internal_order_id))
         else:
             query_items.setdefault("user_ref", str(user_id))
+            query_items.setdefault("sck", str(user_id))
 
         if user_email:
             query_items.setdefault("email", user_email)
@@ -94,7 +98,6 @@ class CaktoService:
         payload = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
-            "grant_type": "client_credentials" # Padrao OAuth2 se exigido, mas enviaremos todos os campos necessarios
         }
         
         try:
@@ -102,6 +105,9 @@ class CaktoService:
             response.raise_for_status()
             data = response.json()
             self._access_token = data.get("access_token")
+            if not self._access_token:
+                logger.error("Resposta da Cakto sem access_token.")
+                raise ValueError("Resposta da Cakto sem access_token.")
             return self._access_token
         except requests.RequestException as e:
             logger.error("Falha ao obter access token da Cakto: %s", e)
@@ -128,6 +134,8 @@ class CaktoService:
                 
             response.raise_for_status()
             data = response.json()
+            if isinstance(data.get("data"), dict):
+                data = data["data"]
             
             # Ajuste dependendo da estrutura real de retorno, tipicamente retorna o obj do pedido
             status = str(data.get("status") or "").strip().lower()
@@ -191,9 +199,13 @@ class CaktoService:
             data.get("user_ref"),
             data.get("user_id"),
             data.get("external_reference"),
+            data.get("sck"),
+            data.get("utm_content"),
             payload.get("user_ref"),
             payload.get("user_id"),
             payload.get("external_reference"),
+            payload.get("sck"),
+            payload.get("utm_content"),
         )
 
         for candidate in candidates:

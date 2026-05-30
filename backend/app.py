@@ -8,6 +8,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
 from flask_compress import Compress
+from werkzeug.exceptions import HTTPException
 
 from routes.gateway import gateway_bp
 
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 print("Importando rotas...")
 from routes import auth_bp, pages_bp, payment_bp, feedback_bp, init_db
+from routes.payment import cakto_webhook as cakto_webhook_handler
 print("Rotas importadas.")
 
 # [SEGURANCA] Cabecalhos HTTP Seguros e CSP
@@ -252,6 +254,15 @@ def health():
     return jsonify(status="healthy"), 200
 
 
+@app.route("/", methods=["POST"])
+def root_post_webhook_fallback():
+    logger.warning(
+        "POST / recebido. Encaminhando como fallback para webhook Cakto; "
+        "configure a URL correta: /api/pay/webhook/cakto"
+    )
+    return cakto_webhook_handler()
+
+
 # Registro de Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(pages_bp)
@@ -262,6 +273,9 @@ app.register_blueprint(gateway_bp)
 # [SEGURANCA] Padronizacao de Erros (Information Disclosure)
 @app.errorhandler(Exception)
 def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return jsonify(error=e.description), e.code
+
     # Log do erro real para o servidor
     logger.error(f"Erro nao tratado: {e}", exc_info=True)
     
