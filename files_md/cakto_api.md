@@ -158,6 +158,8 @@ Observacao: os detalhes completos desses grupos (body, filtros e respostas) nao 
 No projeto AutoAssist, o fluxo de pagamento funciona assim:
 - Checkout do usuario: redirecionado via `CAKTO_CHECKOUT_URL` (link de pagamento parametrizado)
 - Recebimento: via webhook recebido na rota `/api/pay/webhook/cakto`
+- Retorno pos-compra recomendado: configurar no produto/checkout da Cakto a URL
+  `https://autoassist-l9lr.onrender.com/pagamento-sucesso.html`
 - Seguranca 1: validacao de assinatura basica via `CAKTO_WEBHOOK_SECRET`
 - Seguranca 2 (Hardening): **Validacao ativa na API da Cakto** consultando o status real da transacao.
 
