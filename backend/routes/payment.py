@@ -149,9 +149,21 @@ def cakto_webhook():
     event = service.extract_event(payload)
     data = service.extract_data(payload)
     status = str(data.get("status") or payload.get("status") or "").strip().lower()
+    internal_order_id = service.extract_reference_user_id(payload)
+    email = service.extract_customer_email(payload)
 
     should_activate = service.should_activate_premium(event, status)
     should_deactivate = service.should_deactivate_premium(event, status)
+
+    logger.info(
+        "Webhook Cakto recebido | event=%s status=%s order_ref=%s email=%s activate=%s deactivate=%s",
+        event or "-",
+        status or "-",
+        internal_order_id or "-",
+        email or "-",
+        should_activate,
+        should_deactivate,
+    )
 
     if not should_activate and not should_deactivate:
         return jsonify(success=True, message="Evento recebido sem acao de premium."), 200
@@ -175,8 +187,6 @@ def cakto_webhook():
             return jsonify(success=False, error="Falha ao consultar API da Cakto."), 500
 
     target_state = True if should_activate else False
-    # Extrair ID do pedido interno que enviamos no checkout
-    internal_order_id = service.extract_reference_user_id(payload) 
     user_id = None
     
     if internal_order_id:
