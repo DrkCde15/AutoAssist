@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -674,6 +674,7 @@
         .feature-card:nth-child(8) { animation-delay: 0.8s; }
     </style>
     <link rel="stylesheet" href="static/css/responsive.css">
+    <link rel="stylesheet" href="static/css/car-scrollytelling.css">
 </head>
 <body>
 
@@ -694,133 +695,72 @@
         </div>
     </nav>
 
-    <section class="hero">
-        <div class="hero-content">
-            <div class="hero-badge">
-                <i class="fas fa-bolt"></i>
-                Powered by Google Gemini
-            </div>
-            <h1>Seu consultor<br><span>automotivo</span> com IA</h1>
-            <p class="hero-description">
-                Diagnósticos precisos, avaliação de mercado e consultoria especializada para seu veículo. 
-                Tudo potencializado por inteligência artificial avançada.
-            </p>
-            <div class="hero-buttons" id="ctaContainer">
-                <a href="cadastro.html" class="btn-hero btn-hero-primary">
-                    Começar Gratuitamente
-                    <i class="fas fa-arrow-right"></i>
-                </a>
-                <a href="#features" class="btn-hero btn-hero-secondary">
-                    Saiba Mais
-                </a>
+    <section class="car-scroll" id="scrolly-cars" aria-label="Jornada automotiva em 3D">
+        <div class="car-scroll__stage">
+            <div class="car-scroll__scene">
+                <canvas id="autoassist-car-canvas" class="car-scroll__canvas" role="img" aria-label="Sequencia programatica com os carros do carrossel AutoAssist em uma pista digital"></canvas>
+                <div class="car-scroll__vignette" aria-hidden="true"></div>
             </div>
         </div>
     </section>
 
-    <section class="features" id="features">
-        <div class="section-container">
-            <div class="section-header">
-                <div class="section-tag">Recursos</div>
-                <h2 class="section-title">Tecnologia a serviço do seu veículo</h2>
-                <p class="section-subtitle">
-                    Ferramentas inteligentes para você entender e cuidar melhor do seu carro.
-                </p>
+    <section class="feature-deck" id="features" aria-label="Recursos do AutoAssist">
+        <div class="feature-deck__inner">
+            <div class="feature-deck__header">
+                <span class="feature-deck__eyebrow">Recursos</span>
+                <h2>Consultoria automotiva no mesmo fluxo visual</h2>
+                <p>Depois da experi&ecirc;ncia dos carros, os principais recursos aparecem em um painel direto para comparar, decidir e cuidar melhor do ve&iacute;culo.</p>
             </div>
 
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <h3 class="feature-title">IA Avançada</h3>
-                    <p class="feature-description">
-                        Análise inteligente baseada em modelos de linguagem de última geração para respostas precisas.
-                    </p>
-                </div>
+            <div class="feature-deck__grid">
+                <article class="feature-tile feature-tile--cyan">
+                    <span class="feature-tile__icon"><i class="fas fa-brain"></i></span>
+                    <h3>IA Avan&ccedil;ada</h3>
+                    <p>An&aacute;lise inteligente baseada em modelos de linguagem para respostas automotivas mais precisas.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-wrench"></i>
-                    </div>
-                    <h3 class="feature-title">Diagnóstico Técnico</h3>
-                    <p class="feature-description">
-                        Identifique problemas mecânicos e receba orientações detalhadas sobre manutenção preventiva.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--amber">
+                    <span class="feature-tile__icon"><i class="fas fa-wrench"></i></span>
+                    <h3>Diagn&oacute;stico T&eacute;cnico</h3>
+                    <p>Identifique sintomas mec&acirc;nicos e receba orienta&ccedil;&otilde;es para manuten&ccedil;&atilde;o preventiva.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-camera"></i>
-                    </div>
-                    <h3 class="feature-title">Análise Visual</h3>
-                    <p class="feature-description">
-                        Envie fotos do problema e nossa IA identifica possíveis causas e soluções.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--blue">
+                    <span class="feature-tile__icon"><i class="fas fa-camera"></i></span>
+                    <h3>An&aacute;lise Visual</h3>
+                    <p>Envie fotos do problema e deixe a IA apontar poss&iacute;veis causas e pr&oacute;ximos passos.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3 class="feature-title">Avaliação de Mercado</h3>
-                    <p class="feature-description">
-                        Consulte valores FIPE atualizados e acompanhe a valorização do seu patrimônio.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--green">
+                    <span class="feature-tile__icon"><i class="fas fa-chart-line"></i></span>
+                    <h3>Avalia&ccedil;&atilde;o de Mercado</h3>
+                    <p>Consulte refer&ecirc;ncias de valor e compare o estado do carro com o contexto de mercado.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-history"></i>
-                    </div>
-                    <h3 class="feature-title">Anotações Inteligentes</h3>
-                    <p class="feature-description">
-                        Organize todo o histórico de manutenção e gastos do seu veículo em um só lugar com IA.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--violet">
+                    <span class="feature-tile__icon"><i class="fas fa-history"></i></span>
+                    <h3>Anota&ccedil;&otilde;es Inteligentes</h3>
+                    <p>Organize hist&oacute;rico de manuten&ccedil;&atilde;o, gastos e recomenda&ccedil;&otilde;es em um s&oacute; lugar.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-book"></i>
-                    </div>
-                    <h3 class="feature-title">Biblioteca Curada</h3>
-                    <p class="feature-description">
-                        Acesse vídeos e recomendações personalizadas sugeridas pela IA durante suas conversas.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--cyan">
+                    <span class="feature-tile__icon"><i class="fas fa-book"></i></span>
+                    <h3>Biblioteca Curada</h3>
+                    <p>Acesse v&iacute;deos e recomenda&ccedil;&otilde;es sugeridas pela IA durante as conversas.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-bell"></i>
-                    </div>
-                    <h3 class="feature-title">Alertas Preventivos</h3>
-                    <p class="feature-description">
-                        Receba avisos automáticos por e-mail sobre revisões e trocas de peças essenciais.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--amber">
+                    <span class="feature-tile__icon"><i class="fas fa-bell"></i></span>
+                    <h3>Alertas Preventivos</h3>
+                    <p>Receba avisos sobre revis&otilde;es, trocas e itens essenciais antes de virar urg&ecirc;ncia.</p>
+                </article>
 
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-file-pdf"></i>
-                    </div>
-                    <h3 class="feature-title">Relatórios PDF</h3>
-                    <p class="feature-description">
-                        Gere documentos profissionais com o estado de saúde e histórico completo do seu carro.
-                    </p>
-                </div>
+                <article class="feature-tile feature-tile--blue">
+                    <span class="feature-tile__icon"><i class="fas fa-file-pdf"></i></span>
+                    <h3>Relat&oacute;rios PDF</h3>
+                    <p>Gere documentos com o estado de sa&uacute;de, hist&oacute;rico e recomenda&ccedil;&otilde;es do carro.</p>
+                </article>
             </div>
-        </div>
-    </section>
-
-    <section class="cta">
-        <div class="cta-content">
-            <h2>Pronto para começar?</h2>
-            <p>
-                Junte-se a milhares de motoristas que já usam o AutoAssist para cuidar dos seus veículos.
-            </p>
-            <a href="cadastro.html" class="btn-hero btn-hero-primary">
-                Criar Conta Gratuita
-                <i class="fas fa-arrow-right"></i>
-            </a>
         </div>
     </section>
 
@@ -838,63 +778,10 @@
     <script src="static/js/config.js"></script>
     <script src="static/js/auth.js"></script>
     <script src="static/js/responsive.js" defer></script>
+    <script type="module" src="static/js/car-scrollytelling.js"></script>
     <script>
-        // --- LÓGICA DE SLIDESHOW DO HERO ---
-        const heroSection = document.querySelector('.hero');
-        const images = [
-            'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=1920',
-            'https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1920',
-            'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1920',
-            'https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=1920',
-            'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1920'
-        ];
-
-        if (heroSection && images.length > 0) {
-            images.forEach(src => {
-                const img = new Image();
-                img.src = src;
-            });
-
-            let currentImgIndex = 0;
-            const getHeroBackground = (index) => `url('${images[index]}')`;
-
-            const baseLayer = document.createElement('div');
-            baseLayer.className = 'hero-carousel-layer';
-            baseLayer.style.backgroundImage = getHeroBackground(0);
-            heroSection.appendChild(baseLayer);
-
-            const wipeLayer = document.createElement('div');
-            wipeLayer.className = 'hero-carousel-layer hero-wipe-layer';
-            heroSection.appendChild(wipeLayer);
-
-            const darkOverlay = document.createElement('div');
-            darkOverlay.className = 'hero-carousel-overlay';
-            heroSection.appendChild(darkOverlay);
-
-            setInterval(() => {
-                const nextIndex = (currentImgIndex + 1) % images.length;
-                const nextBg = getHeroBackground(nextIndex);
-
-                wipeLayer.style.transition = 'none';
-                wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
-                wipeLayer.style.backgroundImage = nextBg;
-                wipeLayer.offsetHeight;
-
-                wipeLayer.style.transition = 'clip-path 1.8s cubic-bezier(0.77, 0, 0.175, 1)';
-                wipeLayer.style.clipPath = 'inset(0 0 0 0)';
-
-                setTimeout(() => {
-                    baseLayer.style.backgroundImage = nextBg;
-                    wipeLayer.style.transition = 'none';
-                    wipeLayer.style.clipPath = 'inset(0 0 0 100%)';
-                    currentImgIndex = nextIndex;
-                }, 1900);
-            }, 3000);
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             const authLinks = document.getElementById('authLinks');
-            const ctaContainer = document.getElementById('ctaContainer');
             
             if (typeof Auth !== 'undefined' && Auth.ensurePremiumModal) {
                 Auth.ensurePremiumModal();
@@ -937,7 +824,6 @@
 
         function renderDashboard(userData, maintenanceAlerts) {
             const authLinks = document.getElementById('authLinks');
-            const ctaContainer = document.getElementById('ctaContainer');
             if (!authLinks) return;
 
             const escapeHtml = (text) => String(text ?? '')
@@ -995,16 +881,6 @@
                         </button>
                     `;
 
-                    ctaContainer.innerHTML = `
-                        <a href="chat.html" class="btn-hero btn-hero-primary">
-                            Acessar Consultor IA
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
-                        <a href="dashboard.html" class="btn-hero btn-hero-secondary">
-                            Ver Dashboard
-                        </a>
-                    `;
-
                     const btnLogout = document.getElementById('btnLogout');
                     if (btnLogout) {
                         btnLogout.addEventListener('click', () => Auth.logout());
@@ -1038,5 +914,6 @@
     </script>
 </body>
 </html>
+
 
 
