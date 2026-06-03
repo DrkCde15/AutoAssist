@@ -19,7 +19,9 @@ load_dotenv(os.path.join(basedir, ".env"))
 from extensions import limiter
 
 print("Iniciando carregamento do Flask...")
-app = Flask(__name__, static_folder="../frontend/public", static_url_path="")
+frontend_public_dir = os.path.abspath(os.path.join(basedir, "..", "frontend", "public"))
+static_folder = frontend_public_dir if os.path.isdir(frontend_public_dir) else None
+app = Flask(__name__, static_folder=static_folder, static_url_path="")
 print("Flask instanciado.")
 Compress(app)
 limiter.init_app(app)

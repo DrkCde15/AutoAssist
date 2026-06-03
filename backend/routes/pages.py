@@ -1576,10 +1576,14 @@ def serve_report(filename):
 
 @pages_bp.route("/")
 def index():
+    if not current_app.static_folder:
+        return jsonify(status="ok", app="AutoAssist API", client="mobile"), 200
     return current_app.send_static_file("index.html")
 
 @pages_bp.route("/<path:path>")
 def serve_html(path):
+    if not current_app.static_folder:
+        return jsonify(error="Frontend estatico nao disponivel nesta branch mobile."), 404
     if not path.endswith(".html") and "." not in path:
         path += ".html"
     return current_app.send_static_file(path)
