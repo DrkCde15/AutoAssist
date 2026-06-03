@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Analytics e Cookies | AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+      :root { --bg-primary:#09090b; --bg-secondary:#18181b; --bg-card:#1c1c1f; --border-color:#27272a; --text-primary:#fafafa; --text-secondary:#a1a1aa; --text-muted:#71717a; --accent:#3b82f6; --accent-soft:rgba(59,130,246,.12); --success:#22c55e; --danger:#ef4444; }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif; color:var(--text-primary); background:var(--bg-primary); -webkit-font-smoothing:antialiased; }
+      body::before { content:""; position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse 70% 40% at 50% -10%, rgba(59,130,246,.16), transparent), radial-gradient(ellipse 40% 30% at 85% 10%, rgba(20,184,166,.09), transparent); }
+      .nav { position:sticky; top:0; z-index:20; background:rgba(9,9,11,.86); backdrop-filter:blur(18px); border-bottom:1px solid rgba(255,255,255,.06); }
+      .nav__inner { max-width:1100px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+      .brand, .nav__links a, .footer a { color:inherit; text-decoration:none; }
+      .brand { display:inline-flex; align-items:center; gap:10px; font-weight:800; letter-spacing:0; }
+      .brand img { height:52px; width:auto; }
+      .nav__links { display:flex; align-items:center; gap:16px; color:var(--text-secondary); font-size:14px; }
+      .nav__links a:hover, .footer a:hover { color:var(--text-primary); }
+      .shell { position:relative; max-width:1000px; margin:0 auto; padding:72px 24px 48px; }
+      .eyebrow { display:inline-flex; align-items:center; gap:8px; color:#93c5fd; background:var(--accent-soft); border:1px solid rgba(59,130,246,.18); border-radius:999px; padding:7px 11px; font-size:12px; font-weight:800; text-transform:uppercase; }
+      h1 { margin:18px 0 12px; max-width:760px; font-size:clamp(2rem, 4vw, 3.5rem); line-height:1.05; letter-spacing:0; }
+      .lead { max-width:760px; color:var(--text-secondary); font-size:17px; line-height:1.7; }
+      .tabs { margin:34px 0 24px; display:flex; flex-wrap:wrap; gap:10px; }
+      .tabs a { color:var(--text-secondary); text-decoration:none; border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; font-size:14px; font-weight:700; background:rgba(24,24,27,.72); }
+      .tabs a.active { color:white; border-color:rgba(59,130,246,.55); background:rgba(59,130,246,.16); }
+      .legal { display:grid; gap:16px; }
+      .section { border:1px solid var(--border-color); border-radius:8px; background:rgba(28,28,31,.78); padding:22px; }
+      .section h2 { margin:0 0 10px; font-size:19px; letter-spacing:0; }
+      .section p, .section li { color:var(--text-secondary); line-height:1.72; font-size:15px; }
+      .section ul { margin:10px 0 0; padding-left:20px; }
+      .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+      .btn { min-height:40px; border:1px solid var(--border-color); border-radius:8px; padding:0 14px; color:#f4f4f5; background:rgba(24,24,27,.82); font:inherit; font-size:14px; font-weight:800; cursor:pointer; }
+      .btn--primary { background:#2563eb; border-color:#2563eb; }
+      .btn--danger { border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.14); }
+      .status { margin-top:14px; color:#a7f3d0; font-size:14px; min-height:20px; }
+      .footer { position:relative; border-top:1px solid var(--border-color); color:var(--text-muted); padding:26px 24px 34px; text-align:center; font-size:13px; }
+      .footer__links { display:flex; justify-content:center; flex-wrap:wrap; gap:16px; margin-bottom:12px; color:var(--text-secondary); }
+      @media (max-width:720px) { .nav__inner { align-items:flex-start; flex-direction:column; } .nav__links { flex-wrap:wrap; } .shell { padding-top:46px; } }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__inner">
+        <a class="brand" href="index.html"><img src="logo.png?v=20260511" alt="AutoAssist IA"><span>AutoAssist</span></a>
+        <div class="nav__links">
+          <a href="index.html">In&iacute;cio</a>
+          <a href="login.html">Entrar</a>
+          <a href="cadastro.html">Criar conta</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="shell">
+      <span class="eyebrow"><i class="fas fa-chart-line"></i> Analytics</span>
+      <h1>Analytics e Cookies</h1>
+      <p class="lead">O AutoAssist usa analytics pr&oacute;prio e minimizado para entender navega&ccedil;&atilde;o, estabilidade e ado&ccedil;&atilde;o de recursos. A coleta s&oacute; come&ccedil;a depois do aceite.</p>
+
+      <div class="tabs" aria-label="Documentos legais">
+        <a href="termos.html">Termos</a>
+        <a href="privacidade.html">Privacidade</a>
+        <a href="lgpd.html">LGPD</a>
+        <a class="active" href="analytics.html">Analytics</a>
+      </div>
+
+      <div class="legal">
+        <section class="section">
+          <h2>O que &eacute; coletado</h2>
+          <ul>
+            <li>Visualiza&ccedil;&atilde;o de p&aacute;gina, caminho da URL e data do evento.</li>
+            <li>Identificador an&ocirc;nimo salvo no navegador para contagem de uso.</li>
+            <li>Tamanho de tela, fuso hor&aacute;rio, t&iacute;tulo da p&aacute;gina e user-agent.</li>
+            <li>Eventos t&eacute;cnicos futuros, desde que n&atilde;o contenham dados pessoais sens&iacute;veis.</li>
+          </ul>
+        </section>
+
+        <section class="section">
+          <h2>O que n&atilde;o entra no analytics</h2>
+          <p>O filtro do cliente e do backend bloqueia senhas, tokens, cookies, e-mail, telefone, CPF/CNPJ, placa, conte&uacute;do de mensagens, prompts, fotos, imagens, &aacute;udios e dados de voz.</p>
+        </section>
+
+        <section class="section">
+          <h2>Como usamos esses eventos</h2>
+          <p>Os eventos ajudam a medir quais telas s&atilde;o usadas, detectar problemas de produto, priorizar melhorias e validar se fluxos como cadastro, login, chat, hist&oacute;rico e pagamento est&atilde;o funcionando bem.</p>
+        </section>
+
+        <section class="section">
+          <h2>Prefer&ecirc;ncia de analytics</h2>
+          <p>Voc&ecirc; pode aceitar, recusar ou rever sua escolha a qualquer momento. Recusar n&atilde;o impede o uso do AutoAssist.</p>
+          <div class="actions">
+            <button class="btn btn--primary" type="button" id="acceptAnalytics">Aceitar analytics</button>
+            <button class="btn btn--danger" type="button" id="declineAnalytics">Recusar analytics</button>
+            <button class="btn" type="button" id="resetAnalytics">Rever escolha</button>
+          </div>
+          <div class="status" id="analyticsStatus" aria-live="polite"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__links">
+        <a href="termos.html">Termos</a>
+        <a href="privacidade.html">Privacidade</a>
+        <a href="lgpd.html">LGPD</a>
+        <a href="analytics.html">Analytics</a>
+      </div>
+      <p>&copy; 2026 AutoAssist IA. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/analytics-consent.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const status = document.getElementById("analyticsStatus");
+        const setStatus = (text) => { status.textContent = text; };
+        document.getElementById("acceptAnalytics").addEventListener("click", () => {
+          window.AutoAssistAnalytics?.consent.accept();
+          setStatus("Analytics ativado para este navegador.");
+        });
+        document.getElementById("declineAnalytics").addEventListener("click", () => {
+          window.AutoAssistAnalytics?.consent.decline();
+          setStatus("Analytics recusado para este navegador.");
+        });
+        document.getElementById("resetAnalytics").addEventListener("click", () => {
+          window.AutoAssistAnalytics?.consent.reset();
+          setStatus("A escolha foi reaberta no banner de consentimento.");
+        });
+      });
+    </script>
+  </body>
+</html>

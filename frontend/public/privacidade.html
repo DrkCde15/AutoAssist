@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Pol&iacute;tica de Privacidade | AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+      :root { --bg-primary:#09090b; --bg-secondary:#18181b; --bg-card:#1c1c1f; --border-color:#27272a; --text-primary:#fafafa; --text-secondary:#a1a1aa; --text-muted:#71717a; --accent:#3b82f6; --accent-soft:rgba(59,130,246,.12); }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif; color:var(--text-primary); background:var(--bg-primary); -webkit-font-smoothing:antialiased; }
+      body::before { content:""; position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse 70% 40% at 50% -10%, rgba(59,130,246,.16), transparent), radial-gradient(ellipse 40% 30% at 85% 10%, rgba(20,184,166,.09), transparent); }
+      .nav { position:sticky; top:0; z-index:20; background:rgba(9,9,11,.86); backdrop-filter:blur(18px); border-bottom:1px solid rgba(255,255,255,.06); }
+      .nav__inner { max-width:1100px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+      .brand, .nav__links a, .footer a { color:inherit; text-decoration:none; }
+      .brand { display:inline-flex; align-items:center; gap:10px; font-weight:800; letter-spacing:0; }
+      .brand img { height:52px; width:auto; }
+      .nav__links { display:flex; align-items:center; gap:16px; color:var(--text-secondary); font-size:14px; }
+      .nav__links a:hover, .footer a:hover { color:var(--text-primary); }
+      .shell { position:relative; max-width:1000px; margin:0 auto; padding:72px 24px 48px; }
+      .eyebrow { display:inline-flex; align-items:center; gap:8px; color:#93c5fd; background:var(--accent-soft); border:1px solid rgba(59,130,246,.18); border-radius:999px; padding:7px 11px; font-size:12px; font-weight:800; text-transform:uppercase; }
+      h1 { margin:18px 0 12px; max-width:760px; font-size:clamp(2rem, 4vw, 3.5rem); line-height:1.05; letter-spacing:0; }
+      .lead { max-width:760px; color:var(--text-secondary); font-size:17px; line-height:1.7; }
+      .tabs { margin:34px 0 24px; display:flex; flex-wrap:wrap; gap:10px; }
+      .tabs a { color:var(--text-secondary); text-decoration:none; border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; font-size:14px; font-weight:700; background:rgba(24,24,27,.72); }
+      .tabs a.active { color:white; border-color:rgba(59,130,246,.55); background:rgba(59,130,246,.16); }
+      .legal { display:grid; gap:16px; }
+      .section { border:1px solid var(--border-color); border-radius:8px; background:rgba(28,28,31,.78); padding:22px; }
+      .section h2 { margin:0 0 10px; font-size:19px; letter-spacing:0; }
+      .section p, .section li { color:var(--text-secondary); line-height:1.72; font-size:15px; }
+      .section ul { margin:10px 0 0; padding-left:20px; }
+      .section a { color:#93c5fd; }
+      .notice { border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.08); }
+      .footer { position:relative; border-top:1px solid var(--border-color); color:var(--text-muted); padding:26px 24px 34px; text-align:center; font-size:13px; }
+      .footer__links { display:flex; justify-content:center; flex-wrap:wrap; gap:16px; margin-bottom:12px; color:var(--text-secondary); }
+      @media (max-width:720px) { .nav__inner { align-items:flex-start; flex-direction:column; } .nav__links { flex-wrap:wrap; } .shell { padding-top:46px; } }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__inner">
+        <a class="brand" href="index.html"><img src="logo.png?v=20260511" alt="AutoAssist IA"><span>AutoAssist</span></a>
+        <div class="nav__links">
+          <a href="index.html">In&iacute;cio</a>
+          <a href="login.html">Entrar</a>
+          <a href="cadastro.html">Criar conta</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="shell">
+      <span class="eyebrow"><i class="fas fa-shield-alt"></i> Privacidade</span>
+      <h1>Pol&iacute;tica de Privacidade</h1>
+      <p class="lead">Esta pol&iacute;tica explica quais dados podem ser tratados pelo AutoAssist, por quais motivos, com quem podem ser compartilhados e quais escolhas o usu&aacute;rio possui.</p>
+
+      <div class="tabs" aria-label="Documentos legais">
+        <a href="termos.html">Termos</a>
+        <a class="active" href="privacidade.html">Privacidade</a>
+        <a href="lgpd.html">LGPD</a>
+        <a href="analytics.html">Analytics</a>
+      </div>
+
+      <div class="legal">
+
+        <section class="section">
+          <h2>1. Dados tratados</h2>
+          <ul>
+            <li>Dados de conta, como nome, e-mail, autentica&ccedil;&atilde;o, prefer&ecirc;ncias e status do plano.</li>
+            <li>Dados do ve&iacute;culo, como marca, modelo, ano, tipo, quilometragem, hist&oacute;rico, gastos e alertas de manuten&ccedil;&atilde;o.</li>
+            <li>Mensagens, comandos de voz, imagens, relat&oacute;rios, feedbacks e conte&uacute;dos enviados pelo usu&aacute;rio para gerar respostas.</li>
+            <li>Dados t&eacute;cnicos de seguran&ccedil;a, como IP, user-agent, logs, erros, rate limit e tentativas de autentica&ccedil;&atilde;o.</li>
+            <li>Eventos de analytics com consentimento, sem conte&uacute;do de conversas, senha, fotos, placas, tokens ou documentos.</li>
+          </ul>
+        </section>
+
+        <section class="section">
+          <h2>2. Finalidades</h2>
+          <p>Os dados podem ser usados para criar e proteger a conta, responder perguntas automotivas, gerar diagn&oacute;sticos assistidos, organizar hist&oacute;rico, emitir alertas, processar pagamentos, melhorar a experi&ecirc;ncia, prevenir abuso, cumprir obriga&ccedil;&otilde;es legais e manter o servi&ccedil;o em opera&ccedil;&atilde;o.</p>
+        </section>
+
+        <section class="section">
+          <h2>3. Bases legais</h2>
+          <p>O tratamento pode se apoiar em execu&ccedil;&atilde;o de contrato, consentimento, cumprimento de obriga&ccedil;&atilde;o legal, leg&iacute;timo interesse para seguran&ccedil;a e melhoria do servi&ccedil;o, e exerc&iacute;cio regular de direitos. Analytics opcional deve depender de consentimento livre e revog&aacute;vel.</p>
+        </section>
+
+        <section class="section">
+          <h2>4. Compartilhamento</h2>
+          <p>Dados podem ser compartilhados com provedores estritamente necess&aacute;rios, como hospedagem, banco de dados, e-mail transacional, pagamento, autentica&ccedil;&atilde;o, servi&ccedil;os de IA, APIs automotivas, provedores de v&iacute;deo e ferramentas de seguran&ccedil;a. O conte&uacute;do enviado para IA deve ser limitado ao necess&aacute;rio para entregar a resposta solicitada.</p>
+        </section>
+
+        <section class="section">
+          <h2>5. Analytics e cookies</h2>
+          <p>O AutoAssist usa analytics pr&oacute;prio e minimizado apenas ap&oacute;s aceite. Os eventos registram p&aacute;gina, tipo de evento, identificador an&ocirc;nimo, data e metadados t&eacute;cnicos b&aacute;sicos. Saiba mais em <a href="analytics.html">Analytics e Cookies</a>.</p>
+        </section>
+
+        <section class="section">
+          <h2>6. Reten&ccedil;&atilde;o e exclus&atilde;o</h2>
+          <p>Dados s&atilde;o mantidos pelo tempo necess&aacute;rio para entregar o servi&ccedil;o, cumprir obriga&ccedil;&otilde;es legais, resolver disputas, prevenir fraude e manter registros de seguran&ccedil;a. O usu&aacute;rio pode solicitar exclus&atilde;o ou corre&ccedil;&atilde;o, respeitadas hip&oacute;teses legais de reten&ccedil;&atilde;o.</p>
+        </section>
+
+        <section class="section">
+          <h2>7. Direitos dos titulares</h2>
+          <p>Nos termos da LGPD, o titular pode solicitar confirma&ccedil;&atilde;o de tratamento, acesso, corre&ccedil;&atilde;o, anonimiza&ccedil;&atilde;o, bloqueio, elimina&ccedil;&atilde;o, portabilidade, informa&ccedil;&otilde;es sobre compartilhamento e revis&atilde;o de decis&otilde;es automatizadas quando aplic&aacute;vel. Consulte tamb&eacute;m a p&aacute;gina de <a href="lgpd.html">LGPD</a>.</p>
+        </section>
+
+        <section class="section">
+          <h2>8. Refer&ecirc;ncias oficiais</h2>
+          <p>Para informa&ccedil;&otilde;es oficiais sobre direitos do titular, consulte a <a href="https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares" rel="noopener noreferrer">ANPD</a> e a Lei n&ordm; 13.709/2018.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__links">
+        <a href="termos.html">Termos</a>
+        <a href="privacidade.html">Privacidade</a>
+        <a href="lgpd.html">LGPD</a>
+        <a href="analytics.html">Analytics</a>
+      </div>
+      <p>&copy; 2026 AutoAssist IA. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/analytics-consent.js"></script>
+  </body>
+</html>

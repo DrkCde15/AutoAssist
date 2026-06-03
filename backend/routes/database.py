@@ -254,6 +254,22 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS analytics_events (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NULL,
+                anonymous_id VARCHAR(80) NULL,
+                event_type VARCHAR(80) NOT NULL,
+                path VARCHAR(500) NULL,
+                metadata JSON NULL,
+                user_agent VARCHAR(500) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_analytics_created (created_at),
+                INDEX idx_analytics_event_created (event_type, created_at),
+                INDEX idx_analytics_user_created (user_id, created_at),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )
+        """)
 
         # Otimizações de Banco de Dados: Adicionando Índices para consultas frequentes
         indexes = [
@@ -266,7 +282,8 @@ def init_db():
             "CREATE INDEX idx_redefinicao_queue ON redefinicao_senha (email_sent, data_expiracao, last_attempt_at, id)",
             "CREATE INDEX idx_users_email ON users (email)",
             "CREATE INDEX idx_users_google_id ON users (google_id)",
-            "CREATE INDEX idx_maintenance_user_vehicle_date ON maintenance_history (user_id, vehicle_id, service_date DESC, created_at DESC)"
+            "CREATE INDEX idx_maintenance_user_vehicle_date ON maintenance_history (user_id, vehicle_id, service_date DESC, created_at DESC)",
+            "CREATE INDEX idx_analytics_anonymous_created ON analytics_events (anonymous_id, created_at)"
         ]
         for idx_query in indexes:
             try:

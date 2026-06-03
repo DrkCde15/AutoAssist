@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>LGPD | AutoAssist</title>
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+      :root { --bg-primary:#09090b; --bg-secondary:#18181b; --bg-card:#1c1c1f; --border-color:#27272a; --text-primary:#fafafa; --text-secondary:#a1a1aa; --text-muted:#71717a; --accent:#3b82f6; --accent-soft:rgba(59,130,246,.12); }
+      * { box-sizing: border-box; }
+      body { margin:0; min-height:100vh; font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif; color:var(--text-primary); background:var(--bg-primary); -webkit-font-smoothing:antialiased; }
+      body::before { content:""; position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse 70% 40% at 50% -10%, rgba(59,130,246,.16), transparent), radial-gradient(ellipse 40% 30% at 85% 10%, rgba(20,184,166,.09), transparent); }
+      .nav { position:sticky; top:0; z-index:20; background:rgba(9,9,11,.86); backdrop-filter:blur(18px); border-bottom:1px solid rgba(255,255,255,.06); }
+      .nav__inner { max-width:1100px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+      .brand, .nav__links a, .footer a { color:inherit; text-decoration:none; }
+      .brand { display:inline-flex; align-items:center; gap:10px; font-weight:800; letter-spacing:0; }
+      .brand img { height:52px; width:auto; }
+      .nav__links { display:flex; align-items:center; gap:16px; color:var(--text-secondary); font-size:14px; }
+      .nav__links a:hover, .footer a:hover { color:var(--text-primary); }
+      .shell { position:relative; max-width:1000px; margin:0 auto; padding:72px 24px 48px; }
+      .eyebrow { display:inline-flex; align-items:center; gap:8px; color:#93c5fd; background:var(--accent-soft); border:1px solid rgba(59,130,246,.18); border-radius:999px; padding:7px 11px; font-size:12px; font-weight:800; text-transform:uppercase; }
+      h1 { margin:18px 0 12px; max-width:760px; font-size:clamp(2rem, 4vw, 3.5rem); line-height:1.05; letter-spacing:0; }
+      .lead { max-width:760px; color:var(--text-secondary); font-size:17px; line-height:1.7; }
+      .tabs { margin:34px 0 24px; display:flex; flex-wrap:wrap; gap:10px; }
+      .tabs a { color:var(--text-secondary); text-decoration:none; border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; font-size:14px; font-weight:700; background:rgba(24,24,27,.72); }
+      .tabs a.active { color:white; border-color:rgba(59,130,246,.55); background:rgba(59,130,246,.16); }
+      .legal { display:grid; gap:16px; }
+      .section { border:1px solid var(--border-color); border-radius:8px; background:rgba(28,28,31,.78); padding:22px; }
+      .section h2 { margin:0 0 10px; font-size:19px; letter-spacing:0; }
+      .section p, .section li { color:var(--text-secondary); line-height:1.72; font-size:15px; }
+      .section ul { margin:10px 0 0; padding-left:20px; }
+      .section a { color:#93c5fd; }
+      .notice { border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.08); }
+      .footer { position:relative; border-top:1px solid var(--border-color); color:var(--text-muted); padding:26px 24px 34px; text-align:center; font-size:13px; }
+      .footer__links { display:flex; justify-content:center; flex-wrap:wrap; gap:16px; margin-bottom:12px; color:var(--text-secondary); }
+      @media (max-width:720px) { .nav__inner { align-items:flex-start; flex-direction:column; } .nav__links { flex-wrap:wrap; } .shell { padding-top:46px; } }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__inner">
+        <a class="brand" href="index.html"><img src="logo.png?v=20260511" alt="AutoAssist IA"><span>AutoAssist</span></a>
+        <div class="nav__links">
+          <a href="index.html">In&iacute;cio</a>
+          <a href="login.html">Entrar</a>
+          <a href="cadastro.html">Criar conta</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="shell">
+      <span class="eyebrow"><i class="fas fa-scale-balanced"></i> LGPD</span>
+      <h1>Privacidade e LGPD</h1>
+      <p class="lead">Esta p&aacute;gina resume como o AutoAssist deve operar em alinhamento com a Lei Geral de Prote&ccedil;&atilde;o de Dados Pessoais e quais controles precisam estar completos antes da venda do produto.</p>
+
+      <div class="tabs" aria-label="Documentos legais">
+        <a href="termos.html">Termos</a>
+        <a href="privacidade.html">Privacidade</a>
+        <a class="active" href="lgpd.html">LGPD</a>
+        <a href="analytics.html">Analytics</a>
+      </div>
+
+      <div class="legal">
+
+        <section class="section">
+          <h2>1. Controlador e operador</h2>
+          <p>O controlador &eacute; quem decide por que e como os dados pessoais s&atilde;o tratados. Operadores s&atilde;o fornecedores que processam dados em nome do controlador, como hospedagem, banco de dados, pagamento, e-mail, IA e autentica&ccedil;&atilde;o.</p>
+        </section>
+
+        <section class="section">
+          <h2>2. Direitos do titular</h2>
+          <ul>
+            <li>Confirmar a exist&ecirc;ncia de tratamento e acessar dados pessoais.</li>
+            <li>Corrigir dados incompletos, inexatos ou desatualizados.</li>
+            <li>Solicitar anonimiza&ccedil;&atilde;o, bloqueio ou elimina&ccedil;&atilde;o quando aplic&aacute;vel.</li>
+            <li>Obter informa&ccedil;&otilde;es sobre compartilhamento com terceiros.</li>
+            <li>Revogar consentimento e solicitar elimina&ccedil;&atilde;o de dados tratados com base nele, respeitadas exce&ccedil;&otilde;es legais.</li>
+            <li>Solicitar revis&atilde;o de decis&otilde;es automatizadas quando houver decis&atilde;o exclusivamente automatizada que afete seus interesses.</li>
+          </ul>
+        </section>
+
+        <section class="section">
+          <h2>3. Dados automotivos e dados pessoais</h2>
+          <p>Marca, modelo e hist&oacute;rico do ve&iacute;culo podem se tornar dados pessoais quando vinculados a uma conta ou usados para identificar algu&eacute;m. Imagens, &aacute;udios, mensagens, localiza&ccedil;&atilde;o, placa ou documentos devem ser tratados com minimiza&ccedil;&atilde;o e prote&ccedil;&atilde;o refor&ccedil;ada.</p>
+        </section>
+
+        <section class="section">
+          <h2>4. IA e decis&otilde;es automatizadas</h2>
+          <p>A IA do AutoAssist deve ser apresentada como apoio informacional. Sempre que houver recomenda&ccedil;&atilde;o relevante para seguran&ccedil;a, compra, venda, revis&atilde;o ou reparo, a plataforma deve orientar valida&ccedil;&atilde;o humana qualificada.</p>
+        </section>
+
+        <section class="section">
+          <h2>5. Consentimento e analytics</h2>
+          <p>Analytics deve ser opcional, documentado e revog&aacute;vel. O AutoAssist n&atilde;o deve enviar para analytics conte&uacute;do de chat, fotos, &aacute;udios, senhas, tokens, placa, CPF, telefone ou e-mail.</p>
+        </section>
+
+        <section class="section">
+          <h2>6. Seguran&ccedil;a e incidentes</h2>
+          <p>O produto deve manter controles de autentica&ccedil;&atilde;o, rate limit, logs, criptografia em tr&acirc;nsito, revis&atilde;o de acessos e processo para investigar, documentar e comunicar incidentes quando exigido.</p>
+        </section>
+
+        <section class="section">
+          <h2>7. Canal de atendimento</h2>
+          <p>O controlador deve publicar um canal claro para pedidos de acesso, corre&ccedil;&atilde;o, exclus&atilde;o, portabilidade, informa&ccedil;&otilde;es sobre compartilhamento, revoga&ccedil;&atilde;o de consentimento e demais direitos previstos na LGPD.</p>
+        </section>
+
+        <section class="section">
+          <h2>8. Fontes oficiais</h2>
+          <p>A ANPD mant&eacute;m orienta&ccedil;&otilde;es sobre <a href="https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares" rel="noopener noreferrer">direitos dos titulares</a> e materiais sobre a aplica&ccedil;&atilde;o da LGPD. Use essas refer&ecirc;ncias para a vers&atilde;o jur&iacute;dica final.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__links">
+        <a href="termos.html">Termos</a>
+        <a href="privacidade.html">Privacidade</a>
+        <a href="lgpd.html">LGPD</a>
+        <a href="analytics.html">Analytics</a>
+      </div>
+      <p>&copy; 2026 AutoAssist IA. Todos os direitos reservados.</p>
+    </footer>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/analytics-consent.js"></script>
+  </body>
+</html>

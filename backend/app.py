@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 print("Importando rotas...")
-from routes import auth_bp, pages_bp, payment_bp, feedback_bp, init_db
+from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, init_db
 from routes.payment import cakto_webhook as cakto_webhook_handler
 print("Rotas importadas.")
 
@@ -265,6 +265,7 @@ def root_post_webhook_fallback():
 
 # Registro de Blueprints
 app.register_blueprint(auth_bp)
+app.register_blueprint(analytics_bp)
 app.register_blueprint(pages_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)

@@ -141,4 +141,4 @@ python app.py
 ## 📝 Licença e Autoria
 
 Ideia original de **Clara Francisco**.
-Desenvolvido por **Júlio César**, **Caio Lima**, **Eduardo Nishida** e **Caio Yugo** com suporte de **Antigravity AI**.
+Desenvolvido por **Júlio César**, **Caio Lima**, **Eduardo Nishida** e **Caio Yugo**.
