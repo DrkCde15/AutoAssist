@@ -33,11 +33,6 @@
       .section h2 { margin:0 0 10px; font-size:19px; letter-spacing:0; }
       .section p, .section li { color:var(--text-secondary); line-height:1.72; font-size:15px; }
       .section ul { margin:10px 0 0; padding-left:20px; }
-      .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
-      .btn { min-height:40px; border:1px solid var(--border-color); border-radius:8px; padding:0 14px; color:#f4f4f5; background:rgba(24,24,27,.82); font:inherit; font-size:14px; font-weight:800; cursor:pointer; }
-      .btn--primary { background:#2563eb; border-color:#2563eb; }
-      .btn--danger { border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.14); }
-      .status { margin-top:14px; color:#a7f3d0; font-size:14px; min-height:20px; }
       .footer { position:relative; border-top:1px solid var(--border-color); color:var(--text-muted); padding:26px 24px 34px; text-align:center; font-size:13px; }
       .footer__links { display:flex; justify-content:center; flex-wrap:wrap; gap:16px; margin-bottom:12px; color:var(--text-secondary); }
       @media (max-width:720px) { .nav__inner { align-items:flex-start; flex-direction:column; } .nav__links { flex-wrap:wrap; } .shell { padding-top:46px; } }
@@ -47,7 +42,7 @@
     <nav class="nav">
       <div class="nav__inner">
         <a class="brand" href="index.html"><img src="logo.png?v=20260511" alt="AutoAssist IA"><span>AutoAssist</span></a>
-        <div class="nav__links">
+        <div class="nav__links" data-legal-nav>
           <a href="index.html">In&iacute;cio</a>
           <a href="login.html">Entrar</a>
           <a href="cadastro.html">Criar conta</a>
@@ -90,13 +85,7 @@
 
         <section class="section">
           <h2>Prefer&ecirc;ncia de analytics</h2>
-          <p>Voc&ecirc; pode aceitar, recusar ou rever sua escolha a qualquer momento. Recusar n&atilde;o impede o uso do AutoAssist.</p>
-          <div class="actions">
-            <button class="btn btn--primary" type="button" id="acceptAnalytics">Aceitar analytics</button>
-            <button class="btn btn--danger" type="button" id="declineAnalytics">Recusar analytics</button>
-            <button class="btn" type="button" id="resetAnalytics">Rever escolha</button>
-          </div>
-          <div class="status" id="analyticsStatus" aria-live="polite"></div>
+          <p>A prefer&ecirc;ncia de analytics &eacute; exibida no banner da p&aacute;gina inicial. Como a coleta foi limitada ao index, as demais telas n&atilde;o carregam o script de consentimento.</p>
         </section>
       </div>
     </main>
@@ -112,24 +101,7 @@
     </footer>
 
     <script src="static/js/config.js"></script>
-    <script src="static/js/analytics-consent.js"></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const status = document.getElementById("analyticsStatus");
-        const setStatus = (text) => { status.textContent = text; };
-        document.getElementById("acceptAnalytics").addEventListener("click", () => {
-          window.AutoAssistAnalytics?.consent.accept();
-          setStatus("Analytics ativado para este navegador.");
-        });
-        document.getElementById("declineAnalytics").addEventListener("click", () => {
-          window.AutoAssistAnalytics?.consent.decline();
-          setStatus("Analytics recusado para este navegador.");
-        });
-        document.getElementById("resetAnalytics").addEventListener("click", () => {
-          window.AutoAssistAnalytics?.consent.reset();
-          setStatus("A escolha foi reaberta no banner de consentimento.");
-        });
-      });
-    </script>
+    <script src="static/js/auth.js"></script>
+    <script src="static/js/legal-nav.js"></script>
   </body>
 </html>

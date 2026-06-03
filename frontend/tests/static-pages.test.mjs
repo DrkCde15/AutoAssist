@@ -22,7 +22,9 @@ describe("legal and analytics static pages", () => {
       assert.match(html, /privacidade\.html/);
       assert.match(html, /lgpd\.html/);
       assert.match(html, /analytics\.html/);
-      assert.match(html, /static\/js\/analytics-consent\.js/);
+      assert.match(html, /data-legal-nav/);
+      assert.match(html, /static\/js\/auth\.js/);
+      assert.match(html, /static\/js\/legal-nav\.js/);
     });
   }
 
@@ -35,7 +37,7 @@ describe("legal and analytics static pages", () => {
     assert.match(html, /analytics\.html/);
   });
 
-  it("all public html pages load analytics consent script", () => {
+  it("only the home page loads analytics consent script", () => {
     const pages = [
       "cadastro.html",
       "chat.html",
@@ -53,10 +55,11 @@ describe("legal and analytics static pages", () => {
     ];
 
     for (const page of pages) {
-      assert.match(
+      const assertion = page === "index.html" ? assert.match : assert.doesNotMatch;
+      assertion(
         readPublic(page),
         /static\/js\/analytics-consent\.js/,
-        `${page} should include analytics consent script`
+        `${page} should ${page === "index.html" ? "include" : "not include"} analytics consent script`
       );
     }
   });
@@ -71,5 +74,16 @@ describe("legal and analytics static pages", () => {
 
     assert.match(script, /\/api\/analytics\/events/);
     assert.match(script, /autoassist_analytics_consent/);
+  });
+
+  it("legal nav switches between public and authenticated links", () => {
+    const script = readPublic("static/js/legal-nav.js");
+
+    assert.match(script, /login\.html/);
+    assert.match(script, /cadastro\.html/);
+    assert.match(script, /chat\.html/);
+    assert.match(script, /perfil\.html/);
+    assert.match(script, /data-aa-logout/);
+    assert.match(script, /Auth\.isAuthenticated/);
   });
 });
