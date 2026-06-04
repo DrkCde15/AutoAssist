@@ -5,7 +5,6 @@ import smtplib
 import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
 import requests
 from dotenv import load_dotenv
 
@@ -16,16 +15,14 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, "..", ".env"))
 
 EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE")
-EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP")
+EMAIL_SENHA_APP = os.getenv("EMAIL_SENHA_APP", "fbbooxhmeltreyko").strip()
 EMAIL_FROM = (os.getenv("EMAIL_FROM") or EMAIL_REMETENTE or "").strip()
 EMAIL_FROM_NAME = (os.getenv("EMAIL_FROM_NAME") or "AutoAssist").strip()
-EMAIL_PROVIDER = (os.getenv("EMAIL_PROVIDER") or "smtp").strip().lower()
+EMAIL_PROVIDER = (os.getenv("EMAIL_PROVIDER") or "google_script").strip().lower()
 SMTP_TIMEOUT_SECONDS = int(os.getenv("SMTP_TIMEOUT_SECONDS", "8"))
 EMAIL_API_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_TIMEOUT_SECONDS", "8"))
 EMAIL_API_CONNECT_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_CONNECT_TIMEOUT_SECONDS", "5"))
 EMAIL_API_RETRIES = int(os.getenv("EMAIL_API_RETRIES", "2"))
-
-
 
 # Google Apps Script configurations
 GOOGLE_SCRIPT_URL = (os.getenv("GOOGLE_SCRIPT_URL") or "").strip()
@@ -50,7 +47,6 @@ GMAIL_OAUTH_TOKEN_URI = (
 _gmail_access_token = None
 _gmail_token_expires_at = 0
 
-
 def _post_with_retry(url: str, payload: dict, headers: dict):
     attempts = max(1, EMAIL_API_RETRIES + 1)
     last_exc = None
@@ -71,7 +67,6 @@ def _post_with_retry(url: str, payload: dict, headers: dict):
     if last_exc:
         raise last_exc
     raise RuntimeError("Falha inesperada no envio HTTP")
-
 
 def _base64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
@@ -130,7 +125,6 @@ def _get_gmail_access_token() -> str | None:
     _gmail_token_expires_at = int(time.time()) + int(data.get("expires_in", 3600))
     return _gmail_access_token
 
-
 def _wrap_email_html(content_html: str) -> str:
     """Template base premium do AutoAssist."""
     template = """
@@ -153,12 +147,10 @@ def _wrap_email_html(content_html: str) -> str:
     """
     return template.replace("{{CONTENT}}", content_html or "")
 
-
 def _from_string() -> str:
     if EMAIL_FROM_NAME and EMAIL_FROM:
         return f"{EMAIL_FROM_NAME} <{EMAIL_FROM}>"
     return EMAIL_FROM or EMAIL_REMETENTE or ""
-
 
 def _send_via_gmail_api(destinatario: str, assunto: str, html_final: str) -> bool:
     token = _get_gmail_access_token()
@@ -189,7 +181,6 @@ def _send_via_gmail_api(destinatario: str, assunto: str, html_final: str) -> boo
     logger.warning("Erro ao enviar e-mail via Gmail API: HTTP %s - %s", resp.status_code, resp.text)
     return False
 
-
 def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
     if not EMAIL_REMETENTE or not EMAIL_SENHA_APP:
         logger.warning("SMTP nao configurado: defina EMAIL_REMETENTE e EMAIL_SENHA_APP.")
@@ -213,7 +204,6 @@ def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
     except Exception as exc:
         logger.warning("Erro ao enviar e-mail via SMTP: %s", exc)
         return False
-
 
 def _send_via_google_script(destinatario: str, assunto: str, html_final: str) -> bool:
     if not GOOGLE_SCRIPT_URL:
@@ -250,7 +240,6 @@ def _send_via_google_script(destinatario: str, assunto: str, html_final: str) ->
     except Exception as exc:
         logger.warning("Erro ao enviar e-mail via Google Script: %s", exc)
         return False
-
 
 def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
     """
