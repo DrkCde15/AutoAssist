@@ -446,8 +446,16 @@
                 const modelo = escapeHTML(item.veiculo.modelo);
                 const ano = escapeHTML(item.veiculo.ano_fabricacao || item.veiculo.ano || '---');
                 const km = item.veiculo.quilometragem ? item.veiculo.quilometragem.toLocaleString() : '---';
-                const fipeValor = escapeHTML(item.fipe ? (item.fipe.Valor || item.fipe.preco || '---') : '---');
-                const fipeRef = escapeHTML(item.fipe ? (item.fipe.MesReferencia || item.fipe.mes || '---') : '---');
+                const fipeData = item.fipe || null;
+                const fipeValor = escapeHTML(fipeData ? (fipeData.Valor || fipeData.preco || '---') : '---');
+                const fipeRef = escapeHTML(fipeData ? (fipeData.MesReferencia || fipeData.mes || '---') : '---');
+                const fipeAnoUsado = fipeData ? (fipeData.AnoFipeUsado || fipeData.AnoModelo || '') : '';
+                const fipeAnoConsultado = fipeData ? (fipeData.AnoConsultado || '') : '';
+                const fipeAproximado = fipeData && fipeData.fipe_match_type === 'nearest_year' && fipeAnoUsado;
+                const fipeRefLabel = fipeAproximado ? 'Referência aproximada' : 'Referência';
+                const fipeAnoInfo = fipeAproximado
+                    ? ` - ano FIPE ${escapeHTML(fipeAnoUsado)}${fipeAnoConsultado ? ` (cadastro ${escapeHTML(fipeAnoConsultado)})` : ''}`
+                    : '';
 
                 htmlBuilder += `
                 <div class="vehicle-card">
@@ -468,7 +476,7 @@
                             <div class="stat-card-title">Valor de Mercado (FIPE)</div>
                         </div>
                         <div class="stat-value">${fipeValor}</div>
-                        <p class="stat-subtitle">Referência: ${fipeRef}</p>
+                        <p class="stat-subtitle">${fipeRefLabel}: ${fipeRef}${fipeAnoInfo}</p>
                     </div>
 
                     <div class="stat-card">

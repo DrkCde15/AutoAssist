@@ -66,6 +66,33 @@ def _get_fipe_json(path: str):
     return _cached_fipe_json(url, cache_bucket)
 
 
+def _extract_fipe_year(value):
+    if isinstance(value, dict):
+        text = f"{value.get('nome', '')} {value.get('codigo', '')}"
+    else:
+        text = str(value or "")
+
+    match = re.search(r"\b(19\d{2}|20\d{2}|21\d{2})\b", text)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _enrich_fipe_result(result, match_type, requested_year, used_year=None, used_model=None):
+    if not isinstance(result, dict):
+        return result
+
+    enriched = dict(result)
+    enriched["fipe_match_type"] = match_type
+    if requested_year:
+        enriched["AnoConsultado"] = str(requested_year)
+    if used_year is not None:
+        enriched["AnoFipeUsado"] = str(used_year)
+    if used_model:
+        enriched["ModeloFipeUsado"] = used_model
+    return enriched
+
+
 def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
     """Busca o valor medio de mercado via API FIPE com cache curto."""
     tipo_norm = str(tipo or "").lower()
@@ -80,7 +107,8 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
 
     marca_query = str(marca_nome or "").strip().lower()
     modelo_query = str(modelo_nome or "").strip().lower()
-    ano_query = str(ano or "").strip()
+    requested_year = _extract_fipe_year(ano)
+    ano_query = str(requested_year or ano or "").strip()
     if not marca_query or not modelo_query or not ano_query:
         return None
 
@@ -95,15 +123,64 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         if not candidatos:
             return None
 
+        nearest_year_match = None
         for modelo in candidatos:
             anos_disponiveis = _get_fipe_json(
                 f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos"
             )
             ano_obj = next((a for a in anos_disponiveis if a["nome"].startswith(ano_query)), None)
             if ano_obj:
-                return _get_fipe_json(
+                result = _get_fipe_json(
                     f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}"
                 )
+                return _enrich_fipe_result(
+                    result,
+                    match_type="exact",
+                    requested_year=ano_query,
+                    used_year=_extract_fipe_year(ano_obj),
+                    used_model=modelo["nome"],
+                )
+
+            if requested_year is None:
+                continue
+
+            for available_year in anos_disponiveis:
+                year_number = _extract_fipe_year(available_year)
+                if year_number is None:
+                    continue
+
+                # In a tie, prefer an older year to avoid overestimating market value.
+                sort_key = (
+                    abs(year_number - requested_year),
+                    1 if year_number > requested_year else 0,
+                )
+                if nearest_year_match is None or sort_key < nearest_year_match["sort_key"]:
+                    nearest_year_match = {
+                        "sort_key": sort_key,
+                        "modelo": modelo,
+                        "ano": available_year,
+                        "year_number": year_number,
+                    }
+
+        if nearest_year_match:
+            modelo = nearest_year_match["modelo"]
+            ano_obj = nearest_year_match["ano"]
+            result = _get_fipe_json(
+                f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}"
+            )
+            enriched = _enrich_fipe_result(
+                result,
+                match_type="nearest_year",
+                requested_year=ano_query,
+                used_year=nearest_year_match["year_number"],
+                used_model=modelo["nome"],
+            )
+            if isinstance(enriched, dict):
+                enriched["fipe_warning"] = (
+                    f"FIPE exata para {ano_query} nao encontrada; "
+                    f"usado ano {nearest_year_match['year_number']}."
+                )
+            return enriched
         return None
     except Exception as e:
         logger.error(f"Erro ao buscar FIPE: {e}")
