@@ -25,14 +25,7 @@ EMAIL_API_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_TIMEOUT_SECONDS", "8"))
 EMAIL_API_CONNECT_TIMEOUT_SECONDS = int(os.getenv("EMAIL_API_CONNECT_TIMEOUT_SECONDS", "5"))
 EMAIL_API_RETRIES = int(os.getenv("EMAIL_API_RETRIES", "2"))
 
-# Mailtrap & Generic SMTP configurations
-MAILTRAP_API_TOKEN = (os.getenv("MAILTRAP_API_TOKEN") or EMAIL_SENHA_APP or "").strip()
-MAILTRAP_SANDBOX_ID = (os.getenv("MAILTRAP_SANDBOX_ID") or "").strip()
-SMTP_HOST = (os.getenv("SMTP_HOST") or "smtp.gmail.com").strip()
-try:
-    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-except ValueError:
-    SMTP_PORT = 587
+
 
 # Google Apps Script configurations
 GOOGLE_SCRIPT_URL = (os.getenv("GOOGLE_SCRIPT_URL") or "").strip()
@@ -209,8 +202,8 @@ def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
     msg.attach(MIMEText(html_final, "html"))
 
     try:
-        logger.info("Tentando enviar e-mail SMTP (%s:%s) para: %s", SMTP_HOST, SMTP_PORT, destinatario)
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as server:
+        logger.info("Tentando enviar e-mail SMTP para: %s", destinatario)
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT_SECONDS) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -219,57 +212,6 @@ def _send_via_smtp(destinatario: str, assunto: str, html_final: str) -> bool:
         return True
     except Exception as exc:
         logger.warning("Erro ao enviar e-mail via SMTP: %s", exc)
-        return False
-
-
-def _send_via_mailtrap(destinatario: str, assunto: str, html_final: str) -> bool:
-    token = MAILTRAP_API_TOKEN
-    if not token:
-        logger.warning("Mailtrap nao configurado: defina MAILTRAP_API_TOKEN ou EMAIL_SENHA_APP.")
-        return False
-
-    sender_email = EMAIL_FROM or "hello@demomailtrap.co"
-    sender_name = EMAIL_FROM_NAME or "AutoAssist"
-
-    if MAILTRAP_SANDBOX_ID:
-        url = f"https://sandbox.api.mailtrap.io/api/send/{MAILTRAP_SANDBOX_ID}"
-    else:
-        url = "https://send.api.mailtrap.io/api/send"
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-
-    # Extrai o texto limpo para o campo text se necessário, ou usa um fallback
-    text_content = f"Alerta do AutoAssist: {assunto}"
-
-    payload = {
-        "from": {
-            "email": sender_email,
-            "name": sender_name
-        },
-        "to": [
-            {
-                "email": destinatario
-            }
-        ],
-        "subject": assunto,
-        "html": html_final,
-        "text": text_content,
-        "category": "AutoAssist Alert"
-    }
-
-    try:
-        logger.info("Enviando e-mail via Mailtrap API para: %s (Sandbox ID: %s)", destinatario, MAILTRAP_SANDBOX_ID or "Nao definido")
-        resp = _post_with_retry(url, payload, headers)
-        if 200 <= resp.status_code < 300:
-            logger.info("E-mail enviado com sucesso via Mailtrap para %s", destinatario)
-            return True
-        logger.warning("Erro ao enviar e-mail via Mailtrap: HTTP %s - %s", resp.status_code, resp.text)
-        return False
-    except Exception as exc:
-        logger.warning("Erro ao enviar e-mail via Mailtrap: %s", exc)
         return False
 
 
@@ -319,15 +261,13 @@ def enviar_email(destinatario: str, assunto: str, mensagem_html: str):
         "smtp": _send_via_smtp,
         "gmail": _send_via_gmail_api,
         "gmail_api": _send_via_gmail_api,
-        "mailtrap": _send_via_mailtrap,
-        "mailtrap_api": _send_via_mailtrap,
         "google_script": _send_via_google_script,
         "gmail_script": _send_via_google_script,
     }
     sender = providers.get(EMAIL_PROVIDER)
     if not sender:
         logger.warning(
-            "EMAIL_PROVIDER invalido (%s). Use smtp, gmail_api, mailtrap ou google_script.",
+            "EMAIL_PROVIDER invalido (%s). Use smtp, gmail_api ou google_script.",
             EMAIL_PROVIDER,
         )
         return False
