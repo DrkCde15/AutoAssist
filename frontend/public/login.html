@@ -401,10 +401,10 @@
 
       <!-- 2FA Form -->
       <form id="twoFactorForm">
-        <p>Digite o código de verificação do seu aplicativo autenticador.</p>
+        <p>Digite sua senha secundaria de seguranca.</p>
         
         <div class="form-group">
-          <label for="twoFactorCode">Código de Verificação</label>
+          <label for="twoFactorCode">Senha secundaria</label>
           <div class="input-wrapper">
             <input type="password" id="twoFactorCode" placeholder="Sua senha de 2FA" />
             <i class="fas fa-eye password-toggle" id="toggle2FA"></i>
@@ -473,7 +473,7 @@
               form.style.display = "none";
               twoFactorForm.style.display = "block";
               registerLinks.style.display = "none";
-              logoText.textContent = "Verificação de Segurança";
+              logoText.textContent = "Senha de Segurança";
               btnEntrar.disabled = false;
               btnEntrar.innerHTML = originalBtnContent;
             } else {
@@ -497,7 +497,7 @@
           const btnConfirm2FA = document.getElementById("btnConfirm2FA");
           const originalBtnContent = btnConfirm2FA.innerHTML;
           btnConfirm2FA.disabled = true;
-          btnConfirm2FA.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verificando...';
+          btnConfirm2FA.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Confirmando...';
 
           try {
             await Auth.verify2FA(pendingToken, code);

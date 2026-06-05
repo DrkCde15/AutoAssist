@@ -244,6 +244,100 @@
             color: var(--success);
         }
 
+        /* Security Section */
+        .security-card {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .security-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .security-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .security-copy {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .security-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 28px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .security-pill.enabled {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.25);
+            color: var(--success);
+        }
+
+        .security-pill.disabled {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .security-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .security-actions .btn-secondary {
+            border-style: solid;
+        }
+
+        .btn-secondary.danger-action {
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-secondary.danger-action:hover {
+            color: #fca5a5;
+            border-color: var(--danger);
+            background: var(--danger-soft);
+        }
+
+        .two-factor-setup {
+            padding-top: 16px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .two-factor-setup[hidden] {
+            display: none;
+        }
+
+        .two-factor-fields {
+            display: grid;
+            gap: 14px;
+            max-width: 420px;
+        }
+
+        .password-helper {
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
         /* Buttons */
         .btn-primary {
             display: flex;
@@ -481,6 +575,14 @@
             background: var(--accent-hover);
         }
 
+        .btn-save.danger-save {
+            background: var(--danger);
+        }
+
+        .btn-save.danger-save:hover {
+            background: #dc2626;
+        }
+
         .btn-cancel {
             padding: 12px 20px;
             background: transparent;
@@ -526,6 +628,16 @@
             .btn-danger {
                 width: 100%;
                 justify-content: center;
+            }
+
+            .security-header,
+            .security-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .security-actions .btn-secondary {
+                width: 100%;
             }
 
             .form-row {
@@ -593,6 +705,81 @@
             <div class="field-card">
                 <div class="field-label">Total de Consultas</div>
                 <div class="field-value" id="infoConsultas">-</div>
+            </div>
+
+            <div class="field-card security-card">
+                <div class="security-header">
+                    <div>
+                        <div class="field-label">Seguranca</div>
+                        <div class="security-title">Autenticacao em duas etapas</div>
+                    </div>
+                    <span class="security-pill disabled" id="twoFactorStatusBadge">
+                        <i class="fas fa-circle-xmark"></i>
+                        Desativada
+                    </span>
+                </div>
+
+                <p class="security-copy" id="twoFactorStatusText">
+                    Crie uma senha secundaria para confirmar o acesso depois da senha principal.
+                </p>
+
+                <div class="security-actions">
+                    <button id="btnStartTwoFactor" class="btn-secondary" type="button">
+                        <i class="fas fa-shield-alt"></i>
+                        Ativar 2FA
+                    </button>
+                    <button id="btnDisableTwoFactor" class="btn-secondary danger-action" type="button" hidden>
+                        <i class="fas fa-shield-halved"></i>
+                        Desativar 2FA
+                    </button>
+                </div>
+
+                <div class="two-factor-setup" id="twoFactorSetupPanel" hidden>
+                    <div class="two-factor-fields">
+                        <p class="password-helper">
+                            Essa senha sera solicitada no login quando a autenticacao em duas etapas estiver ativa.
+                        </p>
+
+                        <div class="form-group">
+                            <label for="twoFactorPassword">Nova senha secundaria</label>
+                            <input type="password" id="twoFactorPassword" autocomplete="new-password" minlength="6" placeholder="Minimo de 6 caracteres">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="twoFactorPasswordConfirm">Confirmar senha secundaria</label>
+                            <input type="password" id="twoFactorPasswordConfirm" autocomplete="new-password" minlength="6" placeholder="Repita a senha secundaria">
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-save" id="btnConfirmTwoFactor" type="button">
+                                <i class="fas fa-check"></i>
+                                Confirmar ativacao
+                            </button>
+                            <button class="btn-cancel" id="btnCancelTwoFactor" type="button">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="two-factor-setup" id="twoFactorDisablePanel" hidden>
+                    <div class="two-factor-fields">
+                        <p class="password-helper">
+                            Digite sua senha secundaria atual para desativar a autenticacao em duas etapas.
+                        </p>
+
+                        <div class="form-group">
+                            <label for="twoFactorDisablePassword">Senha secundaria atual</label>
+                            <input type="password" id="twoFactorDisablePassword" autocomplete="current-password" placeholder="Sua senha secundaria">
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-save danger-save" id="btnConfirmDisableTwoFactor" type="button">
+                                <i class="fas fa-shield-halved"></i>
+                                Desativar 2FA
+                            </button>
+                            <button class="btn-cancel" id="btnCancelDisableTwoFactor" type="button">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Vehicles Section -->
@@ -721,6 +908,15 @@
             .replace(/'/g, "&#039;");
     }
 
+    async function readApiError(res, fallback) {
+        try {
+            const data = await res.json();
+            return data.error || data.message || fallback;
+        } catch {
+            return fallback;
+        }
+    }
+
     function renderProfile(user) {
         const initials = user.nome ? user.nome.split(' ').map(n => n[0]).join('').substring(0, 2) : 'U';
         document.getElementById('profileAvatar').textContent = initials;
@@ -732,7 +928,51 @@
         document.getElementById('infoStatus').className = user.is_premium ? 'field-value premium' : 'field-value';
         document.getElementById('infoConsultas').textContent = user.total_consultas ?? user.total_chats ?? '0';
 
+        renderTwoFactorStatus(Boolean(user.is_two_factor_enabled));
         renderVehiclesList(user.veiculos || []);
+    }
+
+    function renderTwoFactorStatus(isEnabled) {
+        const badge = document.getElementById('twoFactorStatusBadge');
+        const text = document.getElementById('twoFactorStatusText');
+        const startButton = document.getElementById('btnStartTwoFactor');
+        const disableButton = document.getElementById('btnDisableTwoFactor');
+
+        badge.className = isEnabled ? 'security-pill enabled' : 'security-pill disabled';
+        badge.innerHTML = isEnabled
+            ? '<i class="fas fa-circle-check"></i> Ativada'
+            : '<i class="fas fa-circle-xmark"></i> Desativada';
+        text.textContent = isEnabled
+            ? 'Sua senha secundaria sera solicitada apos a senha principal no login.'
+            : 'Crie uma senha secundaria para confirmar o acesso depois da senha principal.';
+
+        startButton.hidden = isEnabled;
+        disableButton.hidden = !isEnabled;
+        if (isEnabled) {
+            setTwoFactorPanel('none');
+        }
+    }
+
+    function clearTwoFactorForms() {
+        document.getElementById('twoFactorPassword').value = '';
+        document.getElementById('twoFactorPasswordConfirm').value = '';
+        document.getElementById('twoFactorDisablePassword').value = '';
+    }
+
+    function setTwoFactorPanel(panel) {
+        const setupPanel = document.getElementById('twoFactorSetupPanel');
+        const disablePanel = document.getElementById('twoFactorDisablePanel');
+
+        setupPanel.hidden = panel !== 'setup';
+        disablePanel.hidden = panel !== 'disable';
+
+        if (panel === 'setup') {
+            document.getElementById('twoFactorPassword').focus();
+        } else if (panel === 'disable') {
+            document.getElementById('twoFactorDisablePassword').focus();
+        } else {
+            clearTwoFactorForms();
+        }
     }
 
     function renderVehiclesList(veiculos) {
@@ -774,6 +1014,98 @@
             `;
         }).join('');
     }
+
+    document.getElementById('btnStartTwoFactor').addEventListener('click', () => {
+        setTwoFactorPanel('setup');
+    });
+
+    document.getElementById('btnCancelTwoFactor').addEventListener('click', () => {
+        setTwoFactorPanel('none');
+    });
+
+    document.getElementById('btnDisableTwoFactor').addEventListener('click', () => {
+        setTwoFactorPanel('disable');
+    });
+
+    document.getElementById('btnCancelDisableTwoFactor').addEventListener('click', () => {
+        setTwoFactorPanel('none');
+    });
+
+    document.getElementById('btnConfirmTwoFactor').addEventListener('click', async () => {
+        const password = document.getElementById('twoFactorPassword').value;
+        const confirmPassword = document.getElementById('twoFactorPasswordConfirm').value;
+
+        if (password.length < 6) {
+            alert('A senha secundaria deve ter pelo menos 6 caracteres.');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            alert('As senhas secundarias nao conferem.');
+            return;
+        }
+
+        const button = document.getElementById('btnConfirmTwoFactor');
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Ativando...';
+
+        try {
+            const res = await Auth.authenticatedFetch('/api/auth/2fa/confirm', {
+                method: 'POST',
+                body: JSON.stringify({ password, confirm_password: confirmPassword })
+            });
+
+            if (res.ok) {
+                alert('2FA ativado com sucesso.');
+                setTwoFactorPanel('none');
+                loadProfile();
+            } else {
+                alert(await readApiError(res, 'Erro ao ativar 2FA.'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao ativar 2FA.');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }
+    });
+
+    document.getElementById('btnConfirmDisableTwoFactor').addEventListener('click', async () => {
+        const password = document.getElementById('twoFactorDisablePassword').value;
+
+        if (!password) {
+            alert('Digite sua senha secundaria atual.');
+            return;
+        }
+
+        const button = document.getElementById('btnConfirmDisableTwoFactor');
+        const originalContent = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Desativando...';
+
+        try {
+            const res = await Auth.authenticatedFetch('/api/auth/2fa/disable', {
+                method: 'POST',
+                body: JSON.stringify({ password })
+            });
+
+            if (res.ok) {
+                alert('2FA desativado com sucesso.');
+                setTwoFactorPanel('none');
+                loadProfile();
+            } else {
+                alert(await readApiError(res, 'Erro ao desativar 2FA.'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao desativar 2FA.');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }
+    });
 
     document.getElementById('btnAddNewVehicle').addEventListener('click', () => {
         document.getElementById('sectionVeiculo').style.display = 'flex';

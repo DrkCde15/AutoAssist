@@ -123,8 +123,8 @@ if not jwt_secret:
 # Configuração JWT
 app.config.update(
     JWT_SECRET_KEY=jwt_secret,
-    JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=7),
-    JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=365),
+    JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=30),
+    JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=30),
     JWT_TOKEN_LOCATION=['headers', 'cookies'],
     JWT_COOKIE_SECURE=is_production and not local_testing,
     JWT_ACCESS_COOKIE_PATH='/',
