@@ -390,6 +390,7 @@
 
       .message-row {
         width: 100%;
+        min-width: 0;
         display: flex;
         align-items: flex-end;
         gap: 10px;
@@ -425,6 +426,7 @@
 
       .message-stack {
         max-width: 78%;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -459,12 +461,16 @@
         font-size: 14.5px;
         line-height: 1.65;
         word-wrap: break-word;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        min-width: 0;
         position: relative;
         letter-spacing: 0;
       }
 
       .msg-user {
         align-self: flex-end;
+        white-space: pre-wrap;
         background: linear-gradient(135deg, var(--accent), var(--accent-strong));
         color: #ffffff;
         border-bottom-right-radius: 6px;
@@ -528,6 +534,7 @@
       .msg-bot p {
         margin-bottom: 10px;
         color: var(--text-primary);
+        overflow-wrap: anywhere;
       }
 
       .msg-bot p:last-child { margin-bottom: 0; }
@@ -537,6 +544,7 @@
         text-decoration: none;
         border-bottom: 1px solid rgba(79,140,255,0.3);
         transition: var(--transition);
+        overflow-wrap: anywhere;
       }
       .msg-bot a:hover { border-bottom-color: var(--accent); }
 
