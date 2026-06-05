@@ -45,21 +45,37 @@ def _get_user_email(user_id: str) -> str | None:
 
 
 def _set_premium_by_user_id(user_id: str, is_premium: bool) -> int:
+    target_state = bool(is_premium)
     with get_db() as (cursor, conn):
         cursor.execute(
             "UPDATE users SET is_premium = %s WHERE id = %s",
-            (bool(is_premium), user_id),
+            (target_state, user_id),
         )
-        return int(cursor.rowcount or 0)
+        if int(cursor.rowcount or 0) > 0:
+            return 1
+
+        cursor.execute(
+            "SELECT id FROM users WHERE id = %s AND is_premium = %s",
+            (user_id, target_state),
+        )
+        return 1 if cursor.fetchone() else 0
 
 
 def _set_premium_by_email(email: str, is_premium: bool) -> int:
+    target_state = bool(is_premium)
     with get_db() as (cursor, conn):
         cursor.execute(
             "UPDATE users SET is_premium = %s WHERE email = %s",
-            (bool(is_premium), email),
+            (target_state, email),
         )
-        return int(cursor.rowcount or 0)
+        if int(cursor.rowcount or 0) > 0:
+            return 1
+
+        cursor.execute(
+            "SELECT id FROM users WHERE email = %s AND is_premium = %s",
+            (email, target_state),
+        )
+        return 1 if cursor.fetchone() else 0
 
 
 @payment_bp.route("/api/pay/preference", methods=["POST"])
