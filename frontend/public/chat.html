@@ -461,8 +461,8 @@
         font-size: 14.5px;
         line-height: 1.65;
         word-wrap: break-word;
-        overflow-wrap: anywhere;
-        word-break: break-word;
+        overflow-wrap: break-word;
+        word-break: normal;
         min-width: 0;
         position: relative;
         letter-spacing: 0;
@@ -470,6 +470,8 @@
 
       .msg-user {
         align-self: flex-end;
+        min-width: 72px;
+        text-align: left;
         white-space: pre-wrap;
         background: linear-gradient(135deg, var(--accent), var(--accent-strong));
         color: #ffffff;
