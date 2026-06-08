@@ -1,7 +1,7 @@
 .car-scroll {
     --car-scroll-header-offset: 124px;
     position: relative;
-    min-height: 100svh;
+    min-height: 92svh;
     background:
         radial-gradient(circle at 50% 24%, rgba(59, 130, 246, 0.16), transparent 30%),
         linear-gradient(180deg, #05070c 0%, #0b1018 42%, #050507 100%);
@@ -160,7 +160,7 @@
 .car-scroll__stage {
     position: relative;
     z-index: 1;
-    min-height: 100svh;
+    min-height: 92svh;
     display: grid;
     place-items: stretch;
     pointer-events: none;
@@ -171,7 +171,7 @@
     top: var(--car-scroll-header-offset);
     right: 0;
     left: 0;
-    height: max(320px, calc(100svh - var(--car-scroll-header-offset)));
+    height: max(320px, calc(92svh - var(--car-scroll-header-offset)));
     overflow: hidden;
 }
 
@@ -188,9 +188,124 @@
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(90deg, rgba(5, 7, 12, 0.18), rgba(5, 7, 12, 0), rgba(5, 7, 12, 0.18)),
-        linear-gradient(180deg, rgba(5, 7, 12, 0.08) 0%, rgba(5, 7, 12, 0) 42%, rgba(5, 7, 12, 0.26) 100%);
+        radial-gradient(circle at 50% 40%, rgba(5, 7, 12, 0.12), rgba(5, 7, 12, 0.64) 74%),
+        linear-gradient(90deg, rgba(5, 7, 12, 0.62), rgba(5, 7, 12, 0.2), rgba(5, 7, 12, 0.62)),
+        linear-gradient(180deg, rgba(5, 7, 12, 0.48) 0%, rgba(5, 7, 12, 0.18) 42%, rgba(5, 7, 12, 0.72) 100%);
     pointer-events: none;
+}
+
+.brand-hero {
+    position: absolute;
+    z-index: 6;
+    top: var(--car-scroll-header-offset);
+    right: 0;
+    left: 0;
+    width: min(980px, calc(100% - 48px));
+    min-height: calc(92svh - var(--car-scroll-header-offset));
+    margin: 0 auto;
+    padding: 24px 0 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: auto;
+}
+
+.brand-hero__mark {
+    width: clamp(78px, 9vw, 116px);
+    aspect-ratio: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 16px 34px rgba(56, 189, 248, 0.32));
+}
+
+.brand-hero__mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.brand-hero__eyebrow {
+    margin: 0 0 12px;
+    color: #67e8f9;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 18px rgba(8, 13, 24, 0.9);
+}
+
+.brand-hero h1 {
+    margin: 0;
+    color: #f8fafc;
+    font-size: clamp(46px, 7.5vw, 88px);
+    font-weight: 800;
+    line-height: 0.96;
+    letter-spacing: 0;
+    text-shadow: 0 18px 44px rgba(0, 0, 0, 0.72);
+}
+
+.brand-hero__copy {
+    max-width: 690px;
+    margin: 20px auto 0;
+    color: #dbeafe;
+    font-size: clamp(16px, 1.7vw, 21px);
+    line-height: 1.58;
+    text-shadow: 0 2px 16px rgba(8, 13, 24, 0.9);
+}
+
+.brand-hero__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+.brand-hero__primary,
+.brand-hero__secondary {
+    min-height: 48px;
+    border-radius: 8px;
+    padding: 0 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    color: #f8fafc;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.brand-hero__primary {
+    border: 1px solid rgba(96, 165, 250, 0.6);
+    background: linear-gradient(135deg, #2563eb, #0891b2);
+    box-shadow: 0 16px 34px rgba(37, 99, 235, 0.32);
+}
+
+.brand-hero__secondary {
+    border: 1px solid rgba(203, 213, 225, 0.26);
+    background: rgba(8, 13, 24, 0.54);
+    backdrop-filter: blur(10px);
+}
+
+.brand-hero__primary:hover,
+.brand-hero__secondary:hover {
+    transform: translateY(-2px);
+}
+
+.brand-hero__primary:hover {
+    box-shadow: 0 18px 40px rgba(14, 165, 233, 0.36);
+}
+
+.brand-hero__secondary:hover {
+    border-color: rgba(103, 232, 249, 0.5);
+    background: rgba(15, 23, 42, 0.72);
 }
 
 .car-scroll__hud {
@@ -369,16 +484,37 @@
 
 @media (max-width: 900px) {
     .car-scroll {
-        min-height: 100svh;
+        min-height: 94svh;
     }
 
     .car-scroll__stage {
         position: relative;
-        min-height: 100svh;
+        min-height: 94svh;
+    }
+
+    .car-scroll__scene {
+        height: max(340px, calc(94svh - var(--car-scroll-header-offset)));
     }
 
     .car-scroll__vignette {
-        background: linear-gradient(180deg, rgba(5, 7, 12, 0.04) 0%, rgba(5, 7, 12, 0) 45%, rgba(5, 7, 12, 0.28) 100%);
+        background:
+            radial-gradient(circle at 50% 36%, rgba(5, 7, 12, 0.18), rgba(5, 7, 12, 0.72) 76%),
+            linear-gradient(180deg, rgba(5, 7, 12, 0.58) 0%, rgba(5, 7, 12, 0.18) 42%, rgba(5, 7, 12, 0.76) 100%);
+    }
+
+    .brand-hero {
+        width: min(680px, calc(100% - 32px));
+        min-height: calc(94svh - var(--car-scroll-header-offset));
+        padding: 22px 0 46px;
+    }
+
+    .brand-hero h1 {
+        font-size: clamp(40px, 12vw, 66px);
+    }
+
+    .brand-hero__copy {
+        font-size: 16px;
+        line-height: 1.55;
     }
 
     .car-scroll__hud {
@@ -425,7 +561,46 @@
 
 @media (max-width: 520px) {
     .car-scroll__stage {
-        min-height: 100svh;
+        min-height: 94svh;
+    }
+
+    .brand-hero {
+        justify-content: flex-start;
+        padding-top: 24px;
+        padding-bottom: 36px;
+    }
+
+    .brand-hero__mark {
+        width: 72px;
+        margin-bottom: 12px;
+    }
+
+    .brand-hero h1 {
+        max-width: 100%;
+        font-size: clamp(36px, 10vw, 42px);
+        line-height: 1.02;
+        white-space: nowrap;
+    }
+
+    .brand-hero__eyebrow {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    .brand-hero__copy {
+        max-width: 320px;
+        margin-top: 16px;
+        font-size: 15px;
+    }
+
+    .brand-hero__actions {
+        width: 100%;
+        margin-top: 24px;
+    }
+
+    .brand-hero__primary,
+    .brand-hero__secondary {
+        width: min(100%, 312px);
     }
 
     .car-scroll__hud {
