@@ -83,6 +83,77 @@ body.aa-menu-lock {
   overflow: hidden;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .nav-link[data-nav-tooltip],
+  .nav-btn[data-nav-tooltip],
+  .nav-bell-btn[data-nav-tooltip] {
+    position: relative;
+  }
+
+  .nav-link[data-nav-tooltip]::before,
+  .nav-btn[data-nav-tooltip]::before,
+  .nav-bell-btn[data-nav-tooltip]::before {
+    content: "";
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid rgba(15, 23, 42, 0.96);
+    border-left: 6px solid transparent;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -4px);
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    pointer-events: none;
+    z-index: 260;
+  }
+
+  .nav-link[data-nav-tooltip]::after,
+  .nav-btn[data-nav-tooltip]::after,
+  .nav-bell-btn[data-nav-tooltip]::after {
+    content: attr(data-nav-tooltip);
+    position: absolute;
+    top: calc(100% + 11px);
+    left: 50%;
+    width: max-content;
+    max-width: min(240px, calc(100vw - 32px));
+    padding: 9px 11px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.96);
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+    color: #f8fafc;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -4px);
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    pointer-events: none;
+    z-index: 260;
+  }
+
+  .nav-link[data-nav-tooltip]:hover::before,
+  .nav-link[data-nav-tooltip]:focus-visible::before,
+  .nav-btn[data-nav-tooltip]:hover::before,
+  .nav-btn[data-nav-tooltip]:focus-visible::before,
+  .nav-bell-btn[data-nav-tooltip]:hover::before,
+  .nav-bell-btn[data-nav-tooltip]:focus-visible::before,
+  .nav-link[data-nav-tooltip]:hover::after,
+  .nav-link[data-nav-tooltip]:focus-visible::after,
+  .nav-btn[data-nav-tooltip]:hover::after,
+  .nav-btn[data-nav-tooltip]:focus-visible::after,
+  .nav-bell-btn[data-nav-tooltip]:hover::after,
+  .nav-bell-btn[data-nav-tooltip]:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* Telas de login/cadastro/recuperacao: foco em centralizacao e toque confortavel. */
 .auth-page {
   min-height: 100dvh;
