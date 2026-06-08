@@ -1,6 +1,7 @@
 import os
 import pymysql
 import logging
+import re
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
@@ -162,6 +163,10 @@ def init_db():
             cursor.execute("ALTER TABLE chats ADD COLUMN topic VARCHAR(255)")
         except Exception:
             pass
+        try:
+            cursor.execute("ALTER TABLE chats ADD COLUMN attachments JSON")
+        except Exception:
+            pass
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS redefinicao_senha (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -270,10 +275,19 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS guest_chat_usage (
+                guest_id_hash CHAR(64) PRIMARY KEY,
+                message_count INT NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        """)
 
         # Otimizações de Banco de Dados: Adicionando Índices para consultas frequentes
         indexes = [
             "CREATE INDEX idx_chats_user_created ON chats (user_id, created_at DESC)",
+            "CREATE INDEX idx_chats_user_id ON chats (user_id, id)",
             "CREATE INDEX idx_feedbacks_created ON feedbacks (created_at DESC)",
             "CREATE INDEX idx_veiculos_user ON veiculos (user_id)",
             "CREATE INDEX idx_videos_user ON videos (user_id)",
@@ -370,7 +384,10 @@ def get_mysql_history(user_id: int, limit: int = 5, cursor=None):
         logging.error(f"Erro histórico MySQL: {e}")
         return []
 
+EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
+
+
 def is_valid_email_domain(email):
-    allowed_domains = ["@gmail.com", "@hotmail.com", "@yahoo.com", "@email.com", "@testuser.com"]
-    email_lower = email.lower()
-    return any(email_lower.endswith(domain) for domain in allowed_domains)
+    if not isinstance(email, str):
+        return False
+    return bool(EMAIL_PATTERN.fullmatch(email.strip().lower()))

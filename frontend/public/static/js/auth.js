@@ -228,8 +228,9 @@ const Auth = (() => {
    * @param {RequestInit} options - Opções do fetch (method, body, headers…)
    */
   async function authenticatedFetch(endpoint, options = {}) {
+    const { redirectOnInvalid = true, ...fetchOptions } = options;
     const url = `${CONFIG.API_URL}${endpoint}`;
-    const method = (options.method || "GET").toUpperCase();
+    const method = (fetchOptions.method || "GET").toUpperCase();
     let token = getAccessToken();
 
     const buildHeaders = (tok, extra = {}) => {
@@ -243,29 +244,30 @@ const Auth = (() => {
     };
 
     // Não sobrescrevemos Content-Type se for FormData (multipart)
-    const isFormData = options.body instanceof FormData;
+    const isFormData = fetchOptions.body instanceof FormData;
     const baseHeaders = isFormData
-      ? buildHeaders(token, options.headers || {})
-      : buildHeaders(token, { "Content-Type": "application/json", ...(options.headers || {}) });
+      ? buildHeaders(token, fetchOptions.headers || {})
+      : buildHeaders(token, { "Content-Type": "application/json", ...(fetchOptions.headers || {}) });
 
-    let res = await fetch(url, { ...options, credentials: "include", headers: baseHeaders });
+    let res = await fetch(url, { ...fetchOptions, credentials: "include", headers: baseHeaders });
 
     // Tenta renovar o token se expirado
     if (res.status === 401) {
       try {
-        token = await refreshAccessToken();
+        token = await refreshAccessToken({ redirectOnFailure: redirectOnInvalid });
         const retryHeaders = isFormData
-          ? buildHeaders(token, options.headers || {})
-          : buildHeaders(token, { "Content-Type": "application/json", ...(options.headers || {}) });
-        res = await fetch(url, { ...options, credentials: "include", headers: retryHeaders });
+          ? buildHeaders(token, fetchOptions.headers || {})
+          : buildHeaders(token, { "Content-Type": "application/json", ...(fetchOptions.headers || {}) });
+        res = await fetch(url, { ...fetchOptions, credentials: "include", headers: retryHeaders });
       } catch {
-        // refreshAccessToken já faz o redirect
+        if (!redirectOnInvalid) return res;
         throw new Error("Sessão encerrada.");
       }
     }
 
     if (res.status === 401 || (res.status === 404 && endpoint === "/api/user")) {
-      handleInvalidSession();
+      handleInvalidSession({ redirect: redirectOnInvalid });
+      if (!redirectOnInvalid) return res;
       throw new Error("Sessao encerrada.");
     }
 
@@ -278,6 +280,38 @@ const Auth = (() => {
     }
 
     return res;
+  }
+
+  async function publicFetch(endpoint, options = {}) {
+    const fetchOptions = { ...options };
+    delete fetchOptions.redirectOnInvalid;
+    const isFormData = fetchOptions.body instanceof FormData;
+    const headers = isFormData
+      ? { ...(fetchOptions.headers || {}) }
+      : { "Content-Type": "application/json", ...(fetchOptions.headers || {}) };
+
+    return fetch(`${CONFIG.API_URL}${endpoint}`, {
+      ...fetchOptions,
+      credentials: "include",
+      headers,
+    });
+  }
+
+  async function optionalFetch(endpoint, options = {}) {
+    if (!isAuthenticated()) {
+      return publicFetch(endpoint, options);
+    }
+
+    const res = await authenticatedFetch(endpoint, {
+      ...options,
+      redirectOnInvalid: false,
+    });
+
+    if (res.status !== 401 && res.status !== 422) {
+      return res;
+    }
+
+    return publicFetch(endpoint, options);
   }
 
   // ─── Login ────────────────────────────────────────────────────────────────
@@ -387,15 +421,16 @@ const Auth = (() => {
    * Cria uma nova conta de usuário.
    * @param {string} nome
    * @param {string} email
+   * @param {string} confirmEmail
    * @param {string} password
    * @param {Array}  veiculos - lista de objetos de veículo (opcional)
    */
-  async function register(nome, email, password, veiculos = []) {
+  async function register(nome, email, confirmEmail, password, veiculos = []) {
     const res = await fetch(`${CONFIG.API_URL}/api/cadastro`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, password, veiculos }),
+      body: JSON.stringify({ nome, email, confirm_email: confirmEmail, password, veiculos }),
     });
 
     const data = await res.json();
@@ -699,6 +734,8 @@ const Auth = (() => {
     getUser,
     getAccessToken,
     authenticatedFetch,
+    optionalFetch,
+    publicFetch,
     saveSession,
     syncUser,
     showPremiumPaywall,

@@ -741,6 +741,31 @@
         box-shadow: var(--shadow-glow);
       }
 
+      .guest-notice {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: min(920px, calc(100% - 24px));
+        margin: 12px auto 0;
+        padding: 10px 14px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        font-size: 13px;
+      }
+
+      .guest-notice[hidden] {
+        display: none;
+      }
+
+      .guest-notice a {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
       .image-preview-container {
         display: none;
         gap: 10px;
@@ -761,6 +786,45 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+      }
+
+      .file-preview-item {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 100%;
+        min-height: 48px;
+        padding: 10px 36px 10px 12px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius);
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+      }
+
+      .file-preview-item i {
+        color: var(--accent);
+        flex: 0 0 auto;
+      }
+
+      .file-preview-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .file-preview-name {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .file-preview-meta {
+        color: var(--text-muted);
+        font-size: 12px;
       }
 
       .image-preview-actions {
@@ -965,7 +1029,7 @@
             <i class="fas fa-comments"></i>
             <span>Chat</span>
           </a>
-          <a href="maintenance_history.html" class="nav-btn">
+          <a href="maintenance_history.html" id="navMaintenance" class="nav-btn">
             <i class="fas fa-history"></i>
             <span>Anotações</span>
           </a>
@@ -973,9 +1037,17 @@
             <i class="fas fa-book"></i>
             <span>Biblioteca</span>
           </a>
-          <a href="perfil.html" class="nav-btn">
+          <a href="perfil.html" id="navProfile" class="nav-btn">
             <i class="fas fa-user-circle"></i>
             <span>Perfil</span>
+          </a>
+          <a href="login.html" id="navLogin" class="nav-btn" style="display: none;">
+            <i class="fas fa-sign-in-alt"></i>
+            <span>Entrar</span>
+          </a>
+          <a href="cadastro.html" id="navSignup" class="nav-btn nav-btn-accent" style="display: none;">
+            <i class="fas fa-user-plus"></i>
+            <span>Criar conta</span>
           </a>
           <button id="logout" class="nav-btn nav-btn-danger">
             <i class="fas fa-sign-out-alt"></i>
@@ -1015,16 +1087,20 @@
       <button id="sidebarOverlay" class="sidebar-overlay" type="button" aria-label="Fechar histórico"></button>
 
       <main class="chat-main">
+        <div id="guestNotice" class="guest-notice" hidden>
+          <span>Visitante: <strong id="guestRemaining">10</strong> mensagens gratuitas restantes.</span>
+          <a href="cadastro.html">Criar conta</a>
+        </div>
         <div id="messages"></div>
 
     <footer>
-      <input type="file" id="fileInput" style="display: none" accept="image/*" />
+      <input type="file" id="fileInput" style="display: none" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,text/csv,text/markdown,application/json,.txt,.md,.csv,.json,.pdf" />
       
       <div class="chat-input-wrapper">
         <div id="imagePreviewContainer" class="image-preview-container"></div>
         
         <div class="chat-input-row">
-          <button id="attach" class="btn-icon" title="Anexar foto">
+          <button id="attach" class="btn-icon" title="Anexar arquivo">
             <i class="fas fa-plus"></i>
           </button>
           <input id="messageInput" placeholder="Pergunte sobre seu veículo..." autocomplete="off" />
@@ -1059,22 +1135,101 @@
       const sidebarSearch = document.getElementById("sidebarSearch");
       const chatHistorySearch = document.getElementById("chatHistorySearch");
       const chatHistoryList = document.getElementById("chatHistoryList");
+      const navDashboard = document.getElementById("navDashboard");
+      const navMaintenance = document.getElementById("navMaintenance");
+      const navProfile = document.getElementById("navProfile");
+      const navLogin = document.getElementById("navLogin");
+      const navSignup = document.getElementById("navSignup");
+      const logoutBtn = document.getElementById("logout");
+      const guestNotice = document.getElementById("guestNotice");
+      const guestRemaining = document.getElementById("guestRemaining");
 
+      const FREE_GUEST_MESSAGE_LIMIT = 10;
+      const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+      const GUEST_ID_KEY = "autoassist_guest_id";
+      const GUEST_MESSAGE_COUNT_KEY = "autoassist_guest_message_count";
+      const AUTH_HISTORY_CACHE_PREFIX = "autoassist_chat_history_cache_v2";
+      const GUEST_HISTORY_CACHE_KEY = "autoassist_guest_chat_history_cache_v1";
+      const supportedAttachmentTypes = new Set([
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "application/pdf",
+        "text/plain",
+        "text/csv",
+        "text/markdown",
+        "application/json",
+      ]);
+      const supportedAttachmentExtensions = new Set(["txt", "md", "csv", "json", "pdf"]);
+
+      const isAuthenticated = typeof Auth !== "undefined" && Auth.isAuthenticated();
+      const currentUser = isAuthenticated && typeof Auth !== "undefined" ? Auth.getUser() : null;
+      const guestId = isAuthenticated ? null : getGuestId();
       let lastAnalysisText = "";
       let isVoiceActive = false;
       let chatHistoryItems = [];
       let activeHistoryKey = null;
       let currentThreadHistory = [];
 
-      // Auth check
-      if (typeof Auth !== 'undefined' && !Auth.isAuthenticated()) {
-        window.location.href = "login.html";
-      } else {
-        const user = Auth.getUser();
-        if (user && user.is_premium) {
-          document.getElementById('navDashboard').style.display = 'inline-flex';
-          document.getElementById('btnMyVideos').style.display = 'inline-flex';
+      configureAccessControls();
+      updateGuestNotice();
+
+      function getGuestId() {
+        const stored = localStorage.getItem(GUEST_ID_KEY);
+        if (stored) return stored;
+
+        const generated = window.crypto?.randomUUID
+          ? window.crypto.randomUUID()
+          : `guest_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem(GUEST_ID_KEY, generated);
+        return generated;
+      }
+
+      function getGuestMessageCount() {
+        return Number(localStorage.getItem(GUEST_MESSAGE_COUNT_KEY) || "0");
+      }
+
+      function setGuestMessageCount(value) {
+        localStorage.setItem(GUEST_MESSAGE_COUNT_KEY, String(Math.max(0, value)));
+        updateGuestNotice();
+      }
+
+      function updateGuestNotice() {
+        if (!guestNotice || !guestRemaining) return;
+        if (isAuthenticated) {
+          guestNotice.hidden = true;
+          return;
         }
+
+        const remaining = Math.max(0, FREE_GUEST_MESSAGE_LIMIT - getGuestMessageCount());
+        guestRemaining.textContent = String(remaining);
+        guestNotice.hidden = false;
+      }
+
+      function configureAccessControls() {
+        if (isAuthenticated) {
+          navLogin.style.display = "none";
+          navSignup.style.display = "none";
+          navMaintenance.style.display = "inline-flex";
+          navProfile.style.display = "inline-flex";
+          logoutBtn.style.display = "inline-flex";
+          btnReport.style.display = "inline-flex";
+          if (currentUser?.is_premium) {
+            navDashboard.style.display = "inline-flex";
+            btnMyVideos.style.display = "inline-flex";
+          }
+          return;
+        }
+
+        navDashboard.style.display = "none";
+        btnMyVideos.style.display = "none";
+        navMaintenance.style.display = "none";
+        navProfile.style.display = "none";
+        logoutBtn.style.display = "none";
+        btnReport.style.display = "none";
+        navLogin.style.display = "inline-flex";
+        navSignup.style.display = "inline-flex";
       }
 
       // Voice support: o fluxo usa MediaRecorder/getUserMedia, nao Web Speech.
@@ -1105,6 +1260,11 @@
       btnVoice.addEventListener("click", async () => {
         if (!supportsVoiceInput) {
           input.placeholder = "Voz indisponivel neste navegador.";
+          return;
+        }
+
+        if (!canGuestSendMessage()) {
+          showGuestLimitPrompt();
           return;
         }
 
@@ -1216,22 +1376,29 @@
         formData.append("audio", blob, "voice.webm");
         formData.append("ignore_global_history", "true");
         formData.append("client_history", JSON.stringify(currentThreadHistory));
+        if (!isAuthenticated && guestId) formData.append("guest_id", guestId);
 
         const file = fileInput.files[0];
+        let attachmentPayload = null;
         if (file) {
-          const reader = new FileReader();
-          const imageBase64 = await new Promise((r) => {
-            reader.onload = () => r(reader.result);
-            reader.readAsDataURL(file);
-          });
-          formData.append("image", imageBase64);
-          
-          fileInput.value = "";
-          document.getElementById("imagePreviewContainer").style.display = "none";
-          document.getElementById("imagePreviewContainer").innerHTML = "";
+          try {
+            attachmentPayload = await buildAttachmentPayload(file);
+            formData.append("attachment", JSON.stringify(attachmentPayload));
+          } catch (err) {
+            addMessage(`<strong>Erro:</strong> ${err.message}`, "msg-bot", true);
+            return;
+          }
+          clearAttachmentPreview();
         }
 
-        addMessage(file ? "Áudio enviado com imagem anexada" : "Áudio enviado", "msg-user");
+        addMessage(
+          file ? `Áudio enviado com arquivo anexado: ${file.name}` : "Áudio enviado",
+          "msg-user",
+          false,
+          [],
+          [],
+          attachmentMetadataFromFile(file)
+        );
         const typingDiv = addMessage(
           '<div class="typing-indicator"><span></span><span></span><span></span></div>',
           "msg-bot",
@@ -1239,33 +1406,42 @@
         );
 
         try {
-          const res = await Auth.authenticatedFetch("/api/voice", {
+          const res = await chatApiFetch("/api/voice", {
             method: "POST",
             body: formData,
           });
 
-          const data = await res.json();
-          if (data.error) {
-            typingDiv.textContent = data.error;
-          } else {
-            const userMsgs = document.querySelectorAll(".msg-user");
-            userMsgs[userMsgs.length - 1].textContent = data.text;
-            
-            const cleanHtml = DOMPurify.sanitize(marked.parse(data.response));
-            typingDiv.innerHTML = cleanHtml;
-            appendVideosToDiv(typingDiv, data.videos);
-            appendLinksToDiv(typingDiv, data.links);
-            lastAnalysisText = data.response;
-            appendToCurrentThread(data.text, data.response);
-            addChatToHistory(data.chat || {
-              mensagem_usuario: data.text,
-              resposta_ia: data.response,
-              created_at: new Date().toISOString(),
-              videos: data.videos || [],
-              links: data.links || [],
-              topic: "",
-            });
-        }
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.error) {
+            if (data.code === "guest_limit_reached") {
+              typingDiv.closest(".message-row")?.remove();
+              setGuestMessageCount(FREE_GUEST_MESSAGE_LIMIT);
+              showGuestLimitPrompt();
+              return;
+            }
+            typingDiv.textContent = data.error || "Erro ao processar voz.";
+            return;
+          }
+
+          const userMsgs = document.querySelectorAll(".msg-user");
+          userMsgs[userMsgs.length - 1].textContent = data.text;
+
+          const cleanHtml = DOMPurify.sanitize(marked.parse(data.response));
+          typingDiv.innerHTML = cleanHtml;
+          appendVideosToDiv(typingDiv, data.videos);
+          appendLinksToDiv(typingDiv, data.links);
+          lastAnalysisText = data.response;
+          updateGuestUsageFromServer(data.guest_messages_remaining, data.guest_limit);
+          appendToCurrentThread(data.chat?.mensagem_usuario || data.text, data.response);
+          addChatToHistory(data.chat || {
+            mensagem_usuario: data.text,
+            resposta_ia: data.response,
+            created_at: new Date().toISOString(),
+            videos: data.videos || [],
+            links: data.links || [],
+            topic: "",
+            attachments: attachmentMetadataFromFile(file),
+          });
         } catch (err) {
           typingDiv.textContent = "Erro ao processar voz.";
         }
@@ -1315,6 +1491,113 @@
           messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }, 100);
       };
+
+      function formatBytes(bytes = 0) {
+        if (!bytes) return "0 KB";
+        if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      }
+
+      function getFileExtension(file) {
+        return (file.name.split(".").pop() || "").toLowerCase();
+      }
+
+      function getAttachmentType(file) {
+        if (file.type === "text/x-markdown") return "text/markdown";
+        if (file.type) return file.type;
+        const extension = getFileExtension(file);
+        if (extension === "md") return "text/markdown";
+        if (extension === "txt") return "text/plain";
+        if (extension === "csv") return "text/csv";
+        if (extension === "json") return "application/json";
+        if (extension === "pdf") return "application/pdf";
+        return "";
+      }
+
+      function isSupportedAttachment(file) {
+        const type = getAttachmentType(file);
+        return supportedAttachmentTypes.has(type) || supportedAttachmentExtensions.has(getFileExtension(file));
+      }
+
+      function getAttachmentIcon(type) {
+        if (type.startsWith("image/")) return "fas fa-image";
+        if (type === "application/pdf") return "fas fa-file-pdf";
+        if (type.includes("json")) return "fas fa-code";
+        if (type.includes("csv")) return "fas fa-table";
+        return "fas fa-file-lines";
+      }
+
+      function attachmentMetadataFromFile(file) {
+        if (!file) return [];
+        const type = getAttachmentType(file);
+        return [{ name: file.name, type, size: file.size }];
+      }
+
+      function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function buildAttachmentPayload(file) {
+        if (!file) return null;
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+          throw new Error("O arquivo anexado deve ter no máximo 8 MB.");
+        }
+        if (!isSupportedAttachment(file)) {
+          throw new Error("Formato não suportado. Envie imagem, PDF, TXT, CSV, Markdown ou JSON.");
+        }
+
+        return {
+          name: file.name,
+          type: getAttachmentType(file),
+          size: file.size,
+          data: await readFileAsDataURL(file),
+        };
+      }
+
+      function clearAttachmentPreview() {
+        fileInput.value = "";
+        const container = document.getElementById("imagePreviewContainer");
+        container.style.display = "none";
+        container.innerHTML = "";
+      }
+
+      function updateGuestUsageFromServer(remaining, limit = FREE_GUEST_MESSAGE_LIMIT) {
+        if (isAuthenticated || typeof remaining !== "number") return;
+        setGuestMessageCount(Math.max(0, limit - remaining));
+      }
+
+      function canGuestSendMessage() {
+        return isAuthenticated || getGuestMessageCount() < FREE_GUEST_MESSAGE_LIMIT;
+      }
+
+      function showGuestLimitPrompt() {
+        const html = `
+          <p>Você atingiu o limite de 10 mensagens gratuitas.</p>
+          <p><a href="login.html">Entrar</a> ou <a href="cadastro.html">criar conta</a> para continuar.</p>
+        `;
+        addMessage(html, "msg-bot", true);
+        updateGuestNotice();
+      }
+
+      async function chatApiFetch(endpoint, options = {}) {
+        const headers = { ...(options.headers || {}) };
+        if (!isAuthenticated && guestId) headers["X-AutoAssist-Guest-Id"] = guestId;
+
+        if (typeof Auth !== "undefined" && Auth.optionalFetch) {
+          return Auth.optionalFetch(endpoint, { ...options, headers });
+        }
+
+        return fetch(`${CONFIG.API_URL}${endpoint}`, {
+          ...options,
+          credentials: "include",
+          headers,
+        });
+      }
 
       const normalizeHistoryText = (value = "") =>
         String(value)
@@ -1367,6 +1650,47 @@
           minute: "2-digit",
         });
       };
+
+      function getHistoryCacheKey() {
+        if (!isAuthenticated) return GUEST_HISTORY_CACHE_KEY;
+        return `${AUTH_HISTORY_CACHE_PREFIX}:${currentUser?.id || "session"}`;
+      }
+
+      function readChatHistoryCache() {
+        try {
+          const cached = JSON.parse(localStorage.getItem(getHistoryCacheKey()) || "null");
+          if (Array.isArray(cached)) return cached;
+          if (Array.isArray(cached?.items)) return cached.items;
+        } catch {
+          return [];
+        }
+        return [];
+      }
+
+      function writeChatHistoryCache(items) {
+        localStorage.setItem(getHistoryCacheKey(), JSON.stringify({
+          ts: Date.now(),
+          items: Array.isArray(items) ? items : [],
+        }));
+      }
+
+      function getLatestHistoryId(items = chatHistoryItems) {
+        return items.reduce((latest, chat) => Math.max(latest, Number(chat.id || 0)), 0);
+      }
+
+      function mergeChatHistory(existingItems, newItems) {
+        const merged = new Map();
+        [...existingItems, ...newItems].forEach((chat) => {
+          const key = chat.id ? `id:${chat.id}` : `local:${chat.created_at}:${chat.mensagem_usuario}`;
+          merged.set(key, chat);
+        });
+
+        return Array.from(merged.values()).sort((a, b) => {
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateA - dateB;
+        });
+      }
 
       function setSidebarOpen(open) {
         document.body.classList.toggle("sidebar-open", open);
@@ -1439,9 +1763,7 @@
             messagesDiv.innerHTML = "";
             lastAnalysisText = "";
           }
-          if (typeof Auth !== 'undefined') {
-            Auth.Cache.set('autoassist_chat_history_cache', chatHistoryItems);
-          }
+          writeChatHistoryCache(chatHistoryItems);
           renderHistoryList();
           return;
         }
@@ -1463,9 +1785,7 @@
             messagesDiv.innerHTML = "";
             lastAnalysisText = "";
           }
-          if (typeof Auth !== 'undefined') {
-            Auth.Cache.set('autoassist_chat_history_cache', chatHistoryItems);
-          }
+          writeChatHistoryCache(chatHistoryItems);
           renderHistoryList();
         } catch (error) {
           console.warn("Erro ao excluir chat:", error);
@@ -1475,7 +1795,7 @@
       }
 
       function renderChatEntry(chat) {
-        addMessage(chat.mensagem_usuario || "Imagem anexada", "msg-user");
+        addMessage(chat.mensagem_usuario || "Arquivo anexado", "msg-user", false, [], [], chat.attachments || []);
 
         let cleanHtml = "";
         try {
@@ -1525,9 +1845,7 @@
         if (!chat) return;
         chatHistoryItems = [...chatHistoryItems, chat];
         activeHistoryKey = makeHistoryKey(chat, chatHistoryItems.length - 1);
-        if (typeof Auth !== 'undefined') {
-          Auth.Cache.set('autoassist_chat_history_cache', chatHistoryItems);
-        }
+        writeChatHistoryCache(chatHistoryItems);
         renderHistoryList();
       }
 
@@ -1542,7 +1860,12 @@
                 a.href = l.url;
                 a.target = "_blank";
                 a.rel = "noopener noreferrer";
-                a.innerHTML = `<i class="${l.icon || 'fas fa-external-link-alt'}"></i> <span>${l.titulo}</span>`;
+                const icon = document.createElement("i");
+                icon.className = l.icon || "fas fa-external-link-alt";
+                const label = document.createElement("span");
+                label.textContent = l.titulo || "Abrir link";
+                a.appendChild(icon);
+                a.appendChild(label);
                 lContainer.appendChild(a);
             });
             div.appendChild(lContainer);
@@ -1550,7 +1873,32 @@
         }
     }
 
-    function addMessage(text, cls, isHtml = false, videos = [], links = []) {
+    function appendAttachmentsToDiv(div, attachments = []) {
+        if (!attachments.length) return;
+
+        const container = document.createElement("div");
+        container.className = "links-container";
+        attachments.forEach((attachment) => {
+          const type = attachment.type || "";
+          const chip = document.createElement("div");
+          chip.className = "recommendation-link";
+
+          const icon = document.createElement("i");
+          icon.className = getAttachmentIcon(type);
+
+          const label = document.createElement("span");
+          label.textContent = `${attachment.name || "Arquivo"} (${formatBytes(Number(attachment.size || 0))})`;
+
+          chip.appendChild(icon);
+          chip.appendChild(label);
+          container.appendChild(chip);
+        });
+
+        div.appendChild(container);
+        scrollToBottom();
+    }
+
+    function addMessage(text, cls, isHtml = false, videos = [], links = [], attachments = []) {
         const isUser = cls.includes("msg-user");
         const isBot = cls.includes("msg-bot");
         const row = document.createElement("div");
@@ -1589,6 +1937,7 @@
         
         appendVideosToDiv(div, videos);
         appendLinksToDiv(div, links);
+        appendAttachmentsToDiv(div, attachments);
         
         scrollToBottom();
         return div;
@@ -1599,16 +1948,32 @@
         const file = fileInput.files[0];
         if (!msg && !file) return;
 
-        const userMessageText = msg || "Imagem anexada";
+        if (!canGuestSendMessage()) {
+          showGuestLimitPrompt();
+          return;
+        }
+
+        let attachmentPayload = null;
+        try {
+          attachmentPayload = await buildAttachmentPayload(file);
+        } catch (err) {
+          addMessage(`<strong>Erro:</strong> ${err.message}`, "msg-bot", true);
+          return;
+        }
+
+        const attachmentLabel = file ? `Arquivo anexado: ${file.name}` : "";
+        const userMessageText = msg || attachmentLabel;
         addMessage(
-          `${userMessageText}${file && msg ? " [Imagem anexada]" : ""}`,
-          "msg-user"
+          `${userMessageText}${file && msg ? ` [${attachmentLabel}]` : ""}`,
+          "msg-user",
+          false,
+          [],
+          [],
+          attachmentMetadataFromFile(file)
         );
 
         input.value = "";
-        fileInput.value = "";
-        document.getElementById("imagePreviewContainer").style.display = "none";
-        document.getElementById("imagePreviewContainer").innerHTML = "";
+        clearAttachmentPreview();
 
         const typingDiv = addMessage(
           '<div class="typing-indicator"><span></span><span></span><span></span></div>',
@@ -1624,21 +1989,26 @@
             ignore_global_history: true,
             client_history: currentThreadHistory,
           };
-          if (file) {
-            const reader = new FileReader();
-            payload.image = await new Promise((r) => {
-              reader.onload = () => r(reader.result);
-              reader.readAsDataURL(file);
-            });
-          }
+          if (attachmentPayload) payload.attachment = attachmentPayload;
+          if (!isAuthenticated && guestId) payload.guest_id = guestId;
 
-          const res = await Auth.authenticatedFetch("/api/chat", {
+          const res = await chatApiFetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
 
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.error) {
+            if (data.code === "guest_limit_reached") {
+              typingDiv.closest(".message-row")?.remove();
+              setGuestMessageCount(FREE_GUEST_MESSAGE_LIMIT);
+              showGuestLimitPrompt();
+              return;
+            }
+            throw new Error(data.error || "Não foi possível enviar a mensagem.");
+          }
+
           const botResponse = data.response || data.text || "Desculpe, não consegui processar.";
           lastAnalysisText = botResponse;
 
@@ -1647,18 +2017,20 @@
           appendVideosToDiv(typingDiv, data.videos);
           appendLinksToDiv(typingDiv, data.links);
           typingDiv.id = "";
-          appendToCurrentThread(msg, botResponse);
+          updateGuestUsageFromServer(data.guest_messages_remaining, data.guest_limit);
+          appendToCurrentThread(data.chat?.mensagem_usuario || userMessageText, botResponse);
           addChatToHistory(data.chat || {
-            mensagem_usuario: msg,
+            mensagem_usuario: userMessageText,
             resposta_ia: botResponse,
             created_at: new Date().toISOString(),
             videos: data.videos || [],
             links: data.links || [],
             topic: "",
+            attachments: attachmentMetadataFromFile(file),
           });
 
         } catch (err) {
-          typingDiv.innerHTML = "<strong>Erro:</strong> Falha na conexão.";
+          typingDiv.innerHTML = `<strong>Erro:</strong> ${err.message || "Falha na conexão."}`;
         }
         scrollToBottom();
       };
@@ -1705,43 +2077,70 @@
       
       fileInput.addEventListener("change", () => {
         const container = document.getElementById("imagePreviewContainer");
-        if (fileInput.files[0]) {
-          const file = fileInput.files[0];
+        const file = fileInput.files[0];
+        if (!file) {
+          clearAttachmentPreview();
+          return;
+        }
+
+        if (file.size > MAX_ATTACHMENT_BYTES || !isSupportedAttachment(file)) {
+          alert(file.size > MAX_ATTACHMENT_BYTES
+            ? "O arquivo anexado deve ter no máximo 8 MB."
+            : "Formato não suportado. Envie imagem, PDF, TXT, CSV, Markdown ou JSON.");
+          clearAttachmentPreview();
+          return;
+        }
+
+        const type = getAttachmentType(file);
+        const removeButton = `
+          <div class="image-preview-actions">
+            <div class="image-preview-btn" id="removeImageBtn" title="Remover">
+              <i class="fas fa-times"></i>
+            </div>
+          </div>
+        `;
+
+        if (type.startsWith("image/")) {
           const reader = new FileReader();
-          
           reader.onload = function(e) {
             container.innerHTML = `
               <div class="image-preview-item">
                 <img src="${e.target.result}" alt="Preview">
-                <div class="image-preview-actions">
-                  <div class="image-preview-btn" id="removeImageBtn" title="Remover">
-                    <i class="fas fa-times"></i>
-                  </div>
-                </div>
+                ${removeButton}
               </div>
             `;
             container.style.display = "flex";
-            
-            document.getElementById("removeImageBtn").addEventListener("click", () => {
-              fileInput.value = "";
-              container.style.display = "none";
-              container.innerHTML = "";
-            });
-          }
-          
+            document.getElementById("removeImageBtn").addEventListener("click", clearAttachmentPreview);
+          };
           reader.readAsDataURL(file);
-        } else {
-          container.style.display = "none";
-          container.innerHTML = "";
+          return;
         }
+
+        container.innerHTML = `
+          <div class="file-preview-item">
+            <i class="${getAttachmentIcon(type)}"></i>
+            <span class="file-preview-text">
+              <span class="file-preview-name"></span>
+              <span class="file-preview-meta">${formatBytes(file.size)}</span>
+            </span>
+            ${removeButton}
+          </div>
+        `;
+        container.querySelector(".file-preview-name").textContent = file.name;
+        container.style.display = "flex";
+        document.getElementById("removeImageBtn").addEventListener("click", clearAttachmentPreview);
       });
 
-      document.getElementById("logout").addEventListener("click", () => {
+      logoutBtn?.addEventListener("click", () => {
         if (typeof Auth !== 'undefined') Auth.logout();
       });
 
       // Report
       btnReport.addEventListener("click", async () => {
+        if (!isAuthenticated) {
+          alert("Faça login ou crie uma conta para exportar conversas em PDF.");
+          return;
+        }
         if (!lastAnalysisText) return alert("Faça uma análise primeiro.");
         btnReport.disabled = true;
         try {
@@ -1777,24 +2176,31 @@
 
       // Load history
       (async () => {
-        if (typeof Auth === 'undefined') {
+        const cachedHistory = readChatHistoryCache();
+        if (cachedHistory.length) {
+          renderChatHistory(cachedHistory);
+        } else {
           renderHistoryList();
+        }
+
+        if (!isAuthenticated || typeof Auth === "undefined") {
           return;
         }
 
-        // Tenta carregar do cache para resposta instantânea
-        const cachedHistory = Auth.Cache.get('autoassist_chat_history_cache');
-        if (cachedHistory) {
-          renderChatHistory(cachedHistory);
-        }
-
         try {
-          const res = await Auth.authenticatedFetch("/api/chat/history");
+          const latestId = getLatestHistoryId(cachedHistory);
+          const endpoint = latestId
+            ? `/api/chat/history?after_id=${encodeURIComponent(latestId)}&limit=100`
+            : "/api/chat/history?limit=100";
+          const res = await Auth.authenticatedFetch(endpoint, { redirectOnInvalid: false });
           if (res.ok) {
             const data = await res.json();
             if (data.chats) {
-              Auth.Cache.set('autoassist_chat_history_cache', data.chats);
-              renderChatHistory(data.chats);
+              const nextHistory = latestId
+                ? mergeChatHistory(chatHistoryItems, data.chats)
+                : data.chats;
+              writeChatHistoryCache(nextHistory);
+              renderChatHistory(nextHistory);
             }
           }
           if (!chatHistoryItems.length) renderHistoryList();

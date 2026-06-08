@@ -89,7 +89,10 @@
             gap: 8px;
             padding: 4px 8px;
             background: transparent;
+            border: none;
             color: var(--text-secondary);
+            cursor: pointer;
+            font-family: inherit;
             text-decoration: none;
             font-size: 14px;
             cursor: pointer;
@@ -378,12 +381,12 @@
             <img src="logo.png?v=20260511" alt="AutoAssist">
             AutoAssist
         </a>
-        <div class="nav-links">
-            <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <div class="nav-links" id="navLinks">
+            <a href="index.html" class="nav-link"><i class="fas fa-home"></i> Início</a>
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
-            <a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>
-            <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
+            <a href="feedback.html" class="nav-link active"><i class="fas fa-star"></i> Feedbacks</a>
+            <a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Entrar</a>
+            <a href="cadastro.html" class="nav-link"><i class="fas fa-user-plus"></i> Criar conta</a>
         </div>
     </div>
 </nav>
@@ -461,6 +464,32 @@
     let selectedStars = 5;
     const API_BASE = (typeof CONFIG !== 'undefined' && typeof CONFIG.API_URL === 'string') ? CONFIG.API_URL : '';
 
+    function isAuthenticated() {
+        return typeof Auth !== 'undefined' && Auth.isAuthenticated();
+    }
+
+    function getCurrentUser() {
+        return isAuthenticated() ? Auth.getUser() : null;
+    }
+
+    function renderNavigation() {
+        const navLinks = document.getElementById('navLinks');
+        if (!navLinks || !isAuthenticated()) return;
+
+        const user = getCurrentUser();
+        navLinks.innerHTML = `
+            ${user?.is_premium ? '<a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>' : ''}
+            <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
+            ${user?.is_premium ? '<a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>' : ''}
+            <a href="feedback.html" class="nav-link active"><i class="fas fa-star"></i> Feedbacks</a>
+            <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
+            <button type="button" class="nav-link" id="btnLogout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        `;
+
+        document.getElementById('btnLogout')?.addEventListener('click', () => Auth.logout());
+    }
+
     document.querySelectorAll('.star').forEach(star => {
         star.addEventListener('click', () => {
             selectedStars = parseInt(star.getAttribute('data-value'));
@@ -493,7 +522,7 @@
             const res = await fetch(`${API_BASE}/api/feedbacks`);
             const data = await res.json();
             const container = document.getElementById('feedbackList');
-            const currentUser = Auth.getUser();
+            const currentUser = getCurrentUser();
 
             if (!data.feedbacks || data.feedbacks.length === 0) {
                 container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">Nenhum feedback ainda. Seja o primeiro!</div>';
@@ -624,12 +653,6 @@
     document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        if (!Auth.isAuthenticated()) {
-            alert('Faca login para enviar feedback.');
-            window.location.href = 'login.html';
-            return;
-        }
-
         const btn = document.getElementById('btnSubmit');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
@@ -642,13 +665,16 @@
         };
 
         try {
-            const res = await Auth.authenticatedFetch('/api/feedback', {
+            const requestOptions = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
-            });
+            };
+            const res = isAuthenticated()
+                ? await Auth.authenticatedFetch('/api/feedback', requestOptions)
+                : await fetch(`${API_BASE}/api/feedback`, requestOptions);
 
             if (res.ok) {
                 showToast();
@@ -683,8 +709,10 @@
         }, 5000);
     }
 
-    if (Auth.isAuthenticated()) {
-        const user = Auth.getUser();
+    renderNavigation();
+
+    if (isAuthenticated()) {
+        const user = getCurrentUser();
         if (user) {
             document.getElementById('userName').value = user.nome || '';
             document.getElementById('userEmail').value = user.email || '';

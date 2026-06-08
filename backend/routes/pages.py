@@ -1,7 +1,10 @@
 import os
 import io
+import base64
+import hashlib
 import html
 import logging
+import mimetypes
 import re
 import threading
 import unicodedata
@@ -10,7 +13,7 @@ from datetime import datetime, timedelta
 from time import monotonic
 from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
 import speech_recognition as sr
 from pydub import AudioSegment
@@ -24,6 +27,7 @@ from services.nogai import (
 import json
 from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
+from services.attachment_ai import analisar_arquivo
 from services.report_generator import criar_relatorio_pdf
 from services.maintenance_service import (
     parse_maintenance_entry,
@@ -63,6 +67,22 @@ GENERIC_CHAT_TOKENS = {
     "tarde",
     "tudo",
     "valeu",
+}
+
+GUEST_CHAT_LIMIT = 10
+MAX_CHAT_HISTORY_LIMIT = 200
+DEFAULT_CHAT_HISTORY_LIMIT = 100
+MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
+TEXT_ATTACHMENT_LIMIT = 12000
+IMAGE_ATTACHMENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+BINARY_ATTACHMENT_TYPES = {"application/pdf"}
+TEXT_ATTACHMENT_TYPES = {
+    "application/json",
+    "application/xml",
+    "text/csv",
+    "text/markdown",
+    "text/plain",
+    "text/xml",
 }
 
 def get_dashboard_url() -> str:
@@ -124,6 +144,175 @@ def is_generic_chat_message(message):
     return bool(tokens) and len(tokens) <= 5 and all(token in GENERIC_CHAT_TOKENS for token in tokens)
 
 
+def get_optional_user_id():
+    try:
+        verify_jwt_in_request(optional=True)
+        return get_jwt_identity()
+    except Exception as exc:
+        logger.info("Sessao opcional ignorada no chat publico: %s", exc)
+        return None
+
+
+def normalize_guest_id(raw_guest_id):
+    guest_id = (raw_guest_id or "").strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{16,128}", guest_id):
+        return guest_id
+    return None
+
+
+def hash_guest_id(guest_id):
+    return hashlib.sha256(guest_id.encode("utf-8")).hexdigest()
+
+
+def ensure_guest_chat_usage_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS guest_chat_usage (
+            guest_id_hash CHAR(64) PRIMARY KEY,
+            message_count INT NOT NULL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def reserve_guest_message(cursor, guest_id):
+    ensure_guest_chat_usage_table(cursor)
+    guest_id_hash = hash_guest_id(guest_id)
+    cursor.execute(
+        "SELECT message_count FROM guest_chat_usage WHERE guest_id_hash = %s",
+        (guest_id_hash,)
+    )
+    row = cursor.fetchone()
+    current_count = int((row or {}).get("message_count") or 0)
+    if current_count >= GUEST_CHAT_LIMIT:
+        return None
+
+    cursor.execute(
+        """
+        INSERT INTO guest_chat_usage (guest_id_hash, message_count)
+        VALUES (%s, 1)
+        ON DUPLICATE KEY UPDATE message_count = message_count + 1
+        """,
+        (guest_id_hash,)
+    )
+    return max(0, GUEST_CHAT_LIMIT - current_count - 1)
+
+
+def parse_json_list(value):
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, str) or not value:
+        return []
+    try:
+        parsed = json.loads(value)
+    except Exception:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def parse_history_limit(raw_limit):
+    try:
+        limit = int(raw_limit or DEFAULT_CHAT_HISTORY_LIMIT)
+    except (TypeError, ValueError):
+        return DEFAULT_CHAT_HISTORY_LIMIT
+    return max(1, min(limit, MAX_CHAT_HISTORY_LIMIT))
+
+
+def parse_after_id(raw_after_id):
+    try:
+        after_id = int(raw_after_id or 0)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, after_id)
+
+
+def decode_attachment_data(data_url):
+    if not isinstance(data_url, str) or "," not in data_url:
+        raise ValueError("Arquivo anexado inválido.")
+
+    header, encoded = data_url.split(",", 1)
+    mime_type = ""
+    if header.startswith("data:"):
+        mime_type = header[5:].split(";", 1)[0].strip().lower()
+
+    try:
+        return mime_type, base64.b64decode(encoded, validate=True)
+    except Exception as exc:
+        raise ValueError("Não foi possível ler o arquivo anexado.") from exc
+
+
+def infer_attachment_mime_type(filename, provided_type, data_url_type):
+    guessed_type = mimetypes.guess_type(filename or "")[0]
+    mime_type = (provided_type or data_url_type or guessed_type or "").strip().lower()
+    if mime_type == "text/x-markdown":
+        return "text/markdown"
+    if mime_type in ("application/x-json", "text/json"):
+        return "application/json"
+    return mime_type
+
+
+def is_supported_attachment_type(mime_type):
+    return (
+        mime_type in IMAGE_ATTACHMENT_TYPES
+        or mime_type in BINARY_ATTACHMENT_TYPES
+        or mime_type in TEXT_ATTACHMENT_TYPES
+    )
+
+
+def parse_chat_attachment(data):
+    raw_attachment = data.get("attachment")
+    if raw_attachment is None and isinstance(data.get("attachments"), list) and data["attachments"]:
+        raw_attachment = data["attachments"][0]
+    if not isinstance(raw_attachment, dict):
+        return None
+
+    raw_filename = (raw_attachment.get("name") or "anexo").replace("\\", "/").strip()
+    filename = os.path.basename(raw_filename)[:120] or "anexo"
+    data_url_type, file_data = decode_attachment_data(raw_attachment.get("data") or "")
+    mime_type = infer_attachment_mime_type(filename, raw_attachment.get("type"), data_url_type)
+    if len(file_data) > MAX_ATTACHMENT_BYTES:
+        raise ValueError("O arquivo anexado deve ter no máximo 8 MB.")
+    if not is_supported_attachment_type(mime_type):
+        raise ValueError("Formato não suportado. Envie imagem PNG/JPG/WebP/GIF, PDF, TXT, CSV, Markdown ou JSON.")
+
+    kind = "text" if mime_type in TEXT_ATTACHMENT_TYPES else "binary"
+    if mime_type in IMAGE_ATTACHMENT_TYPES:
+        kind = "image"
+
+    return {
+        "name": filename,
+        "mime_type": mime_type,
+        "size": len(file_data),
+        "data": file_data,
+        "kind": kind,
+    }
+
+
+def attachment_metadata(attachment):
+    if not attachment:
+        return []
+    return [{
+        "name": attachment["name"],
+        "type": attachment["mime_type"],
+        "size": attachment["size"],
+    }]
+
+
+def build_text_attachment_message(message, attachment):
+    text = attachment["data"].decode("utf-8", errors="replace").strip()
+    if not text:
+        raise ValueError("O arquivo de texto anexado está vazio.")
+
+    clipped_text = text[:TEXT_ATTACHMENT_LIMIT]
+    omitted_notice = "\n\n[Conteúdo cortado para análise.]" if len(text) > TEXT_ATTACHMENT_LIMIT else ""
+    question = (message or "").strip() or "Analise o arquivo anexado e destaque os pontos automotivos relevantes."
+    return (
+        f"{question}\n\n"
+        f"Arquivo anexado: {attachment['name']} ({attachment['mime_type']}).\n"
+        f"Conteúdo do arquivo:\n{clipped_text}{omitted_notice}"
+    )
+
+
 def normalize_client_history(raw_history):
     if not isinstance(raw_history, list):
         return []
@@ -183,19 +372,38 @@ def build_recommendations(message, historico_recente, default_topic="Consultoria
     return videos, links, topic
 
 
-def generate_assistant_payload(message, user_id, user, historico_recente, image_b64=None, default_topic="Consultoria Geral"):
+def generate_assistant_payload(
+    message,
+    user_id,
+    user,
+    historico_recente,
+    image_b64=None,
+    attachment=None,
+    default_topic="Consultoria Geral"
+):
+    prompt_message = message
+    if attachment and attachment["kind"] == "text":
+        prompt_message = build_text_attachment_message(message, attachment)
+
     with ThreadPoolExecutor(max_workers=2) as executor:
-        resposta_future = executor.submit(
-            analisar_imagem,
-            image_b64,
-            message
-        ) if image_b64 else executor.submit(
-            gerar_resposta,
-            message,
-            user_id,
-            user_data=user,
-            historico=historico_recente,
-        )
+        if attachment and attachment["kind"] in ("image", "binary"):
+            resposta_future = executor.submit(
+                analisar_arquivo,
+                attachment["data"],
+                attachment["mime_type"],
+                attachment["name"],
+                message,
+            )
+        elif image_b64:
+            resposta_future = executor.submit(analisar_imagem, image_b64, message)
+        else:
+            resposta_future = executor.submit(
+                gerar_resposta,
+                prompt_message,
+                user_id,
+                user_data=user,
+                historico=historico_recente,
+            )
         recommendations_future = executor.submit(
             build_recommendations,
             message,
@@ -212,6 +420,63 @@ def serialize_datetime_field(value):
     if isinstance(value, datetime):
         return value.isoformat()
     return value
+
+
+def serialize_chat_row(row):
+    videos = parse_json_list(row.get("videos"))
+    links = parse_json_list(row.get("links"))
+    attachments = parse_json_list(row.get("attachments"))
+
+    if is_generic_chat_message(row["mensagem_usuario"]):
+        videos = []
+        links = []
+
+    return {
+        "id": row["id"],
+        "mensagem_usuario": row["mensagem_usuario"],
+        "resposta_ia": row["resposta_ia"],
+        "created_at": serialize_datetime_field(row["created_at"]),
+        "videos": videos,
+        "links": links,
+        "topic": row.get("topic") or "",
+        "attachments": attachments,
+    }
+
+
+def load_user_chat_context(cursor, user_id):
+    user = get_user_by_id(cursor, user_id)
+    if not user:
+        return None
+
+    cursor.execute(
+        "SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s",
+        (user_id,)
+    )
+    veiculos = cursor.fetchall()
+    if veiculos:
+        user["lista_veiculos"] = veiculos
+    return user
+
+
+def select_recent_chat_history(cursor, user_id, message, client_history, ignore_global_history):
+    if is_generic_chat_message(message):
+        return []
+    if ignore_global_history or not user_id:
+        return client_history
+    return get_mysql_history(user_id, limit=3, cursor=cursor)
+
+
+def build_chat_response(chat_id, message, resposta, videos, links, topic, attachments):
+    return {
+        "id": chat_id,
+        "mensagem_usuario": message,
+        "resposta_ia": resposta,
+        "created_at": datetime.now().isoformat(),
+        "videos": videos,
+        "links": links,
+        "topic": topic or "",
+        "attachments": attachments,
+    }
 
 def fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=None, only_actionable=False):
     vehicle_filter = ""
@@ -1189,45 +1454,39 @@ def get_dashboard_data():
 @jwt_required()
 def get_chat_history():
     user_id = get_jwt_identity()
+    after_id = parse_after_id(request.args.get("after_id"))
+    limit = parse_history_limit(request.args.get("limit"))
     try:
         with get_db() as (cursor, conn):
             user = get_user_by_id(cursor, user_id)
             if not user:
                 return invalid_session_response()
 
+            order_direction = "ASC" if after_id else "DESC"
+            after_filter = "AND id > %s" if after_id else ""
+            params = [user_id]
+            if after_id:
+                params.append(after_id)
+            params.append(limit)
+
             cursor.execute(
-                """
-                SELECT id, mensagem_usuario, resposta_ia, created_at, videos, links, topic
+                f"""
+                SELECT id, mensagem_usuario, resposta_ia, created_at, videos, links, topic, attachments
                 FROM chats
                 WHERE user_id = %s
-                ORDER BY created_at ASC
+                {after_filter}
+                ORDER BY id {order_direction}
+                LIMIT %s
                 """,
-                (user_id,)
+                tuple(params)
             )
             rows = cursor.fetchall()
-            chats = []
-            for r in rows:
-                v_data = r["videos"]
-                if isinstance(v_data, str):
-                    try: v_data = json.loads(v_data)
-                    except: v_data = []
-                l_data = r.get("links")
-                if isinstance(l_data, str):
-                    try: l_data = json.loads(l_data)
-                    except: l_data = []
-                if is_generic_chat_message(r["mensagem_usuario"]):
-                    v_data = []
-                    l_data = []
-                chats.append({
-                    "id": r["id"],
-                    "mensagem_usuario": r["mensagem_usuario"],
-                    "resposta_ia": r["resposta_ia"],
-                    "created_at": serialize_datetime_field(r["created_at"]),
-                    "videos": v_data or [],
-                    "links": l_data or [],
-                    "topic": r.get("topic") or ""
-                })
-            return jsonify(chats=chats), 200
+            if not after_id:
+                rows = list(reversed(rows))
+
+            chats = [serialize_chat_row(row) for row in rows]
+            latest_id = max((chat["id"] for chat in chats), default=after_id)
+            return jsonify(chats=chats, latest_id=latest_id), 200
     except Exception as e:
         logger.error(f"Erro no historico: {e}")
         return jsonify(error="Erro interno"), 500
@@ -1373,77 +1632,119 @@ def get_video_library():
 from extensions import limiter
 
 @pages_bp.route("/api/chat", methods=["POST"])
-@jwt_required()
 @limiter.limit("20 per hour")
 def chat():
-    user_id = get_jwt_identity()
+    user_id = get_optional_user_id()
     data = request.get_json(silent=True) or {}
     msg = (data.get("message") or "").strip()
     img_b64 = data.get("image")
+    try:
+        attachment = parse_chat_attachment(data)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+
     client_history = normalize_client_history(data.get("client_history"))
     ignore_global_history = bool(data.get("ignore_global_history"))
-    if not msg and not img_b64:
-        return jsonify(error="Mensagem ou imagem e obrigatoria"), 400
+    if not msg and not img_b64 and not attachment:
+        return jsonify(error="Envie uma mensagem ou anexe um arquivo para análise."), 400
 
     try:
         with get_db() as (cursor, conn):
-            user = get_user_by_id(cursor, user_id)
-            if not user:
-                return invalid_session_response()
-            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
-            veiculos = cursor.fetchall()
-            if veiculos:
-                user['lista_veiculos'] = veiculos
-            if is_generic_chat_message(msg):
-                historico_recente = []
-            elif ignore_global_history:
-                historico_recente = client_history
+            guest_messages_remaining = None
+            if user_id:
+                user = load_user_chat_context(cursor, user_id)
+                if not user:
+                    return invalid_session_response()
             else:
-                historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
+                guest_id = normalize_guest_id(data.get("guest_id") or request.headers.get("X-AutoAssist-Guest-Id"))
+                if not guest_id:
+                    return jsonify(error="Identificação de visitante inválida. Recarregue a página e tente novamente."), 400
+
+                guest_messages_remaining = reserve_guest_message(cursor, guest_id)
+                if guest_messages_remaining is None:
+                    return jsonify(
+                        error="Você atingiu o limite de 10 mensagens gratuitas. Crie uma conta ou faça login para continuar.",
+                        code="guest_limit_reached",
+                        limit=GUEST_CHAT_LIMIT,
+                    ), 403
+                user = {"nome": "Visitante", "is_guest": True}
+
+            historico_recente = select_recent_chat_history(
+                cursor,
+                user_id,
+                msg,
+                client_history,
+                ignore_global_history,
+            )
 
         resposta, videos, links, topic = generate_assistant_payload(
             msg,
-            user_id,
+            user_id or 0,
             user,
             historico_recente,
             image_b64=img_b64,
+            attachment=attachment,
             default_topic="Consultoria Geral",
         )
 
-        with get_db() as (cursor, conn):
-            cursor.execute(
-                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
-                (user_id, msg, resposta, json.dumps(videos), json.dumps(links), topic)
-            )
-            chat_id = cursor.lastrowid
+        stored_message = msg
+        if not stored_message and attachment:
+            stored_message = f"Arquivo anexado: {attachment['name']}"
+        elif not stored_message and img_b64:
+            stored_message = "Imagem anexada"
 
-        return jsonify(
+        attachments = attachment_metadata(attachment)
+        chat_id = None
+        if user_id:
+            with get_db() as (cursor, conn):
+                cursor.execute(
+                    """
+                    INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        user_id,
+                        stored_message,
+                        resposta,
+                        json.dumps(videos),
+                        json.dumps(links),
+                        topic,
+                        json.dumps(attachments),
+                    )
+                )
+                chat_id = cursor.lastrowid
+
+        response_payload = dict(
             response=resposta,
             videos=videos,
             links=links,
-            chat={
-                "id": chat_id,
-                "mensagem_usuario": msg,
-                "resposta_ia": resposta,
-                "created_at": datetime.now().isoformat(),
-                "videos": videos,
-                "links": links,
-                "topic": topic or "",
-            },
+            chat=build_chat_response(chat_id, stored_message, resposta, videos, links, topic, attachments),
         )
+        if guest_messages_remaining is not None:
+            response_payload["guest_messages_remaining"] = guest_messages_remaining
+            response_payload["guest_limit"] = GUEST_CHAT_LIMIT
+        return jsonify(response_payload)
     except Exception as e:
         logger.error(f"Erro na rota /api/chat: {e}")
         return jsonify(error="Erro interno"), 500
 
 @pages_bp.route("/api/voice", methods=["POST"])
-@jwt_required()
 def handle_voice():
-    user_id = get_jwt_identity()
+    user_id = get_optional_user_id()
     if 'audio' not in request.files:
         return jsonify(error="Nenhum áudio recebido"), 400
 
     audio_file = request.files['audio']
     img_b64 = request.form.get("image")
+    attachment = None
+    if request.form.get("attachment"):
+        try:
+            attachment = parse_chat_attachment({"attachment": json.loads(request.form.get("attachment"))})
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+        except Exception:
+            return jsonify(error="Arquivo anexado inválido."), 400
+
     ignore_global_history = (request.form.get("ignore_global_history") or "").lower() in ("1", "true", "yes")
     try:
         client_history = normalize_client_history(json.loads(request.form.get("client_history") or "[]"))
@@ -1465,51 +1766,75 @@ def handle_voice():
         text = recognizer.recognize_google(audio_data, language="pt-BR")
 
         with get_db() as (cursor, conn):
-            user = get_user_by_id(cursor, user_id)
-            if not user:
-                return invalid_session_response()
-            cursor.execute("SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
-            veiculos = cursor.fetchall()
-            if veiculos:
-                user['lista_veiculos'] = veiculos
-            if is_generic_chat_message(text):
-                historico_recente = []
-            elif ignore_global_history:
-                historico_recente = client_history
+            guest_messages_remaining = None
+            if user_id:
+                user = load_user_chat_context(cursor, user_id)
+                if not user:
+                    return invalid_session_response()
             else:
-                historico_recente = get_mysql_history(user_id, limit=3, cursor=cursor)
+                guest_id = normalize_guest_id(request.form.get("guest_id") or request.headers.get("X-AutoAssist-Guest-Id"))
+                if not guest_id:
+                    return jsonify(error="Identificação de visitante inválida. Recarregue a página e tente novamente."), 400
+
+                guest_messages_remaining = reserve_guest_message(cursor, guest_id)
+                if guest_messages_remaining is None:
+                    return jsonify(
+                        error="Você atingiu o limite de 10 mensagens gratuitas. Crie uma conta ou faça login para continuar.",
+                        code="guest_limit_reached",
+                        limit=GUEST_CHAT_LIMIT,
+                    ), 403
+                user = {"nome": "Visitante", "is_guest": True}
+
+            historico_recente = select_recent_chat_history(
+                cursor,
+                user_id,
+                text,
+                client_history,
+                ignore_global_history,
+            )
 
         resposta, videos, links, topic = generate_assistant_payload(
             text,
-            user_id,
+            user_id or 0,
             user,
             historico_recente,
             image_b64=img_b64,
+            attachment=attachment,
             default_topic="Consultoria por Voz",
         )
 
-        with get_db() as (cursor, conn):
-            cursor.execute(
-                "INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic) VALUES (%s, %s, %s, %s, %s, %s)",
-                (user_id, text, resposta, json.dumps(videos), json.dumps(links), topic)
-            )
-            chat_id = cursor.lastrowid
+        attachments = attachment_metadata(attachment)
+        chat_id = None
+        if user_id:
+            with get_db() as (cursor, conn):
+                cursor.execute(
+                    """
+                    INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        user_id,
+                        text,
+                        resposta,
+                        json.dumps(videos),
+                        json.dumps(links),
+                        topic,
+                        json.dumps(attachments),
+                    )
+                )
+                chat_id = cursor.lastrowid
 
-        return jsonify(
+        response_payload = dict(
             text=text,
             response=resposta,
             videos=videos,
             links=links,
-            chat={
-                "id": chat_id,
-                "mensagem_usuario": text,
-                "resposta_ia": resposta,
-                "created_at": datetime.now().isoformat(),
-                "videos": videos,
-                "links": links,
-                "topic": topic or "",
-            },
+            chat=build_chat_response(chat_id, text, resposta, videos, links, topic, attachments),
         )
+        if guest_messages_remaining is not None:
+            response_payload["guest_messages_remaining"] = guest_messages_remaining
+            response_payload["guest_limit"] = GUEST_CHAT_LIMIT
+        return jsonify(response_payload)
 
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que foi falado. Pode repetir?"), 400

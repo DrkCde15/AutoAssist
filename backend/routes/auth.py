@@ -360,28 +360,61 @@ def google_callback():
 @auth_bp.route("/api/cadastro", methods=["POST"])
 @limiter.limit("5 per hour")
 def cadastro():
-    data = request.get_json()
-    nome, email, password = data.get("nome"), data.get("email"), data.get("password")
+    data = request.get_json(silent=True) or {}
+    nome = (data.get("nome") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    confirm_email = (data.get("confirm_email") or "").strip().lower()
+    password = data.get("password")
     
     veiculo = data.get("veiculo", {})
     veiculos = data.get("veiculos", [])
+    if not isinstance(veiculos, list):
+        return jsonify(error="Lista de veículos inválida."), 400
+
     if veiculo and veiculo.get("possui"):
         veiculos.append(veiculo)
     
     possui_veiculo = len(veiculos) > 0
     
-    if not nome or not email or len(password) < 6: return jsonify(error="Dados inválidos"), 400
-    
+    if not nome:
+        return jsonify(error="Informe seu nome completo."), 400
+
+    if not email:
+        return jsonify(error="Informe seu e-mail."), 400
+
     if not is_valid_email_domain(email):
         return jsonify(error="Insira um endereço de email válido"), 400
+
+    if not confirm_email:
+        return jsonify(error="Confirme seu e-mail."), 400
+
+    if email != confirm_email:
+        return jsonify(error="Os e-mails informados não conferem."), 400
+
+    if not password or not isinstance(password, str):
+        return jsonify(error="Informe uma senha."), 400
+
+    if len(password) < 6:
+        return jsonify(error="A senha deve ter pelo menos 6 caracteres."), 400
+
+    for index, veiculo_data in enumerate(veiculos, start=1):
+        marca = (veiculo_data.get("marca") or "").strip()
+        modelo = (veiculo_data.get("modelo") or "").strip()
+        if not marca or not modelo:
+            return jsonify(error=f"Informe marca e modelo do veículo {index}."), 400
+
     try:
         with get_db() as (cursor, conn):
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return jsonify(error="Este e-mail já está cadastrado."), 409
+
             cursor.execute("""
                 INSERT INTO users (
                     nome, email, password, possui_veiculo, maintenance_email_enabled
                 ) VALUES (%s, %s, %s, %s, TRUE)
             """, (
-                nome, email.lower(), bcrypt.hash(password), possui_veiculo
+                nome, email, bcrypt.hash(password), possui_veiculo
             ))
             user_id = cursor.lastrowid
             
@@ -401,7 +434,7 @@ def cadastro():
         return jsonify(success=True), 201
     except Exception as e:
         logger.error(f"Erro no cadastro: {e}")
-        return jsonify(error="Erro ao processar cadastro ou email já existe"), 409
+        return jsonify(error="Erro ao processar cadastro. Tente novamente."), 500
 
 @auth_bp.route("/api/login", methods=["POST"])
 @limiter.limit("10 per minute")

@@ -155,6 +155,7 @@ allowed_headers = [
     "Content-Type",
     "Authorization",
     "X-Requested-With",
+    "X-AutoAssist-Guest-Id",
     "X-Cron-Secret",
     "X-CSRF-TOKEN",
     "X-CSRF-Token",
