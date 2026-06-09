@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_PRIMARY_MODEL = "groq/compound-mini"
-DEFAULT_VISION_MODEL = "groq/compound-mini"
+DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 DEFAULT_FALLBACK_MODELS = ("groq/compound",)
+DEFAULT_VISION_FALLBACK_MODELS = ()
+TEXT_ONLY_MODELS = {"groq/compound", "groq/compound-mini"}
 RETRYABLE_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504}
 
 
@@ -67,7 +69,13 @@ def _settings():
         "api_key": api_key,
         "base_url": (os.getenv("GROQ_BASE_URL") or DEFAULT_BASE_URL).rstrip("/"),
         "primary_model": (os.getenv("GROQ_PRIMARY_MODEL") or DEFAULT_PRIMARY_MODEL).strip(),
-        "vision_model": (os.getenv("GROQ_VISION_MODEL") or DEFAULT_VISION_MODEL).strip(),
+        "vision_model": _normalize_vision_model(
+            os.getenv("GROQ_VISION_MODEL") or DEFAULT_VISION_MODEL
+        ),
+        "vision_fallback_models": _parse_model_list(
+            os.getenv("GROQ_VISION_FALLBACK_MODELS"),
+            DEFAULT_VISION_FALLBACK_MODELS,
+        ),
         "fallback_models": _parse_model_list(
             os.getenv("GROQ_FALLBACK_MODELS"),
             DEFAULT_FALLBACK_MODELS,
@@ -78,11 +86,24 @@ def _settings():
     }
 
 
-def model_chain(primary_model=None):
+def _normalize_vision_model(model_name):
+    normalized_model = str(model_name or "").strip()
+    if normalized_model in TEXT_ONLY_MODELS:
+        logger.warning(
+            "GROQ_VISION_MODEL=%s nao aceita imagens; usando %s.",
+            normalized_model,
+            DEFAULT_VISION_MODEL,
+        )
+        return DEFAULT_VISION_MODEL
+    return normalized_model
+
+
+def model_chain(primary_model=None, fallback_models=None):
     settings = _settings()
     seen = set()
+    fallback_chain = settings["fallback_models"] if fallback_models is None else tuple(fallback_models)
 
-    for model in (primary_model or settings["primary_model"], *settings["fallback_models"]):
+    for model in (primary_model or settings["primary_model"], *fallback_chain):
         model_name = str(model or "").strip()
         if model_name and model_name not in seen:
             seen.add(model_name)
@@ -91,6 +112,10 @@ def model_chain(primary_model=None):
 
 def vision_model():
     return _settings()["vision_model"]
+
+
+def vision_fallback_models():
+    return _settings()["vision_fallback_models"]
 
 
 def build_chat_messages(system_instruction, prompt, history=None):
@@ -112,6 +137,7 @@ def chat_completion(
     messages,
     *,
     primary_model=None,
+    fallback_models=None,
     response_format=None,
     temperature=None,
     log_context="Groq",
@@ -119,7 +145,7 @@ def chat_completion(
     settings = _settings()
     last_error = None
 
-    for model_name in model_chain(primary_model):
+    for model_name in model_chain(primary_model, fallback_models=fallback_models):
         for attempt in range(settings["max_retries"]):
             try:
                 return _request_chat_completion(

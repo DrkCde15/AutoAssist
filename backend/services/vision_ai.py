@@ -3,7 +3,7 @@ import logging
 
 from dotenv import load_dotenv
 
-from services.groq_client import chat_completion, vision_model
+from services.groq_client import chat_completion, vision_fallback_models, vision_model
 
 load_dotenv()
 
@@ -44,6 +44,7 @@ def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:
                 },
             ],
             primary_model=vision_model(),
+            fallback_models=vision_fallback_models(),
             log_context="Groq Vision",
         )
     except Exception as exc:
