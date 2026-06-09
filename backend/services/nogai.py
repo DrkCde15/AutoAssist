@@ -203,12 +203,31 @@ def _read_int_env(name, default, minimum=0):
 
 
 GEMINI_QUOTA_COOLDOWN_SECONDS = _read_int_env("GEMINI_QUOTA_COOLDOWN_SECONDS", 60, minimum=5)
-GEMINI_FALLBACK_ON_QUOTA = os.getenv("GEMINI_FALLBACK_ON_QUOTA", "").strip().lower() in {"1", "true", "yes", "on"}
+TRUE_ENV_VALUES = {"1", "true", "yes", "on"}
+FALSE_ENV_VALUES = {"0", "false", "no", "off"}
+
+
+def _read_bool_env(name, default=False):
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value in TRUE_ENV_VALUES:
+        return True
+    if normalized_value in FALSE_ENV_VALUES:
+        return False
+    return default
+
+
+GEMINI_FALLBACK_ON_QUOTA = _read_bool_env("GEMINI_FALLBACK_ON_QUOTA", default=True)
 GEMINI_QUOTA_MESSAGE = (
-    "O NOG atingiu o limite de uso da API do Gemini no momento. "
-    "Verifique a cota/billing do projeto no Google AI Studio ou tente novamente mais tarde."
+    "O NOG atingiu o limite de sua API no momento. Tente novamente em alguns minutos. Agradecemos sua compreensão!"
 )
-_gemini_quota_blocked_until = 0.0
+GEMINI_TEMPORARY_UNAVAILABLE_MESSAGE = (
+    "O NOG está com alta demanda no momento. Tente novamente em alguns minutos."
+)
+_gemini_quota_blocked_until_by_model = {}
 
 
 class GeminiQuotaError(RuntimeError):
@@ -252,6 +271,13 @@ def _model_chain(primary_model=None):
 
 def _error_text(error: Exception) -> str:
     return str(error or "")
+
+
+def _error_summary(error: Exception, max_length=240) -> str:
+    summary = re.sub(r"\s+", " ", _error_text(error)).strip()
+    if len(summary) <= max_length:
+        return summary
+    return f"{summary[:max_length - 3]}..."
 
 
 def _error_status_code(error: Exception) -> int | None:
@@ -311,16 +337,29 @@ def _should_try_fallback(error: Exception) -> bool:
     return _is_retryable_model_error(error) or _is_model_not_found_error(error)
 
 
-def _mark_quota_limited(error: Exception):
-    global _gemini_quota_blocked_until
-
+def _mark_model_quota_limited(model_name: str, error: Exception):
     retry_delay = _extract_retry_delay_seconds(error) or GEMINI_QUOTA_COOLDOWN_SECONDS
-    _gemini_quota_blocked_until = max(_gemini_quota_blocked_until, time.time() + retry_delay)
+    blocked_until = time.time() + retry_delay
+    current_blocked_until = _gemini_quota_blocked_until_by_model.get(model_name, 0.0)
+    _gemini_quota_blocked_until_by_model[model_name] = max(current_blocked_until, blocked_until)
+    return retry_delay
 
 
-def _raise_if_quota_cooldown_active():
-    if time.time() < _gemini_quota_blocked_until:
-        raise GeminiQuotaError("Gemini quota cooldown active")
+def _is_model_quota_limited(model_name: str) -> bool:
+    blocked_until = _gemini_quota_blocked_until_by_model.get(model_name, 0.0)
+    if time.time() < blocked_until:
+        return True
+
+    _gemini_quota_blocked_until_by_model.pop(model_name, None)
+    return False
+
+
+def _models_available_for_request(primary_model=None):
+    models = tuple(_model_chain(primary_model))
+    available_models = tuple(model_name for model_name in models if not _is_model_quota_limited(model_name))
+    if models and not available_models:
+        raise GeminiQuotaError("All Gemini models are in quota cooldown")
+    return available_models
 
 
 def _generate_content_with_fallback(
@@ -330,10 +369,9 @@ def _generate_content_with_fallback(
     primary_model=None,
     log_context="Gemini",
 ):
-    _raise_if_quota_cooldown_active()
     last_error = None
 
-    for attempt, model_name in enumerate(_model_chain(primary_model)):
+    for attempt, model_name in enumerate(_models_available_for_request(primary_model)):
         try:
             return client.models.generate_content(
                 model=model_name,
@@ -343,7 +381,13 @@ def _generate_content_with_fallback(
         except Exception as e:
             last_error = e
             if _is_quota_error(e):
-                _mark_quota_limited(e)
+                retry_delay = _mark_model_quota_limited(model_name, e)
+                logger.warning(
+                    "%s limitado por quota em %s; cooldown de %ss.",
+                    log_context,
+                    model_name,
+                    retry_delay,
+                )
 
             if not _should_try_fallback(e):
                 if _is_quota_error(e):
@@ -353,16 +397,20 @@ def _generate_content_with_fallback(
             if attempt == 0:
                 logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
             else:
-                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, e)
+                logger.warning(
+                    "Fallback para %s (%s) falhou: %s",
+                    model_name,
+                    log_context,
+                    _error_summary(e),
+                )
 
     raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
 
 
 def _send_chat_with_fallback(*, prompt, system_instruction, history, log_context="NOG Gemini"):
-    _raise_if_quota_cooldown_active()
     last_error = None
 
-    for attempt, model_name in enumerate(_model_chain()):
+    for attempt, model_name in enumerate(_models_available_for_request()):
         try:
             chat = client.chats.create(
                 model=model_name,
@@ -377,7 +425,13 @@ def _send_chat_with_fallback(*, prompt, system_instruction, history, log_context
         except Exception as e:
             last_error = e
             if _is_quota_error(e):
-                _mark_quota_limited(e)
+                retry_delay = _mark_model_quota_limited(model_name, e)
+                logger.warning(
+                    "%s limitado por quota em %s; cooldown de %ss.",
+                    log_context,
+                    model_name,
+                    retry_delay,
+                )
 
             if not _should_try_fallback(e):
                 if _is_quota_error(e):
@@ -387,7 +441,12 @@ def _send_chat_with_fallback(*, prompt, system_instruction, history, log_context
             if attempt == 0:
                 logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
             else:
-                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, e)
+                logger.warning(
+                    "Fallback para %s (%s) falhou: %s",
+                    model_name,
+                    log_context,
+                    _error_summary(e),
+                )
 
     raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
 
@@ -423,8 +482,12 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
         
     except Exception as e:
         if _is_quota_error(e):
-            logger.error(f"Quota do Gemini esgotada no NOG: {e}", exc_info=True)
+            logger.warning("Quota do Gemini esgotada no NOG: %s", _error_summary(e))
             return GEMINI_QUOTA_MESSAGE
+
+        if _is_retryable_model_error(e):
+            logger.warning("Gemini temporariamente indisponivel no NOG: %s", _error_summary(e))
+            return GEMINI_TEMPORARY_UNAVAILABLE_MESSAGE
 
         logger.error(f"❌ Erro no NOG (Gemini): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."

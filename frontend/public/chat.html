@@ -1088,7 +1088,7 @@
 
       <main class="chat-main">
         <div id="guestNotice" class="guest-notice" hidden>
-          <span>Visitante: <strong id="guestRemaining">10</strong> mensagens gratuitas restantes.</span>
+          <span>Visitante: <strong id="guestRemaining">5</strong> mensagens gratuitas restantes.</span>
           <a href="cadastro.html">Criar conta</a>
         </div>
         <div id="messages"></div>
@@ -1144,7 +1144,7 @@
       const guestNotice = document.getElementById("guestNotice");
       const guestRemaining = document.getElementById("guestRemaining");
 
-      const FREE_GUEST_MESSAGE_LIMIT = 10;
+      const FREE_GUEST_MESSAGE_LIMIT = 5;
       const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
       const GUEST_ID_KEY = "autoassist_guest_id";
       const GUEST_MESSAGE_COUNT_KEY = "autoassist_guest_message_count";
@@ -1577,7 +1577,7 @@
 
       function showGuestLimitPrompt() {
         const html = `
-          <p>Você atingiu o limite de 10 mensagens gratuitas.</p>
+          <p>Você atingiu o limite de 5 mensagens gratuitas.</p>
           <p><a href="login.html">Entrar</a> ou <a href="cadastro.html">criar conta</a> para continuar.</p>
         `;
         addMessage(html, "msg-bot", true);

@@ -69,7 +69,7 @@ GENERIC_CHAT_TOKENS = {
     "valeu",
 }
 
-GUEST_CHAT_LIMIT = 10
+GUEST_CHAT_LIMIT = 5
 MAX_CHAT_HISTORY_LIMIT = 200
 DEFAULT_CHAT_HISTORY_LIMIT = 100
 MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024
@@ -1663,7 +1663,7 @@ def chat():
                 guest_messages_remaining = reserve_guest_message(cursor, guest_id)
                 if guest_messages_remaining is None:
                     return jsonify(
-                        error="Você atingiu o limite de 10 mensagens gratuitas. Crie uma conta ou faça login para continuar.",
+                        error="Você atingiu o limite de 5 mensagens gratuitas. Crie uma conta ou faça login para continuar.",
                         code="guest_limit_reached",
                         limit=GUEST_CHAT_LIMIT,
                     ), 403
@@ -1779,7 +1779,7 @@ def handle_voice():
                 guest_messages_remaining = reserve_guest_message(cursor, guest_id)
                 if guest_messages_remaining is None:
                     return jsonify(
-                        error="Você atingiu o limite de 10 mensagens gratuitas. Crie uma conta ou faça login para continuar.",
+                        error="Você atingiu o limite de 5 mensagens gratuitas. Crie uma conta ou faça login para continuar.",
                         code="guest_limit_reached",
                         limit=GUEST_CHAT_LIMIT,
                     ), 403
