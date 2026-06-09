@@ -1,13 +1,13 @@
 import base64
+import io
 import logging
 
-from google.genai import types
-
-from services.vision_ai import analisar_imagem, client
+from services.groq_client import build_chat_messages, chat_completion
+from services.vision_ai import analisar_imagem
 
 logger = logging.getLogger(__name__)
 
-FILE_MODELS_TO_TRY = ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest")
+PDF_TEXT_LIMIT = 14000
 
 
 def analisar_arquivo(file_data: bytes, mime_type: str, filename: str, pergunta: str | None = None) -> str:
@@ -16,26 +16,51 @@ def analisar_arquivo(file_data: bytes, mime_type: str, filename: str, pergunta: 
         data_url = f"data:{mime_type};base64,{encoded}"
         return analisar_imagem(data_url, pergunta)
 
-    prompt = build_file_prompt(filename, mime_type, pergunta)
-    file_part = types.Part.from_bytes(data=file_data, mime_type=mime_type)
+    if mime_type == "application/pdf":
+        return analisar_pdf(file_data, filename, pergunta)
 
-    for model in FILE_MODELS_TO_TRY:
-        try:
-            response = client.models.generate_content(model=model, contents=[prompt, file_part])
-            if response.text:
-                return response.text
-        except Exception as exc:
-            logger.warning("Falha ao analisar anexo %s com %s: %s", filename, model, exc)
-
-    return "Não consegui analisar este arquivo no momento. Tente novamente ou envie outro formato suportado."
+    return "Não consegui analisar este formato com a Groq no momento. Envie imagem, PDF ou arquivo de texto."
 
 
-def build_file_prompt(filename: str, mime_type: str, pergunta: str | None = None) -> str:
-    question = (pergunta or "").strip() or "Analise o arquivo anexado e destaque os pontos automotivos relevantes."
+def analisar_pdf(file_data: bytes, filename: str, pergunta: str | None = None) -> str:
+    text = extract_pdf_text(file_data)
+    if not text:
+        return "Não consegui extrair texto deste PDF. Tente enviar um PDF com texto selecionável ou um arquivo TXT."
+
+    prompt = build_pdf_prompt(filename, text, pergunta)
+    return chat_completion(
+        build_chat_messages("Você é o NOG, especialista automotivo do AutoAssist.", prompt, []),
+        log_context="Groq PDF",
+    )
+
+
+def extract_pdf_text(file_data: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        logger.warning("pypdf não instalado; análise de PDF indisponível.")
+        return ""
+
+    try:
+        reader = PdfReader(io.BytesIO(file_data))
+        pages = []
+        for page in reader.pages[:10]:
+            page_text = page.extract_text() or ""
+            if page_text.strip():
+                pages.append(page_text.strip())
+
+        return "\n\n".join(pages)[:PDF_TEXT_LIMIT]
+    except Exception as exc:
+        logger.warning("Falha ao extrair texto do PDF: %s", exc)
+        return ""
+
+
+def build_pdf_prompt(filename: str, text: str, pergunta: str | None = None) -> str:
+    question = (pergunta or "").strip() or "Analise o PDF e destaque os pontos automotivos relevantes."
     return (
-        "Você é o NOG, especialista automotivo do AutoAssist. "
-        "Analise o arquivo anexado com foco em manutenção, compra, venda, diagnóstico, documentação, "
+        "Analise o documento anexado com foco em manutenção, compra, venda, diagnóstico, documentação, "
         "custos e riscos relacionados a veículos. "
-        f"Arquivo: {filename or 'anexo'} ({mime_type}). "
-        f"Pergunta do usuário: {question}"
+        f"Arquivo: {filename or 'anexo.pdf'}. "
+        f"Pergunta do usuário: {question}\n\n"
+        f"Conteúdo extraído do PDF:\n{text}"
     )

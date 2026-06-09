@@ -5,11 +5,10 @@ import os
 import requests
 import time
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
 import json
 import re
 from functools import lru_cache
+from types import SimpleNamespace
 
 load_dotenv()
 
@@ -186,10 +185,10 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
 
-from routes.database import get_mysql_history
+from services.groq_client import build_chat_messages, chat_completion
 
-# Inicializa o cliente Gemini
-client = genai.Client(api_key=os.getenv("API_GEMINI"))
+# Cliente Groq via API OpenAI-compatible. A chave deve vir do ambiente.
+client = None
 
 DEFAULT_GEMINI_TEXT_MODEL = "gemini-2.5-flash"
 DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-2.0-flash", "gemini-2.0-flash-lite")
@@ -250,15 +249,14 @@ GEMINI_TEXT_MODEL = (os.getenv("GEMINI_TEXT_MODEL") or os.getenv("GEMINI_MODEL")
 MODELS_TO_TRY = _parse_model_list(os.getenv("GEMINI_FALLBACK_MODELS"), DEFAULT_GEMINI_FALLBACK_MODELS)
 
 def transformar_historico_gemini(historico_mysql):
-    """Converte o histórico do MySQL para o formato do novo SDK."""
-    gemini_history = []
+    """Converte o histórico do MySQL para o formato OpenAI-compatible usado pela Groq."""
+    groq_history = []
     for msg in historico_mysql:
-        role = "user" if msg["role"] == "user" else "model"
-        gemini_history.append(types.Content(
-            role=role,
-            parts=[types.Part.from_text(text=msg["content"])]
-        ))
-    return gemini_history
+        role = "user" if msg["role"] == "user" else "assistant"
+        content = str(msg.get("content") or "").strip()
+        if content:
+            groq_history.append({"role": role, "content": content})
+    return groq_history
 
 def _model_chain(primary_model=None):
     seen = set()
@@ -368,94 +366,35 @@ def _generate_content_with_fallback(
     config=None,
     primary_model=None,
     log_context="Gemini",
+    response_format=None,
+    temperature=None,
 ):
-    last_error = None
-
-    for attempt, model_name in enumerate(_models_available_for_request(primary_model)):
-        try:
-            return client.models.generate_content(
-                model=model_name,
-                config=config,
-                contents=contents,
-            )
-        except Exception as e:
-            last_error = e
-            if _is_quota_error(e):
-                retry_delay = _mark_model_quota_limited(model_name, e)
-                logger.warning(
-                    "%s limitado por quota em %s; cooldown de %ss.",
-                    log_context,
-                    model_name,
-                    retry_delay,
-                )
-
-            if not _should_try_fallback(e):
-                if _is_quota_error(e):
-                    logger.warning("%s bloqueado por quota do Gemini; fallback nao tentado.", log_context)
-                raise e
-
-            if attempt == 0:
-                logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
-            else:
-                logger.warning(
-                    "Fallback para %s (%s) falhou: %s",
-                    model_name,
-                    log_context,
-                    _error_summary(e),
-                )
-
-    raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
+    text = chat_completion(
+        build_chat_messages("", contents, []),
+        primary_model=primary_model,
+        response_format=response_format,
+        temperature=temperature,
+        log_context=log_context.replace("Gemini", "Groq"),
+    )
+    return SimpleNamespace(text=text)
 
 
 def _send_chat_with_fallback(*, prompt, system_instruction, history, log_context="NOG Gemini"):
-    last_error = None
-
-    for attempt, model_name in enumerate(_models_available_for_request()):
-        try:
-            chat = client.chats.create(
-                model=model_name,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.7,
-                ),
-                history=history,
-            )
-            response = chat.send_message(message=prompt)
-            return response.text
-        except Exception as e:
-            last_error = e
-            if _is_quota_error(e):
-                retry_delay = _mark_model_quota_limited(model_name, e)
-                logger.warning(
-                    "%s limitado por quota em %s; cooldown de %ss.",
-                    log_context,
-                    model_name,
-                    retry_delay,
-                )
-
-            if not _should_try_fallback(e):
-                if _is_quota_error(e):
-                    logger.warning("%s bloqueado por quota do Gemini; fallback nao tentado.", log_context)
-                raise e
-
-            if attempt == 0:
-                logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
-            else:
-                logger.warning(
-                    "Fallback para %s (%s) falhou: %s",
-                    model_name,
-                    log_context,
-                    _error_summary(e),
-                )
-
-    raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
+    return chat_completion(
+        build_chat_messages(system_instruction, prompt, history),
+        log_context=log_context.replace("Gemini", "Groq"),
+    )
 
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historico: list | None = None) -> str:
     try:
-        logger.info(f"NOG Gemini: Processando msg do usuário {user_id}")
+        logger.info(f"NOG Groq: Processando msg do usuário {user_id}")
         
-        historico_mysql = historico if historico is not None else get_mysql_history(user_id)
-        historico_gemini = transformar_historico_gemini(historico_mysql)
+        if historico is None:
+            from routes.database import get_mysql_history
+            historico_mysql = get_mysql_history(user_id)
+        else:
+            historico_mysql = historico
+        historico_groq = transformar_historico_gemini(historico_mysql)
         
         prompt_instrucoes = SYSTEM_PROMPT
         if user_data and user_data.get("is_premium"):
@@ -477,19 +416,19 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
         return _send_chat_with_fallback(
             prompt=prompt_final,
             system_instruction=prompt_instrucoes,
-            history=historico_gemini,
+            history=historico_groq,
         )
         
     except Exception as e:
         if _is_quota_error(e):
-            logger.warning("Quota do Gemini esgotada no NOG: %s", _error_summary(e))
+            logger.warning("Quota da Groq esgotada no NOG: %s", _error_summary(e))
             return GEMINI_QUOTA_MESSAGE
 
         if _is_retryable_model_error(e):
-            logger.warning("Gemini temporariamente indisponivel no NOG: %s", _error_summary(e))
+            logger.warning("Groq temporariamente indisponivel no NOG: %s", _error_summary(e))
             return GEMINI_TEMPORARY_UNAVAILABLE_MESSAGE
 
-        logger.error(f"❌ Erro no NOG (Gemini): {e}", exc_info=True)
+        logger.error(f"❌ Erro no NOG (Groq): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
 
 def _clean_search_term(value):
@@ -516,7 +455,8 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
         """
         response = _generate_content_with_fallback(
             contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            response_format={"type": "json_object"},
+            temperature=0.2,
             log_context="Extracao de termos",
         )
         data = json.loads(response.text)
@@ -548,7 +488,8 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
         """
         response = _generate_content_with_fallback(
             contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            response_format={"type": "json_object"},
+            temperature=0.2,
             log_context="Previsao manutencao",
         )
         return json.loads(response.text)
