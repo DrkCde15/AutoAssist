@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_PRIMARY_MODEL = "groq/compound-mini"
+DEFAULT_UTILITY_MODEL = "llama-3.1-8b-instant"
 DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 DEFAULT_FALLBACK_MODELS = ("groq/compound",)
 DEFAULT_VISION_FALLBACK_MODELS = ()
@@ -69,9 +70,8 @@ def _settings():
         "api_key": api_key,
         "base_url": (os.getenv("GROQ_BASE_URL") or DEFAULT_BASE_URL).rstrip("/"),
         "primary_model": (os.getenv("GROQ_PRIMARY_MODEL") or DEFAULT_PRIMARY_MODEL).strip(),
-        "vision_model": _normalize_vision_model(
-            os.getenv("GROQ_VISION_MODEL") or DEFAULT_VISION_MODEL
-        ),
+        "utility_model": (os.getenv("GROQ_UTILITY_MODEL") or DEFAULT_UTILITY_MODEL).strip(),
+        "vision_model": (os.getenv("GROQ_VISION_MODEL") or DEFAULT_VISION_MODEL).strip(),
         "vision_fallback_models": _parse_model_list(
             os.getenv("GROQ_VISION_FALLBACK_MODELS"),
             DEFAULT_VISION_FALLBACK_MODELS,
@@ -113,7 +113,11 @@ def model_chain(primary_model=None, fallback_models=None):
 
 
 def vision_model():
-    return _settings()["vision_model"]
+    return _normalize_vision_model(_settings()["vision_model"])
+
+
+def utility_model():
+    return _settings()["utility_model"]
 
 
 def vision_fallback_models():
@@ -224,7 +228,7 @@ def _response_error_message(response):
 
 
 def _should_retry_http_error(error):
-    if error.status_code in (400, 401, 403, 404):
+    if error.status_code in (400, 401, 403, 404, 429):
         return False
     return error.status_code in RETRYABLE_STATUS_CODES
 

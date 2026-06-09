@@ -404,17 +404,30 @@ def generate_assistant_payload(
                 user_data=user,
                 historico=historico_recente,
             )
-        recommendations_future = executor.submit(
-            build_recommendations,
-            message,
-            historico_recente,
-            default_topic,
-        )
+        recommendations_future = None
+        if not attachment and not image_b64:
+            recommendations_future = executor.submit(
+                build_recommendations,
+                message,
+                historico_recente,
+                default_topic,
+            )
 
         resposta = resposta_future.result()
-        videos, links, topic = recommendations_future.result()
+        videos, links, topic = resolve_recommendations(recommendations_future, default_topic)
 
     return resposta, videos, links, topic or default_topic
+
+
+def resolve_recommendations(recommendations_future, default_topic):
+    if recommendations_future is None:
+        return [], [], default_topic
+
+    try:
+        return recommendations_future.result()
+    except Exception as exc:
+        logger.warning("Recomendações indisponíveis: %s", exc)
+        return [], [], default_topic
 
 def serialize_datetime_field(value):
     if isinstance(value, datetime):

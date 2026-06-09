@@ -185,7 +185,7 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
 
-from services.groq_client import build_chat_messages, chat_completion
+from services.groq_client import build_chat_messages, chat_completion, utility_model
 
 # Cliente Groq via API OpenAI-compatible. A chave deve vir do ambiente.
 client = None
@@ -365,6 +365,7 @@ def _generate_content_with_fallback(
     contents,
     config=None,
     primary_model=None,
+    fallback_models=None,
     log_context="Gemini",
     response_format=None,
     temperature=None,
@@ -372,6 +373,7 @@ def _generate_content_with_fallback(
     text = chat_completion(
         build_chat_messages("", contents, []),
         primary_model=primary_model,
+        fallback_models=fallback_models,
         response_format=response_format,
         temperature=temperature,
         log_context=log_context.replace("Gemini", "Groq"),
@@ -444,17 +446,24 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
     try:
         contexto_historico = ""
         if historico:
-            resumo = "\n".join([f"{'Usuario' if m['role'] == 'user' else 'IA'}: {m['content']}" for m in historico[-3:]])
+            resumo = "\n".join([
+                f"{'Usuario' if m.get('role') == 'user' else 'IA'}: {str(m.get('content') or '')[:500]}"
+                for m in historico[-2:]
+                if isinstance(m, dict)
+            ])
             contexto_historico = f"\nHistorico recente:\n{resumo}\n"
 
+        mensagem_curta = str(mensagem or "")[:900]
         prompt = f"""
         Extraia termos de busca a partir de conversas automotivas.
         {contexto_historico}
-        Mensagem atual: "{mensagem}"
+        Mensagem atual: "{mensagem_curta}"
         Retorne JSON: {{"youtube": string|null, "loja": string|null, "pecas": string|null}}
         """
         response = _generate_content_with_fallback(
             contents=prompt,
+            primary_model=utility_model(),
+            fallback_models=(),
             response_format={"type": "json_object"},
             temperature=0.2,
             log_context="Extracao de termos",
@@ -488,6 +497,8 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
         """
         response = _generate_content_with_fallback(
             contents=prompt,
+            primary_model=utility_model(),
+            fallback_models=(),
             response_format={"type": "json_object"},
             temperature=0.2,
             log_context="Previsao manutencao",

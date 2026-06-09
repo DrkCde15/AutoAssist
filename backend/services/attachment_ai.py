@@ -2,7 +2,7 @@ import base64
 import io
 import logging
 
-from services.groq_client import build_chat_messages, chat_completion
+from services.groq_client import GroqHTTPError, build_chat_messages, chat_completion
 from services.vision_ai import analisar_imagem
 
 logger = logging.getLogger(__name__)
@@ -28,10 +28,23 @@ def analisar_pdf(file_data: bytes, filename: str, pergunta: str | None = None) -
         return "Não consegui extrair texto deste PDF. Tente enviar um PDF com texto selecionável ou um arquivo TXT."
 
     prompt = build_pdf_prompt(filename, text, pergunta)
-    return chat_completion(
-        build_chat_messages("Você é o NOG, especialista automotivo do AutoAssist.", prompt, []),
-        log_context="Groq PDF",
-    )
+    try:
+        return chat_completion(
+            build_chat_messages("Você é o NOG, especialista automotivo do AutoAssist.", prompt, []),
+            log_context="Groq PDF",
+        )
+    except GroqHTTPError as exc:
+        if exc.status_code == 429:
+            logger.warning("Limite da Groq atingido ao analisar PDF: %s", exc)
+            return (
+                "Consegui receber o PDF, mas a IA atingiu o limite de uso da Groq neste momento. "
+                "Tente novamente em alguns minutos."
+            )
+        logger.warning("Falha da Groq ao analisar PDF: %s", exc)
+        return "Não consegui analisar este PDF no momento. Tente novamente em instantes."
+    except Exception as exc:
+        logger.warning("Falha inesperada ao analisar PDF: %s", exc)
+        return "Não consegui analisar este PDF no momento. Tente novamente em instantes."
 
 
 def extract_pdf_text(file_data: bytes) -> str:
