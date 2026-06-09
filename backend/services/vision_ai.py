@@ -30,21 +30,12 @@ def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:
     try:
         logger.info("Groq Vision: analisando imagem.")
         data_url = _normalize_image_data_url(image_b64)
-        prompt = _build_image_prompt(pergunta)
 
         return chat_completion(
-            [
-                {"role": "system", "content": VISION_PROMPT},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                    ],
-                },
-            ],
+            build_vision_messages(data_url, pergunta),
             primary_model=vision_model(),
             fallback_models=vision_fallback_models(),
+            temperature=0.2,
             log_context="Groq Vision",
         )
     except Exception as exc:
@@ -52,11 +43,27 @@ def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:
         return "❌ O NOG não conseguiu analisar esta imagem no momento."
 
 
+def build_vision_messages(data_url: str, pergunta: str | None = None) -> list[dict]:
+    prompt = f"{VISION_PROMPT.strip()}\n\n{_build_image_prompt(pergunta)}"
+    return [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ],
+        }
+    ]
+
+
 def _build_image_prompt(pergunta: str | None = None) -> str:
     question = (pergunta or "").strip()
     if not question:
-        return "Analise a imagem anexada com foco automotivo."
-    return f"Pergunta específica do usuário: {question}"
+        return "A imagem está anexada no item image_url. Analise a imagem diretamente com foco automotivo."
+    return (
+        "A imagem está anexada no item image_url. Analise a imagem diretamente. "
+        f"Pergunta específica do usuário: {question}"
+    )
 
 
 def _normalize_image_data_url(image_b64: str) -> str:

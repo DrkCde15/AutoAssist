@@ -1,7 +1,6 @@
 import logging
 import os
 import time
-
 import requests
 from dotenv import load_dotenv
 
@@ -16,6 +15,7 @@ DEFAULT_FALLBACK_MODELS = ("groq/compound",)
 DEFAULT_VISION_FALLBACK_MODELS = ()
 TEXT_ONLY_MODELS = {"groq/compound", "groq/compound-mini"}
 RETRYABLE_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504}
+_warned_text_only_vision_models = set()
 
 
 class GroqAPIError(RuntimeError):
@@ -89,11 +89,13 @@ def _settings():
 def _normalize_vision_model(model_name):
     normalized_model = str(model_name or "").strip()
     if normalized_model in TEXT_ONLY_MODELS:
-        logger.warning(
-            "GROQ_VISION_MODEL=%s nao aceita imagens; usando %s.",
-            normalized_model,
-            DEFAULT_VISION_MODEL,
-        )
+        if normalized_model not in _warned_text_only_vision_models:
+            logger.warning(
+                "GROQ_VISION_MODEL=%s nao aceita imagens; usando %s.",
+                normalized_model,
+                DEFAULT_VISION_MODEL,
+            )
+            _warned_text_only_vision_models.add(normalized_model)
         return DEFAULT_VISION_MODEL
     return normalized_model
 
