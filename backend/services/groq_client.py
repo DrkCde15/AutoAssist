@@ -150,8 +150,9 @@ def chat_completion(
 ):
     settings = _settings()
     last_error = None
+    models = tuple(model_chain(primary_model, fallback_models=fallback_models))
 
-    for model_name in model_chain(primary_model, fallback_models=fallback_models):
+    for model_index, model_name in enumerate(models):
         for attempt in range(settings["max_retries"]):
             try:
                 return _request_chat_completion(
@@ -174,7 +175,10 @@ def chat_completion(
                     break
                 _wait_before_retry(attempt, log_context, model_name, error)
 
-        logger.warning("%s falhou com modelo %s. Tentando fallback, se houver.", log_context, model_name)
+        if model_index + 1 < len(models):
+            logger.warning("%s falhou com modelo %s. Tentando fallback.", log_context, model_name)
+        else:
+            logger.warning("%s falhou com modelo %s.", log_context, model_name)
 
     raise last_error or GroqAPIError(f"{log_context} falhou sem modelos configurados.")
 
