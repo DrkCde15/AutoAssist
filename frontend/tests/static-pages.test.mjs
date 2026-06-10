@@ -64,6 +64,27 @@ describe("legal and analytics static pages", () => {
     }
   });
 
+  it("signup confirms password before sending registration", () => {
+    const html = readPublic("cadastro.html");
+    const authScript = readPublic("static/js/auth.js");
+
+    assert.match(html, /id="confirmSenha"/);
+    assert.match(html, /id="toggleConfirmSenha"/);
+    assert.match(html, /As senhas informadas .* conferem\./);
+    assert.match(html, /Auth\.register\(nome, email, confirmEmail, senha, confirmSenha, veiculos\)/);
+    assert.match(authScript, /confirm_password: confirmPassword/);
+  });
+
+  it("home page does not force login redirects for stale sessions", () => {
+    const html = readPublic("index.html");
+    const authScript = readPublic("static/js/auth.js");
+
+    assert.match(authScript, /""/);
+    assert.match(authScript, /"index\.html"/);
+    assert.match(html, /Auth\.syncUser\(\{ redirectOnInvalid: false, force: true \}\)/);
+    assert.doesNotMatch(html, /Auth\.authenticatedFetch\('\/api\/user'\)/);
+  });
+
   it("analytics client blocks sensitive metadata and posts to the expected endpoint", () => {
     const script = readPublic("static/js/analytics-consent.js");
     const blockedKeys = ["password", "token", "email", "cpf", "placa", "message", "photo", "audio"];

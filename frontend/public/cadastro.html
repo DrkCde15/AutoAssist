@@ -521,6 +521,15 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label for="confirmSenha">Confirmar Senha</label>
+        <div class="input-wrapper">
+          <i class="fas fa-lock icon"></i>
+          <input id="confirmSenha" name="confirmSenha" type="password" autocomplete="new-password" placeholder="repita sua senha" style="padding-right: 44px;" />
+          <i class="fas fa-eye password-toggle" id="toggleConfirmSenha"></i>
+        </div>
+      </div>
+
       <div class="checkbox-wrapper" id="checkContainer">
         <input type="checkbox" id="possuiVeiculo" />
         <label for="possuiVeiculo">Possuo um veículo para consultar</label>
@@ -656,22 +665,26 @@
         return true;
       }
 
-      const toggleSenha = document.getElementById("toggleSenha");
-      const senhaInput = document.getElementById("senha");
+      function bindPasswordVisibilityToggle(toggleElement, passwordInput) {
+        if (!toggleElement || !passwordInput) {
+          return;
+        }
 
-      if (toggleSenha && senhaInput) {
-        toggleSenha.addEventListener("click", function() {
-          if (senhaInput.type === "password") {
-            senhaInput.type = "text";
-            this.classList.remove("fa-eye");
-            this.classList.add("fa-eye-slash");
-          } else {
-            senhaInput.type = "password";
-            this.classList.remove("fa-eye-slash");
-            this.classList.add("fa-eye");
-          }
+        toggleElement.addEventListener("click", () => {
+          const shouldShowPassword = passwordInput.type === "password";
+          passwordInput.type = shouldShowPassword ? "text" : "password";
+          toggleElement.classList.toggle("fa-eye", !shouldShowPassword);
+          toggleElement.classList.toggle("fa-eye-slash", shouldShowPassword);
         });
       }
+
+      const toggleSenha = document.getElementById("toggleSenha");
+      const senhaInput = document.getElementById("senha");
+      const toggleConfirmSenha = document.getElementById("toggleConfirmSenha");
+      const confirmSenhaInput = document.getElementById("confirmSenha");
+
+      bindPasswordVisibilityToggle(toggleSenha, senhaInput);
+      bindPasswordVisibilityToggle(toggleConfirmSenha, confirmSenhaInput);
 
       possuiVeiculoCheck.addEventListener("change", () => {
         if (possuiVeiculoCheck.checked) {
@@ -691,6 +704,7 @@
         const email = document.getElementById("email").value.trim().toLowerCase();
         const confirmEmail = document.getElementById("confirmEmail").value.trim().toLowerCase();
         const senha = document.getElementById("senha").value;
+        const confirmSenha = document.getElementById("confirmSenha").value;
 
         if (!validateRequiredField(nome, "Informe seu nome completo.")) {
           return;
@@ -723,6 +737,15 @@
           return;
         }
 
+        if (!validateRequiredField(confirmSenha, "Confirme sua senha.")) {
+          return;
+        }
+
+        if (senha !== confirmSenha) {
+          showError("As senhas informadas não conferem.");
+          return;
+        }
+
         let veiculos = [];
         if (possuiVeiculoCheck.checked) {
           const blocks = document.querySelectorAll('.vehicle-section');
@@ -751,7 +774,7 @@
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Criando conta...';
 
         try {
-          await Auth.register(nome, email, confirmEmail, senha, veiculos);
+          await Auth.register(nome, email, confirmEmail, senha, confirmSenha, veiculos);
           alert("Conta criada com sucesso! Bem-vindo ao AutoAssist.");
           window.location.href = "login.html";
         } catch (err) {

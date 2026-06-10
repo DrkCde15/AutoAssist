@@ -423,14 +423,22 @@ const Auth = (() => {
    * @param {string} email
    * @param {string} confirmEmail
    * @param {string} password
+   * @param {string} confirmPassword
    * @param {Array}  veiculos - lista de objetos de veículo (opcional)
    */
-  async function register(nome, email, confirmEmail, password, veiculos = []) {
+  async function register(nome, email, confirmEmail, password, confirmPassword, veiculos = []) {
     const res = await fetch(`${CONFIG.API_URL}/api/cadastro`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, confirm_email: confirmEmail, password, veiculos }),
+      body: JSON.stringify({
+        nome,
+        email,
+        confirm_email: confirmEmail,
+        password,
+        confirm_password: confirmPassword,
+        veiculos,
+      }),
     });
 
     const data = await res.json();
@@ -752,6 +760,8 @@ const Auth = (() => {
 // Sincronização automática ao carregar o script (se autenticado)
 const autoassistCurrentPage = (window.location.pathname.split("/").pop() || "").toLowerCase();
 const autoassistPublicPages = new Set([
+  "",
+  "index.html",
   "login.html",
   "cadastro.html",
   "esqueci-senha.html",

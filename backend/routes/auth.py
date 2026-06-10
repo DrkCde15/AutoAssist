@@ -365,6 +365,7 @@ def cadastro():
     email = (data.get("email") or "").strip().lower()
     confirm_email = (data.get("confirm_email") or "").strip().lower()
     password = data.get("password")
+    confirm_password = data.get("confirm_password")
     
     veiculo = data.get("veiculo", {})
     veiculos = data.get("veiculos", [])
@@ -396,6 +397,12 @@ def cadastro():
 
     if len(password) < 6:
         return jsonify(error="A senha deve ter pelo menos 6 caracteres."), 400
+
+    if not confirm_password or not isinstance(confirm_password, str):
+        return jsonify(error="Confirme sua senha."), 400
+
+    if password != confirm_password:
+        return jsonify(error="As senhas informadas não conferem."), 400
 
     for index, veiculo_data in enumerate(veiculos, start=1):
         marca = (veiculo_data.get("marca") or "").strip()
