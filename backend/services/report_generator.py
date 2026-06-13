@@ -41,8 +41,11 @@ def criar_relatorio_pdf(usuario, dados_analise, nome_arquivo_saida):
     pdf.ln(2)
     
     pdf.set_font('Arial', '', 11)
-    # Limpa caracteres incompatíveis (emoji básico)
-    texto_limpo = dados_analise.encode('latin-1', 'replace').decode('latin-1')
+    # Substitui caracteres problemáticos para o Latin-1, preservando a legibilidade
+    texto_limpo = dados_analise.replace('–', '-').replace('—', '-')
+    texto_limpo = texto_limpo.replace('“', '"').replace('”', '"').replace('‘', "'").replace('’', "'")
+    # Remove emojis e outros caracteres não Latin-1
+    texto_limpo = texto_limpo.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 7, texto_limpo)
     
     # 3. Aviso Legal

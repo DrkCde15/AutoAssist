@@ -69,12 +69,19 @@ def _build_image_prompt(pergunta: str | None = None) -> str:
 def _normalize_image_data_url(image_b64: str) -> str:
     value = str(image_b64 or "").strip()
     if value.startswith("data:image/"):
-        _validate_base64(value.split(",", 1)[1] if "," in value else "")
-        return value
+        try:
+            _validate_base64(value.split(",", 1)[1] if "," in value else "")
+            return value
+        except Exception:
+            pass # Fallback para re-encapsulamento se o prefixo estiver malformado
 
     encoded = value.split(",", 1)[1] if "," in value else value
-    _validate_base64(encoded)
-    return f"data:image/jpeg;base64,{encoded}"
+    try:
+        _validate_base64(encoded)
+        return f"data:image/jpeg;base64,{encoded}"
+    except Exception as e:
+        logger.error("Base64 inválido fornecido para visão.")
+        raise ValueError("Dados de imagem inválidos.") from e
 
 
 def _validate_base64(encoded: str):
