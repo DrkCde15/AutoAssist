@@ -7,12 +7,13 @@ import logging
 import mimetypes
 import re
 import threading
+# from utils.async_task import train_in_background  # Removed: module does not exist
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from time import monotonic
 from urllib.parse import quote, quote_plus
-from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context
+from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
 import speech_recognition as sr
@@ -86,13 +87,9 @@ TEXT_ATTACHMENT_TYPES = {
 }
 
 def get_dashboard_url() -> str:
-    frontend_url = (os.getenv("URL_PROD") or "").strip()
-    if not frontend_url and has_request_context():
-        frontend_url = request.host_url
-    if not frontend_url:
-        frontend_url = "https://autoassist-l9lr.onrender.com/"
-    base = frontend_url if frontend_url.endswith("/") else f"{frontend_url}/"
-    return f"{base}dashboard.html"
+    # Return URL to the legacy HTML dashboard page
+    base = request.host_url.rstrip('/')
+    return f"{base}/dashboard.html"
 
 def get_user_by_id(cursor, user_id):
     cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
@@ -1146,6 +1143,7 @@ def register_maintenance_history():
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
+                    train_in_background()
                     threading.Thread(
                         target=send_maintenance_alert_email_for_user,
                         args=(None, user_row),
@@ -1436,32 +1434,9 @@ def delete_user():
 @pages_bp.route("/api/dashboard", methods=["GET"])
 @jwt_required()
 def get_dashboard_data():
-    user_id = get_jwt_identity()
-    try:
-        with get_db() as (cursor, conn):
-            user = get_user_by_id(cursor, user_id)
-            premium_error = ensure_premium_user(user)
-            if premium_error:
-                return premium_error
+    # Serve the legacy dashboard HTML page
+    return redirect(url_for('static', filename='dashboard.html'), code=302)
 
-            cursor.execute("SELECT * FROM veiculos WHERE user_id = %s", (user_id,))
-            veiculos = cursor.fetchall()
-            if not veiculos:
-                return jsonify([]), 404
-
-            dashboard_data = []
-            for v in veiculos:
-                fipe = get_fipe_value(v["tipo"], v["marca"], v["modelo"], v["ano_fabricacao"])
-                alerts = fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=v["id"])
-                dashboard_data.append({
-                    "veiculo": v,
-                    "fipe": fipe,
-                    "saude": alerts
-                })
-            return jsonify(dashboard_data), 200
-    except Exception as e:
-        logger.error(f"Erro no dashboard: {e}")
-        return jsonify(error="Erro interno"), 500
 
 @pages_bp.route("/api/chat/history", methods=["GET"])
 @jwt_required()

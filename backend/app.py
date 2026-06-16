@@ -1,15 +1,14 @@
 import os
 import logging
 from datetime import timedelta
-
+from routes.training import training_bp
 from dotenv import load_dotenv
-from flask import Flask, jsonify, make_response, request
+from flask import Flask, jsonify, make_response, request, redirect
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
 from flask_compress import Compress
 from werkzeug.exceptions import HTTPException
-
 from routes.gateway import gateway_bp
 
 # Carrega variaveis de ambiente localizando o arquivo .env no diretorio atual do script
@@ -27,17 +26,36 @@ print("Extensoes inicializadas.")
 app.json.sort_keys = False
 app.json.compact = True
 
+# Registrar blueprint de treinamento
+app.register_blueprint(training_bp, url_prefix="/api")
+
 # [SEGURANCA] Limite de upload (16MB) e protecao DoS
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Configuracao de Logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+import sys
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger(__name__)
 
 print("Importando rotas...")
-from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, init_db
+from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db
 from routes.payment import cakto_webhook as cakto_webhook_handler
 print("Rotas importadas.")
+
+def get_dashboard_url() -> str:
+    """Retorna a URL base da UI HTML.
+    Se estiver dentro de um contexto de request, usa `request.host_url`.
+    Caso contrário, recorre à variável de ambiente `URL_PROD` ou a um fallback padrão.
+    """
+    try:
+        # request.host_url inclui a barra final
+        return request.host_url.rstrip('/') + '/'
+    except Exception:
+        # Fora de request context (ex.: chamadas internas)
+        fallback = os.getenv("URL_PROD") or "http://localhost:5000/"
+        return fallback.rstrip('/') + '/'
+    # Return base URL for the Flask backend (HTML UI)
+    return request.host_url.rstrip('/') + '/'
 
 # [SEGURANCA] Cabecalhos HTTP Seguros e CSP
 is_production = os.getenv("FLASK_ENV") == "production"
@@ -140,10 +158,9 @@ base_allowed_origins = [
     "https://autoassist-l9lr.onrender.com",
     "http://localhost:5000",
     "http://127.0.0.1:5000",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:8501",
 ]
 
 extra_origins_raw = (os.getenv("CORS_ALLOW_ORIGINS") or "").strip()
@@ -271,6 +288,10 @@ app.register_blueprint(pages_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(gateway_bp)
+app.register_blueprint(notes_bp)
+# Register predictive dashboard blueprint
+from routes.dashboard import dashboard_bp
+app.register_blueprint(dashboard_bp)
 
 # [SEGURANCA] Padronizacao de Erros (Information Disclosure)
 @app.errorhandler(Exception)
@@ -322,5 +343,7 @@ def cors_preflight(_):
     return response
 
 
+# Run Flask only (Streamlit removed)
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+

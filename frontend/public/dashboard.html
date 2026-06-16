@@ -438,12 +438,15 @@
         function renderDashboard(data) {
             const content = document.getElementById('dashboardContent');
             const icons = {'moto': 'fa-motorcycle', 'caminhao': 'fa-truck', 'aviao': 'fa-plane', 'navio': 'fa-ship', 'geral': 'fa-car'};
+
             let htmlBuilder = `<div class="dashboard-header"><h1>Seu <span>Dashboard</span></h1><p>Acompanhe a saúde e o valor do seu patrimônio em tempo real.</p></div>`;
 
             data.forEach((item, index) => {
                 const iconClass = icons[item.veiculo.tipo] || 'fa-car';
+                const pred = item.predicao || {};
                 const marca = escapeHTML(item.veiculo.marca);
                 const modelo = escapeHTML(item.veiculo.modelo);
+
                 const ano = escapeHTML(item.veiculo.ano_fabricacao || item.veiculo.ano || '---');
                 const km = item.veiculo.quilometragem ? item.veiculo.quilometragem.toLocaleString() : '---';
                 const fipeData = item.fipe || null;
@@ -456,6 +459,7 @@
                 const fipeAnoInfo = fipeAproximado
                     ? ` - ano FIPE ${escapeHTML(fipeAnoUsado)}${fipeAnoConsultado ? ` (cadastro ${escapeHTML(fipeAnoConsultado)})` : ''}`
                     : '';
+
 
                 htmlBuilder += `
                 <div class="vehicle-card">
@@ -501,6 +505,15 @@
                                 `;
                             }).join('')}
                         </div>
+${pred.predicted_next_km ? `
+<div class="stat-card prediction">
+    <div class="stat-card-header">
+        <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
+        <div class="stat-card-title">Próxima Manutenção Prevista</div>
+    </div>
+    <div class="stat-value">${pred.predicted_next_km.toLocaleString()} km</div>
+    <p class="stat-subtitle">Data: ${pred.predicted_next_date} (confiança ${Math.round(pred.confidence*100)}%)</p>
+</div>` : ''}
                         <a href="chat.html" class="btn-action"><i class="fas fa-comments"></i> Consultar sobre estes itens</a>
                     </div>
                 </div>
