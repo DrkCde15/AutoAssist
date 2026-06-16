@@ -69,7 +69,7 @@ def analisar_pdf(file_data: bytes, filename: str, pergunta: str | None = None) -
 
 def extract_pdf_text(file_data: bytes) -> str:
     try:
-        from pypdf import PdfReader
+        from pypdf import PdfReader # type: ignore
     except ImportError:
         logger.warning("pypdf não instalado; análise de PDF indisponível.")
         return ""

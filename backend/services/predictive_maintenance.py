@@ -4,11 +4,9 @@ import numpy as np
 from datetime import datetime, timedelta
 import joblib
 from pathlib import Path
-
 from sklearn.ensemble import RandomForestRegressor, IsolationForest
 from sklearn.preprocessing import LabelEncoder
 import logging
-
 from routes.database import get_db
 from config import PREDICTIVE_MODEL_DIR, MIN_RECORDS_FOR_PREDICTION
 

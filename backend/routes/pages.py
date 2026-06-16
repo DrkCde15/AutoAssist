@@ -7,7 +7,6 @@ import logging
 import mimetypes
 import re
 import threading
-# from utils.async_task import train_in_background  # Removed: module does not exist
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -24,7 +23,7 @@ from services.nogai import (
     gerar_termos_busca,
     prever_intervalo_manutencao
 )
-
+from utils.async_task import train_in_background
 import json
 from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
@@ -1137,13 +1136,11 @@ def register_maintenance_history():
                     json.dumps(parser_metadata, ensure_ascii=False),
                 )
             )
-            maintenance_id = cursor.lastrowid
-
+            maintenance_id = cursor.lastrowi
             # Gatilho imediato de e-mail em segundo plano
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    train_in_background()
                     threading.Thread(
                         target=send_maintenance_alert_email_for_user,
                         args=(None, user_row),
