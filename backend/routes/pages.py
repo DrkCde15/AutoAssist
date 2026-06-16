@@ -1136,7 +1136,7 @@ def register_maintenance_history():
                     json.dumps(parser_metadata, ensure_ascii=False),
                 )
             )
-            maintenance_id = cursor.lastrowi
+            maintenance_id = cursor.lastrowid
             # Gatilho imediato de e-mail em segundo plano
             try:
                 user_row = get_user_by_id(cursor, user_id)
