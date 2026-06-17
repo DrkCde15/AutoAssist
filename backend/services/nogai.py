@@ -187,9 +187,6 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
 
 from services.groq_client import build_chat_messages, chat_completion, utility_model
 
-# Cliente Groq via API OpenAI-compatible. A chave deve vir do ambiente.
-client = None
-
 DEFAULT_GEMINI_TEXT_MODEL = "gemini-2.5-flash"
 DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-2.0-flash", "gemini-2.0-flash-lite")
 
@@ -402,19 +399,19 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
         if user_data and user_data.get("is_premium"):
             prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
             
-        prompt_final = mensagem
-        if user_data and (user_data.get("possui_veiculo") or user_data.get("lista_veiculos")):
-            veiculos = user_data.get("lista_veiculos")
-            if veiculos:
-                lista_str = "; ".join([f"{v.get('tipo', 'veículo')} {v.get('marca', '')} {v.get('modelo', '')} ano {v.get('ano_fabricacao', '')}".strip() for v in veiculos])
-                contexto_veiculo = f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui os seguintes veículos cadastrados: {lista_str}. Responda considerando os veículos do usuário se for relevante."
-            else:
-                contexto_veiculo = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
-                                    f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
-                                    f"ano {user_data.get('veiculo_ano_fabricacao')}. "
-                                    f"Responda considerando este veículo se for relevante.")
-            prompt_final = contexto_veiculo + "\n\nPergunta do usuário: " + mensagem
-            
+        user_context = ""
+        veiculos = user_data.get("lista_veiculos") if user_data else None
+        
+        if veiculos:
+            lista_str = "; ".join([f"{v.get('tipo', 'veículo')} {v.get('marca', '')} {v.get('modelo', '')} ano {v.get('ano_fabricacao', '')}".strip() for v in veiculos])
+            user_context = f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui os seguintes veículos cadastrados: {lista_str}."
+        elif user_data and user_data.get("possui_veiculo"):
+            user_context = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
+                            f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
+                            f"ano {user_data.get('veiculo_ano_fabricacao')}.")
+
+        prompt_final = f"{user_context}\n\nPergunta do usuário: {mensagem}" if user_context else mensagem
+
         return _send_chat_with_fallback(
             prompt=prompt_final,
             system_instruction=prompt_instrucoes,
@@ -468,7 +465,10 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
             temperature=0.2,
             log_context="Extracao de termos",
         )
-        data = json.loads(response.text)
+        try:
+            data = json.loads(response.text)
+        except json.JSONDecodeError:
+            return {"youtube": None, "loja": None, "pecas": None}
         return {
             "youtube": _clean_search_term(data.get("youtube")),
             "loja": _clean_search_term(data.get("loja")),
@@ -503,6 +503,9 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
             temperature=0.2,
             log_context="Previsao manutencao",
         )
-        return json.loads(response.text)
+        try:
+            return json.loads(response.text)
+        except json.JSONDecodeError:
+            return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Erro ao processar resposta da IA"}
     except Exception:
         return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}
