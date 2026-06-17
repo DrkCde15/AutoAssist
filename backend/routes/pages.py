@@ -1428,13 +1428,6 @@ def delete_user():
         logger.error(f"Erro ao excluir conta: {e}")
         return jsonify(error="Erro ao excluir conta"), 500
 
-@pages_bp.route("/api/dashboard", methods=["GET"])
-@jwt_required()
-def get_dashboard_data():
-    # Serve the legacy dashboard HTML page
-    return redirect(url_for('static', filename='dashboard.html'), code=302)
-
-
 @pages_bp.route("/api/chat/history", methods=["GET"])
 @jwt_required()
 def get_chat_history():
@@ -1890,6 +1883,8 @@ def index():
 
 @pages_bp.route("/<path:path>")
 def serve_html(path):
+    if path.startswith("api/"):
+        return jsonify(error="Recurso nao encontrado."), 404
     if not path.endswith(".html") and "." not in path:
         path += ".html"
     return current_app.send_static_file(path)

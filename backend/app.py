@@ -126,12 +126,20 @@ talisman = Talisman(app,
 
 @app.before_request
 def before_request():
+    # Log todas as requisições para /api/dashboard
+    if request.path == '/api/dashboard':
+        logger.info(f">>> REQUEST: {request.method} {request.path}")
+        logger.info(f">>> Headers: Accept={request.headers.get('Accept')}, Auth={request.headers.get('Authorization')[:20] if request.headers.get('Authorization') else 'None'}")
     # Desativa HSTS e HTTPS forçado se for localhost para não quebrar testes
     if is_localhost():
-        # Acessar a instância do Talisman para desativar localmente se necessário
-        # Nota: O talisman já lida com force_https=False se passarmos isso no init,
-        # mas aqui garantimos que as configurações de cookie também respeitem isso.
         pass
+
+@app.after_request
+def after_request(response):
+    # Log resposta para /api/dashboard
+    if request.path == '/api/dashboard':
+        logger.info(f"<<< RESPONSE: {response.status_code} | Content-Type: {response.headers.get('Content-Type')}")
+    return response
 
 # [SEGURANCA] Verificacao estrita da Secret Key
 jwt_secret = os.getenv("JWT_SECRET_KEY")
@@ -282,6 +290,10 @@ def root_post_webhook_fallback():
 
 
 # Registro de Blueprints
+# Register predictive dashboard blueprint FIRST (antes de pages_bp catch-all)
+from routes.dashboard import dashboard_bp
+app.register_blueprint(dashboard_bp, url_prefix="/api")
+
 app.register_blueprint(auth_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(pages_bp)
@@ -289,9 +301,6 @@ app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(gateway_bp)
 app.register_blueprint(notes_bp)
-# Register predictive dashboard blueprint
-from routes.dashboard import dashboard_bp
-app.register_blueprint(dashboard_bp)
 
 # [SEGURANCA] Padronizacao de Erros (Information Disclosure)
 @app.errorhandler(Exception)

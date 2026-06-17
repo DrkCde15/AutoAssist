@@ -1,14 +1,19 @@
 import os
-from flask import Blueprint, jsonify
+import logging
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from routes.database import get_db
 from services.predictive_maintenance import predictor
 
 # Blueprint for dashboard data (JSON) consumed by front‑end
-
+logger = logging.getLogger(__name__)
 dashboard_bp = Blueprint('dashboard', __name__)
 
-@dashboard_bp.get('/api/dashboard')
+@dashboard_bp.get('/dashboard')
+@jwt_required()
 def get_dashboard_data():
+    user_id = get_jwt_identity()
+    logger.info(f"Dashboard request from user {user_id}")
     """Return data consumed by *dashboard.html*.
 
     The structure mirrors what the front‑end template expects:
@@ -19,12 +24,13 @@ def get_dashboard_data():
     """
     try:
         # ------------------------------------------------------------------
-        # 1️⃣  Fetch a representative vehicle (simplified – first row)       
+        # 1️⃣  Fetch user's vehicles (get all, or first if multiple)       
         # ------------------------------------------------------------------
         with get_db() as (cur, _):
             cur.execute(
                 "SELECT id, tipo, marca, modelo, ano_fabricacao, quilometragem "
-                "FROM veiculos ORDER BY id LIMIT 1"
+                "FROM veiculos WHERE user_id = %s ORDER BY id LIMIT 1",
+                (user_id,)
             )
             vehicle = cur.fetchone()
         if not vehicle:
@@ -63,6 +69,5 @@ def get_dashboard_data():
         return jsonify([response_item]), 200
     except Exception as e:
         # Log the error and return an empty payload – the UI shows a generic error.
-        from backend.app import logger
         logger.error(f"Erro ao gerar dados do dashboard: {e}", exc_info=True)
         return jsonify([]), 500
