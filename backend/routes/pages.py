@@ -1449,7 +1449,7 @@ def get_chat_history():
 
             cursor.execute(
                 f"""
-                SELECT id, mensagem_usuario, resposta_ia, created_at, videos, links, topic, attachments
+                SELECT id, session_id, mensagem_usuario, resposta_ia, created_at, videos, links, topic, attachments
                 FROM chats
                 WHERE user_id = %s
                 {after_filter}
@@ -1487,6 +1487,53 @@ def delete_chat_history(chat_id):
     except Exception as e:
         logger.error(f"Erro ao excluir chat: {e}")
         return jsonify(error="Erro ao excluir chat"), 500
+
+@pages_bp.route("/api/chat/sync_guest", methods=["POST"])
+@jwt_required()
+def sync_guest_chat():
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    chats = data.get("chats") or []
+    
+    if not chats:
+        return jsonify(success=True), 200
+
+    try:
+        with get_db() as (cursor, conn):
+            for chat in chats:
+                session_id = chat.get("session_id")
+                mensagem_usuario = chat.get("mensagem_usuario", "")
+                resposta_ia = chat.get("resposta_ia", "")
+                created_at = chat.get("created_at")
+                videos = chat.get("videos", [])
+                links = chat.get("links", [])
+                topic = chat.get("topic", "")
+                attachments = chat.get("attachments", [])
+
+                if not created_at:
+                    created_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+                cursor.execute(
+                    """
+                    INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia, created_at, videos, links, topic, attachments)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        user_id,
+                        session_id if session_id else None,
+                        mensagem_usuario,
+                        resposta_ia,
+                        created_at,
+                        json.dumps(videos),
+                        json.dumps(links),
+                        topic,
+                        json.dumps(attachments),
+                    )
+                )
+        return jsonify(success=True), 200
+    except Exception as e:
+        logger.error(f"Erro ao sincronizar chat de visitante: {e}")
+        return jsonify(error="Erro interno ao sincronizar chat"), 500
 
 @pages_bp.route("/api/videos", methods=["GET"])
 @jwt_required()
@@ -1615,6 +1662,7 @@ def chat():
     user_id = get_optional_user_id()
     data = request.get_json(silent=True) or {}
     msg = (data.get("message") or "").strip()
+    session_id = (data.get("session_id") or "").strip()
     img_b64 = data.get("image")
     try:
         attachment = parse_chat_attachment(data)
@@ -1677,11 +1725,12 @@ def chat():
             with get_db() as (cursor, conn):
                 cursor.execute(
                     """
-                    INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         user_id,
+                        session_id if session_id else None,
                         stored_message,
                         resposta,
                         json.dumps(videos),
@@ -1714,6 +1763,7 @@ def handle_voice():
 
     audio_file = request.files['audio']
     img_b64 = request.form.get("image")
+    session_id = (request.form.get("session_id") or "").strip()
     attachment = None
     if request.form.get("attachment"):
         try:
@@ -1787,11 +1837,12 @@ def handle_voice():
             with get_db() as (cursor, conn):
                 cursor.execute(
                     """
-                    INSERT INTO chats (user_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         user_id,
+                        session_id if session_id else None,
                         text,
                         resposta,
                         json.dumps(videos),

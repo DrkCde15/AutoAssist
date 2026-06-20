@@ -145,12 +145,17 @@ def init_db():
             CREATE TABLE IF NOT EXISTS chats (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT,
+                session_id VARCHAR(50),
                 mensagem_usuario TEXT,
                 resposta_ia TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        try:
+            cursor.execute("ALTER TABLE chats ADD COLUMN session_id VARCHAR(50)")
+        except Exception:
+            pass
         try:
             cursor.execute("ALTER TABLE chats ADD COLUMN videos JSON")
         except Exception:

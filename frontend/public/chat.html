@@ -1667,6 +1667,11 @@
         return [];
       }
 
+      function generateUUID() {
+        return crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).substr(2, 9);
+      }
+      let currentSessionId = generateUUID();
+
       function writeChatHistoryCache(items) {
         localStorage.setItem(getHistoryCacheKey(), JSON.stringify({
           ts: Date.now(),
@@ -1700,52 +1705,69 @@
       function renderHistoryList() {
         if (!chatHistoryList) return;
         const query = normalizeHistoryText(chatHistorySearch?.value || "");
-        const items = chatHistoryItems
-          .map((chat, index) => ({ chat, index, key: makeHistoryKey(chat, index) }))
+
+        const grouped = new Map();
+        [...chatHistoryItems].sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)).forEach(chat => {
+            const sid = chat.session_id || `legacy-${chat.id || Math.random()}`;
+            if (!grouped.has(sid)) {
+                grouped.set(sid, {
+                    session_id: sid,
+                    topic: chat.topic || "Novo Chat",
+                    created_at: chat.created_at,
+                    firstMessage: chat.mensagem_usuario,
+                    messages: [],
+                });
+            }
+            const group = grouped.get(sid);
+            group.messages.push(chat);
+            if (chat.topic && chat.topic !== "Novo Chat") group.topic = chat.topic;
+        });
+
+        const items = Array.from(grouped.values())
           .reverse()
-          .filter(({ chat }) => {
+          .filter((group) => {
             if (!query) return true;
-            return normalizeHistoryText([
-              chat.topic,
-              chat.mensagem_usuario,
-              chat.resposta_ia,
-            ].join(" ")).includes(query);
+            return group.messages.some(m => normalizeHistoryText([
+              m.topic,
+              m.mensagem_usuario,
+              m.resposta_ia,
+            ].join(" ")).includes(query));
           });
 
         chatHistoryList.innerHTML = "";
-        if (!items.length) {
-          const empty = document.createElement("div");
-          empty.className = "history-empty";
-          empty.textContent = query ? "Nenhum histórico encontrado." : "Nenhum histórico ainda.";
+        if (items.length === 0) {
+          const empty = document.createElement("li");
+          empty.style.cssText = "text-align: center; color: var(--text-secondary); padding: 1rem;";
+          empty.textContent = "Nenhum histórico encontrado.";
           chatHistoryList.appendChild(empty);
           return;
         }
 
-        items.forEach(({ chat, index, key }) => {
+        items.forEach((group) => {
           const row = document.createElement("div");
-          row.className = `history-chat-row${activeHistoryKey === key ? " is-active" : ""}`;
+          row.className = `history-chat-row${activeHistoryKey === group.session_id ? " is-active" : ""}`;
 
           const button = document.createElement("button");
           button.type = "button";
           button.className = "history-chat-item";
-          button.title = formatHistoryDate(chat.created_at);
+          button.title = formatHistoryDate(group.created_at);
 
           const title = document.createElement("span");
           title.className = "history-chat-title";
-          title.textContent = getHistoryTitle(chat);
+          title.textContent = group.topic && group.topic !== "Novo Chat" ? group.topic : (group.firstMessage || "Arquivo Anexado");
 
           button.appendChild(title);
-          button.addEventListener("click", () => renderSingleChat(chat, index));
+          button.addEventListener("click", () => renderSession(group));
 
           const deleteButton = document.createElement("button");
           deleteButton.type = "button";
           deleteButton.className = "history-delete-btn";
           deleteButton.title = "Excluir chat";
-          deleteButton.setAttribute("aria-label", `Excluir chat ${getHistoryTitle(chat)}`);
+          deleteButton.setAttribute("aria-label", `Excluir chat`);
           deleteButton.innerHTML = '<i class="fas fa-trash-alt" aria-hidden="true"></i>';
-          deleteButton.addEventListener("click", (event) => {
+          deleteButton.addEventListener("click", async (event) => {
             event.stopPropagation();
-            deleteChatHistory(chat, index, key, deleteButton);
+            await deleteChatHistoryBySession(group.session_id, deleteButton);
           });
 
           row.appendChild(button);
@@ -1754,44 +1776,47 @@
         });
       }
 
-      async function deleteChatHistory(chat, index, key, button) {
-        if (!chat?.id) {
-          chatHistoryItems = chatHistoryItems.filter((_, itemIndex) => itemIndex !== index);
-          if (activeHistoryKey === key) {
-            activeHistoryKey = null;
-            currentThreadHistory = [];
-            messagesDiv.innerHTML = "";
-            lastAnalysisText = "";
-          }
-          writeChatHistoryCache(chatHistoryItems);
-          renderHistoryList();
-          return;
-        }
+      function renderSession(group) {
+        messagesDiv.innerHTML = "";
+        currentSessionId = group.session_id.startsWith('legacy-') ? generateUUID() : group.session_id;
+        activeHistoryKey = group.session_id;
+        
+        currentThreadHistory = [];
+        group.messages.forEach(chat => {
+          renderChatEntry(chat);
+          appendToCurrentThread(chat.mensagem_usuario, chat.resposta_ia);
+          lastAnalysisText = chat.resposta_ia || "";
+        });
 
-        button.disabled = true;
-        try {
-          const res = await Auth.authenticatedFetch(`/api/chat/history/${encodeURIComponent(chat.id)}`, {
-            method: "DELETE",
-          });
+        renderHistoryList();
+        setSidebarOpen(false);
+        scrollToBottom();
+      }
 
-          if (!res.ok) {
-            throw new Error("Falha ao excluir chat");
+      async function deleteChatHistoryBySession(sessionId, button) {
+          button.disabled = true;
+          try {
+             const messagesToDelete = chatHistoryItems.filter(c => (c.session_id || `legacy-${c.id}`) === sessionId);
+             for(let m of messagesToDelete) {
+                if(m.id) {
+                    await Auth.authenticatedFetch(`/api/chat/history/${encodeURIComponent(m.id)}`, { method: "DELETE" }).catch(() => {});
+                }
+             }
+             chatHistoryItems = chatHistoryItems.filter(c => (c.session_id || `legacy-${c.id}`) !== sessionId);
+             if (activeHistoryKey === sessionId) {
+                 activeHistoryKey = null;
+                 currentThreadHistory = [];
+                 messagesDiv.innerHTML = "";
+                 lastAnalysisText = "";
+                 currentSessionId = generateUUID();
+             }
+             writeChatHistoryCache(chatHistoryItems);
+             renderHistoryList();
+          } catch(e) {
+             console.warn("Erro ao excluir chat:", e);
+             alert("Não foi possível excluir este chat.");
+             button.disabled = false;
           }
-
-          chatHistoryItems = chatHistoryItems.filter((item) => String(item.id) !== String(chat.id));
-          if (activeHistoryKey === key) {
-            activeHistoryKey = null;
-            currentThreadHistory = [];
-            messagesDiv.innerHTML = "";
-            lastAnalysisText = "";
-          }
-          writeChatHistoryCache(chatHistoryItems);
-          renderHistoryList();
-        } catch (error) {
-          console.warn("Erro ao excluir chat:", error);
-          alert("Não foi possível excluir este chat.");
-          button.disabled = false;
-        }
       }
 
       function renderChatEntry(chat) {
@@ -1830,21 +1855,11 @@
         currentThreadHistory = currentThreadHistory.slice(-8);
       }
 
-      function renderSingleChat(chat, index) {
-        messagesDiv.innerHTML = "";
-        activeHistoryKey = makeHistoryKey(chat, index);
-        currentThreadHistory = historyFromChat(chat);
-        renderHistoryList();
-        renderChatEntry(chat);
-        lastAnalysisText = chat.resposta_ia || "";
-        setSidebarOpen(false);
-        scrollToBottom();
-      }
-
       function addChatToHistory(chat) {
         if (!chat) return;
+        if (!chat.session_id) chat.session_id = currentSessionId;
         chatHistoryItems = [...chatHistoryItems, chat];
-        activeHistoryKey = makeHistoryKey(chat, chatHistoryItems.length - 1);
+        activeHistoryKey = currentSessionId;
         writeChatHistoryCache(chatHistoryItems);
         renderHistoryList();
       }
@@ -1988,6 +2003,7 @@
             category: "automotivo",
             ignore_global_history: true,
             client_history: currentThreadHistory,
+            session_id: currentSessionId,
           };
           if (attachmentPayload) payload.attachment = attachmentPayload;
           if (!isAuthenticated && guestId) payload.guest_id = guestId;
@@ -2049,6 +2065,7 @@
 
       btnNewChat?.addEventListener("click", () => {
         activeHistoryKey = null;
+        currentSessionId = generateUUID();
         currentThreadHistory = [];
         messagesDiv.innerHTML = "";
         lastAnalysisText = "";

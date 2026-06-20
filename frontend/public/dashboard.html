@@ -228,6 +228,51 @@
             font-size: 0.85rem;
         }
 
+        /* Health Score SVG Circular Chart */
+        .health-score-container {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 20px;
+            padding: 10px 0;
+        }
+        .circular-chart {
+            display: block;
+            margin: 0 auto;
+            max-width: 100px;
+            max-height: 100px;
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+        }
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+        }
+        .circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            animation: progress 1s ease-out forwards;
+            transform: rotate(-90deg);
+            transform-origin: 50px 50px;
+        }
+        @keyframes progress {
+            0% { stroke-dashoffset: 251.2; }
+        }
+        .percentage {
+            fill: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 28px;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+        .health-score-text p {
+            font-size: 0.95rem;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
         /* State of Health Section */
         .alert-item {
             background: rgba(255, 255, 255, 0.03);
@@ -459,11 +504,15 @@
                 const fipeAnoInfo = fipeAproximado
                     ? ` - ano FIPE ${escapeHTML(fipeAnoUsado)}${fipeAnoConsultado ? ` (cadastro ${escapeHTML(fipeAnoConsultado)})` : ''}`
                     : '';
-
+                const extras = item.estatisticas_extras || {};
+                const healthScore = extras.health_score || 0;
+                let healthColor = "var(--success)";
+                if(healthScore < 50) healthColor = "var(--danger)";
+                else if(healthScore < 80) healthColor = "var(--warning)";
 
                 htmlBuilder += `
-                <div class="vehicle-card">
-                    <div class="vehicle-icon"><i class="fas ${iconClass}"></i></div>
+                <div class="vehicle-card" style="background: linear-gradient(145deg, var(--card-bg) 0%, rgba(0,122,255,0.05) 100%); border-color: rgba(0,122,255,0.2);">
+                    <div class="vehicle-icon" style="box-shadow: 0 0 30px rgba(0,122,255,0.3);"><i class="fas ${iconClass}"></i></div>
                     <div class="vehicle-info">
                         <h2>${marca} ${modelo}</h2>
                         <div class="vehicle-meta">
@@ -474,19 +523,23 @@
                 </div>
 
                 <div class="stats-grid">
-                    <div class="stat-card fipe">
-                        <div class="stat-card-header">
-                            <div class="stat-card-icon"><i class="fas fa-chart-line"></i></div>
-                            <div class="stat-card-title">Valor de Mercado (FIPE)</div>
-                        </div>
-                        <div class="stat-value">${fipeValor}</div>
-                        <p class="stat-subtitle">${fipeRefLabel}: ${fipeRef}${fipeAnoInfo}</p>
-                    </div>
-
                     <div class="stat-card">
                         <div class="stat-card-header">
-                            <div class="stat-card-icon"><i class="fas fa-shield-alt"></i></div>
-                            <div class="stat-card-title">Estado de Conservação</div>
+                            <div class="stat-card-icon" style="color: ${healthColor};"><i class="fas fa-heartbeat"></i></div>
+                            <div class="stat-card-title">Health Score</div>
+                        </div>
+                        <div class="health-score-container">
+                            <svg viewBox="0 0 100 100" class="circular-chart" style="filter: drop-shadow(0 0 12px ${healthColor}40);">
+                                <circle class="circle-bg" cx="50" cy="50" r="40" />
+                                <circle class="circle" cx="50" cy="50" r="40" 
+                                    stroke="${healthColor}" 
+                                    stroke-dasharray="251.2" 
+                                    style="stroke-dashoffset: ${251.2 - (251.2 * healthScore / 100)};" />
+                                <text x="50" y="50" class="percentage">${healthScore}</text>
+                            </svg>
+                            <div class="health-score-text">
+                                <p>Pontuação geral baseada na idade e quilometragem do seu veículo.</p>
+                            </div>
                         </div>
                         <div id="alertsList">
                             ${item.saude.map(alert => {
@@ -505,6 +558,35 @@
                                 `;
                             }).join('')}
                         </div>
+                    </div>
+
+                    <div class="stat-card fipe" style="background: linear-gradient(to right bottom, var(--card-bg), rgba(255,255,255,0.02));">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="stat-card-title">Valor de Mercado (FIPE)</div>
+                        </div>
+                        <div class="stat-value" style="color: var(--success);">${fipeValor}</div>
+                        <p class="stat-subtitle">${fipeRefLabel}: ${fipeRef}${fipeAnoInfo}</p>
+                        
+                        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div class="stat-card-header" style="margin-bottom: 0.5rem;">
+                                <div class="stat-card-icon" style="width:30px; height:30px; font-size:0.8rem;"><i class="fas fa-wrench"></i></div>
+                                <div class="stat-card-title">Histórico de Manutenções</div>
+                            </div>
+                            <p style="font-size: 1.2rem; font-weight: 600;">${extras.manutencoes_realizadas} registros</p>
+                            <p class="stat-subtitle">Última revisão: ${extras.data_ultima_manutencao}</p>
+                        </div>
+                        
+                        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div class="stat-card-header" style="margin-bottom: 0.5rem;">
+                                <div class="stat-card-icon" style="width:30px; height:30px; font-size:0.8rem; background: rgba(10,132,255,0.1); color: #0a84ff;"><i class="fas fa-comments"></i></div>
+                                <div class="stat-card-title">Consultas com o NOG</div>
+                            </div>
+                            <p style="font-size: 1.2rem; font-weight: 600;">${extras.chats_realizados} interações</p>
+                            <p class="stat-subtitle">Tire mais dúvidas pelo chat!</p>
+                        </div>
+                    </div>
+                    
 ${pred.predicted_next_km ? `
 <div class="stat-card prediction">
     <div class="stat-card-header">
@@ -514,9 +596,8 @@ ${pred.predicted_next_km ? `
     <div class="stat-value">${pred.predicted_next_km.toLocaleString()} km</div>
     <p class="stat-subtitle">Data: ${pred.predicted_next_date} (confiança ${Math.round(pred.confidence*100)}%)</p>
 </div>` : ''}
-                        <a href="chat.html" class="btn-action"><i class="fas fa-comments"></i> Consultar sobre estes itens</a>
-                    </div>
                 </div>
+                <a href="chat.html" class="btn-action"><i class="fas fa-robot"></i> Analisar dados com o NOG</a>
                 ${index < data.length - 1 ? '<hr class="section-divider">' : ''}
                 `;
             });

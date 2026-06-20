@@ -28,3 +28,4 @@ pandas
 numpy
 scikit-learn
 joblib
+spacy>=3.7,<4
