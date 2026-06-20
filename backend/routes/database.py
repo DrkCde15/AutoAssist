@@ -240,6 +240,20 @@ def init_db():
             except Exception:
                 pass
         cursor.execute("""
+            CREATE TABLE IF NOT EXISTS maintenance_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NULL,
+                note TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_maintenance_notes_user_created (user_id, created_at),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        try:
+            cursor.execute("ALTER TABLE maintenance_notes ADD COLUMN user_id INT NULL")
+        except Exception:
+            pass
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS payments_orders (
                 id VARCHAR(100) PRIMARY KEY,
                 user_id INT NOT NULL,
@@ -302,6 +316,7 @@ def init_db():
             "CREATE INDEX idx_users_email ON users (email)",
             "CREATE INDEX idx_users_google_id ON users (google_id)",
             "CREATE INDEX idx_maintenance_user_vehicle_date ON maintenance_history (user_id, vehicle_id, service_date DESC, created_at DESC)",
+            "CREATE INDEX idx_maintenance_notes_user_created ON maintenance_notes (user_id, created_at DESC)",
             "CREATE INDEX idx_analytics_anonymous_created ON analytics_events (anonymous_id, created_at)"
         ]
         for idx_query in indexes:

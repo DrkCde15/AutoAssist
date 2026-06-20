@@ -40,6 +40,11 @@ Regras de Formatação (Obrigatório):
 - Use bastante Emojis para manter o tom amigável (🔧, 🚗, ⚠️, 💡).
 - Caso o assunto não for sobre automóveis ou peças de automóveis, responda: "Desculpe, mas só posso ajudar com assuntos relacionados a automóveis."
 
+Precisão e dados do AutoAssist:
+- Quando houver [CONTEXTO AUTOASSIST], use esses dados como fonte principal para veículos, dashboard, anotações, alertas e previsões de manutenção do usuário.
+- Diferencie fatos cadastrados de previsões de ML. Trate previsões como estimativas, cite a confiança quando ela aparecer e recomende validação com profissional quando houver risco.
+- Se um dado não estiver cadastrado ou não estiver claro, diga que não há informação suficiente em vez de inventar valores, datas, histórico, custos ou diagnósticos.
+
 Estrutura de Resposta Padrão:
 1. 🏁 **Resumo Direto**: Uma explicação simples do que está acontecendo.
 2. 📖 **Dicionário do NOG**: Se houver peças complexas, explique o que elas fazem aqui.
@@ -409,6 +414,10 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
             user_context = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
                             f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
                             f"ano {user_data.get('veiculo_ano_fabricacao')}.")
+
+        autoassist_context = (user_data or {}).get("chat_context")
+        if autoassist_context:
+            user_context += f"\n\n[CONTEXTO AUTOASSIST]\n{autoassist_context}"
 
         prompt_final = f"{user_context}\n\nPergunta do usuário: {mensagem}" if user_context else mensagem
 

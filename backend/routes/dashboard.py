@@ -73,7 +73,7 @@ def get_dashboard_data():
         # ------------------------------------------------------------------
         pred = predictor.predict_next(
             vehicle_id=vehicle["id"],
-            maintenance_type="oil_change",
+            maintenance_type="troca_oleo",
             kilometers_actual=vehicle.get("quilometragem")
         ) or {}
 

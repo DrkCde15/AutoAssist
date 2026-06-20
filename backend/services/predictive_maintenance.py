@@ -177,11 +177,30 @@ class MaintenancePredictor:
                     if not vehicle:
                         return None
                     current_km = vehicle['quilometragem']
+            current_km = int(current_km or 0)
 
             avg_km_day, avg_days, last_km = self.get_vehicle_metrics(vehicle_id)
 
             # Prepare input for the models
-            type_enc = le.transform([maintenance_type])[0]
+            known_types = [str(item) for item in list(getattr(le, "classes_", []))]
+            if not known_types:
+                return None
+
+            maintenance_type_used = str(maintenance_type or "").strip()
+            if maintenance_type_used not in known_types:
+                maintenance_type_used = next(
+                    (
+                        candidate for candidate in (
+                            "troca_oleo",
+                            "oil_change",
+                            "manutencao_geral",
+                            known_types[0],
+                        )
+                        if candidate in known_types
+                    ),
+                    known_types[0],
+                )
+            type_enc = le.transform([maintenance_type_used])[0]
 
             X_input = pd.DataFrame([[
                 type_enc,
@@ -204,7 +223,8 @@ class MaintenancePredictor:
             return {
                 "predicted_next_km": int(current_km + pred_interval_km),
                 "predicted_next_date": (datetime.now() + timedelta(days=int(pred_interval_days))).strftime('%Y-%m-%d'),
-                "confidence": round(confidence, 2)
+                "confidence": round(confidence, 2),
+                "maintenance_type_used": maintenance_type_used,
             }
         except Exception as e:
             logger.error(f"Erro na inferência preditiva: {e}")

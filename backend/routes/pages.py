@@ -9,7 +9,7 @@ import re
 import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from time import monotonic
 from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
@@ -23,6 +23,7 @@ from services.nogai import (
     gerar_termos_busca,
     prever_intervalo_manutencao
 )
+from services.predictive_maintenance import predictor
 from utils.async_task import train_in_background
 import json
 from services.youtube_service import buscar_videos_youtube
@@ -431,6 +432,30 @@ def serialize_datetime_field(value):
     return value
 
 
+def normalize_chat_session_id(raw_session_id):
+    session_id = (raw_session_id or "").strip()
+    if not session_id:
+        return None
+    return session_id[:50]
+
+
+def parse_client_created_at(value):
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        text = (value or "").strip()
+        if not text:
+            return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed.strftime("%Y-%m-%d %H:%M:%S")
+
+
 def serialize_chat_row(row):
     videos = parse_json_list(row.get("videos"))
     links = parse_json_list(row.get("links"))
@@ -442,6 +467,7 @@ def serialize_chat_row(row):
 
     return {
         "id": row["id"],
+        "session_id": row.get("session_id") or "",
         "mensagem_usuario": row["mensagem_usuario"],
         "resposta_ia": row["resposta_ia"],
         "created_at": serialize_datetime_field(row["created_at"]),
@@ -452,18 +478,153 @@ def serialize_chat_row(row):
     }
 
 
+def format_chat_date(value):
+    if not value:
+        return "-"
+    if isinstance(value, datetime):
+        return value.strftime("%d/%m/%Y")
+    try:
+        return datetime.fromisoformat(str(value)).strftime("%d/%m/%Y")
+    except ValueError:
+        return str(value)
+
+
+def format_chat_money(value):
+    if value is None:
+        return "R$ 0,00"
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "R$ 0,00"
+    return f"R$ {number:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def format_vehicle_for_chat(vehicle):
+    label = " ".join(
+        str(vehicle.get(field) or "").strip()
+        for field in ("tipo", "marca", "modelo")
+        if str(vehicle.get(field) or "").strip()
+    ) or f"Veiculo #{vehicle.get('id')}"
+    details = []
+    if vehicle.get("ano_fabricacao"):
+        details.append(f"ano {vehicle.get('ano_fabricacao')}")
+    if vehicle.get("quilometragem") is not None:
+        details.append(f"{vehicle.get('quilometragem')} km")
+    return f"{label} ({', '.join(details)})" if details else label
+
+
+def build_user_chat_data_context(cursor, user_id, veiculos):
+    lines = []
+    if veiculos:
+        lines.append("Dashboard - veiculos cadastrados: " + "; ".join(format_vehicle_for_chat(v) for v in veiculos[:5]))
+    else:
+        lines.append("Dashboard - nenhum veiculo cadastrado para este usuario.")
+
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS quantidade_registros,
+               COALESCE(SUM(cost), 0) AS total_gastos,
+               MAX(service_date) AS ultima_manutencao
+        FROM maintenance_history
+        WHERE user_id = %s
+        """,
+        (user_id,)
+    )
+    summary = cursor.fetchone() or {}
+    lines.append(
+        "Dashboard - anotacoes de manutencao: "
+        f"{int(summary.get('quantidade_registros') or 0)} registro(s), "
+        f"total gasto {format_chat_money(summary.get('total_gastos'))}, "
+        f"ultima manutencao {format_chat_date(summary.get('ultima_manutencao'))}."
+    )
+
+    try:
+        alerts = fetch_user_maintenance_alerts(cursor, user_id, only_actionable=True)[:4]
+    except Exception as exc:
+        logger.warning("Contexto de alertas indisponivel para o chat: %s", exc)
+        alerts = []
+    if alerts:
+        lines.append(
+            "Alertas ativos das anotacoes: "
+            + " | ".join(f"{a.get('item')}: {a.get('msg')}" for a in alerts)
+        )
+
+    cursor.execute(
+        """
+        SELECT mh.description, mh.maintenance_label, mh.service_date, mh.service_km,
+               mh.cost, v.marca AS vehicle_marca, v.modelo AS vehicle_modelo
+        FROM maintenance_history mh
+        LEFT JOIN veiculos v ON v.id = mh.vehicle_id
+        WHERE mh.user_id = %s
+        ORDER BY mh.service_date DESC, mh.created_at DESC
+        LIMIT 5
+        """,
+        (user_id,)
+    )
+    notes = cursor.fetchall()
+    if notes:
+        note_parts = []
+        for note in notes:
+            vehicle_label = " ".join(
+                str(note.get(field) or "").strip()
+                for field in ("vehicle_marca", "vehicle_modelo")
+                if str(note.get(field) or "").strip()
+            )
+            note_parts.append(
+                f"{format_chat_date(note.get('service_date'))}: "
+                f"{note.get('maintenance_label') or 'Manutencao'}"
+                f"{f' em {vehicle_label}' if vehicle_label else ''}"
+                f" - {note.get('description')}"
+            )
+        lines.append("Anotacoes recentes do usuario: " + " | ".join(note_parts))
+
+    predictions = []
+    for vehicle in veiculos[:3]:
+        try:
+            prediction = predictor.predict_next(
+                vehicle_id=vehicle["id"],
+                maintenance_type="troca_oleo",
+                kilometers_actual=vehicle.get("quilometragem"),
+            )
+        except Exception as exc:
+            logger.warning("Predicao ML indisponivel para veiculo %s: %s", vehicle.get("id"), exc)
+            prediction = None
+
+        if prediction:
+            predictions.append(
+                f"{format_vehicle_for_chat(vehicle)}: proxima referencia em "
+                f"{prediction.get('predicted_next_km')} km ou {prediction.get('predicted_next_date')} "
+                f"(confianca {prediction.get('confidence')}, modelo {prediction.get('maintenance_type_used', 'treinado')})"
+            )
+
+    if predictions:
+        lines.append("ML preditivo de manutencao: " + " | ".join(predictions))
+    else:
+        lines.append("ML preditivo de manutencao: sem previsao confiavel disponivel; nao invente prazos.")
+
+    lines.append(
+        "Regra de resposta: use estes dados como fonte quando forem relevantes; "
+        "quando faltar dado cadastrado, diga isso claramente em vez de supor."
+    )
+    return "\n".join(lines)
+
+
 def load_user_chat_context(cursor, user_id):
     user = get_user_by_id(cursor, user_id)
     if not user:
         return None
 
     cursor.execute(
-        "SELECT tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s",
+        "SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s",
         (user_id,)
     )
     veiculos = cursor.fetchall()
     if veiculos:
         user["lista_veiculos"] = veiculos
+    try:
+        user["chat_context"] = build_user_chat_data_context(cursor, user_id, veiculos)
+    except Exception as exc:
+        logger.warning("Nao foi possivel montar contexto do usuario para o chat: %s", exc)
     return user
 
 
@@ -475,9 +636,10 @@ def select_recent_chat_history(cursor, user_id, message, client_history, ignore_
     return get_mysql_history(user_id, limit=3, cursor=cursor)
 
 
-def build_chat_response(chat_id, message, resposta, videos, links, topic, attachments):
+def build_chat_response(chat_id, session_id, message, resposta, videos, links, topic, attachments):
     return {
         "id": chat_id,
+        "session_id": session_id or "",
         "mensagem_usuario": message,
         "resposta_ia": resposta,
         "created_at": datetime.now().isoformat(),
@@ -1499,19 +1661,46 @@ def sync_guest_chat():
         return jsonify(success=True), 200
 
     try:
+        synced_count = 0
         with get_db() as (cursor, conn):
             for chat in chats:
-                session_id = chat.get("session_id")
-                mensagem_usuario = chat.get("mensagem_usuario", "")
-                resposta_ia = chat.get("resposta_ia", "")
-                created_at = chat.get("created_at")
-                videos = chat.get("videos", [])
-                links = chat.get("links", [])
-                topic = chat.get("topic", "")
-                attachments = chat.get("attachments", [])
+                if not isinstance(chat, dict):
+                    continue
 
-                if not created_at:
-                    created_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                session_id = normalize_chat_session_id(chat.get("session_id"))
+                mensagem_usuario = (chat.get("mensagem_usuario") or "").strip()
+                resposta_ia = (chat.get("resposta_ia") or "").strip()
+                if not mensagem_usuario and not resposta_ia:
+                    continue
+
+                created_at = parse_client_created_at(chat.get("created_at"))
+                videos = parse_json_list(chat.get("videos"))
+                links = parse_json_list(chat.get("links"))
+                topic = (chat.get("topic") or "").strip()[:255]
+                attachments = parse_json_list(chat.get("attachments"))
+
+                if session_id:
+                    cursor.execute(
+                        """
+                        SELECT id FROM chats
+                        WHERE user_id = %s AND session_id = %s
+                          AND mensagem_usuario = %s AND resposta_ia = %s
+                        LIMIT 1
+                        """,
+                        (user_id, session_id, mensagem_usuario, resposta_ia)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT id FROM chats
+                        WHERE user_id = %s AND session_id IS NULL
+                          AND mensagem_usuario = %s AND resposta_ia = %s
+                        LIMIT 1
+                        """,
+                        (user_id, mensagem_usuario, resposta_ia)
+                    )
+                if cursor.fetchone():
+                    continue
 
                 cursor.execute(
                     """
@@ -1520,7 +1709,7 @@ def sync_guest_chat():
                     """,
                     (
                         user_id,
-                        session_id if session_id else None,
+                        session_id,
                         mensagem_usuario,
                         resposta_ia,
                         created_at,
@@ -1530,7 +1719,8 @@ def sync_guest_chat():
                         json.dumps(attachments),
                     )
                 )
-        return jsonify(success=True), 200
+                synced_count += 1
+        return jsonify(success=True, synced=synced_count), 200
     except Exception as e:
         logger.error(f"Erro ao sincronizar chat de visitante: {e}")
         return jsonify(error="Erro interno ao sincronizar chat"), 500
@@ -1662,7 +1852,7 @@ def chat():
     user_id = get_optional_user_id()
     data = request.get_json(silent=True) or {}
     msg = (data.get("message") or "").strip()
-    session_id = (data.get("session_id") or "").strip()
+    session_id = normalize_chat_session_id(data.get("session_id"))
     img_b64 = data.get("image")
     try:
         attachment = parse_chat_attachment(data)
@@ -1730,7 +1920,7 @@ def chat():
                     """,
                     (
                         user_id,
-                        session_id if session_id else None,
+                        session_id,
                         stored_message,
                         resposta,
                         json.dumps(videos),
@@ -1745,7 +1935,7 @@ def chat():
             response=resposta,
             videos=videos,
             links=links,
-            chat=build_chat_response(chat_id, stored_message, resposta, videos, links, topic, attachments),
+            chat=build_chat_response(chat_id, session_id, stored_message, resposta, videos, links, topic, attachments),
         )
         if guest_messages_remaining is not None:
             response_payload["guest_messages_remaining"] = guest_messages_remaining
@@ -1763,7 +1953,7 @@ def handle_voice():
 
     audio_file = request.files['audio']
     img_b64 = request.form.get("image")
-    session_id = (request.form.get("session_id") or "").strip()
+    session_id = normalize_chat_session_id(request.form.get("session_id"))
     attachment = None
     if request.form.get("attachment"):
         try:
@@ -1842,7 +2032,7 @@ def handle_voice():
                     """,
                     (
                         user_id,
-                        session_id if session_id else None,
+                        session_id,
                         text,
                         resposta,
                         json.dumps(videos),
@@ -1858,7 +2048,7 @@ def handle_voice():
             response=resposta,
             videos=videos,
             links=links,
-            chat=build_chat_response(chat_id, text, resposta, videos, links, topic, attachments),
+            chat=build_chat_response(chat_id, session_id, text, resposta, videos, links, topic, attachments),
         )
         if guest_messages_remaining is not None:
             response_payload["guest_messages_remaining"] = guest_messages_remaining

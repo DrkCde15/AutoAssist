@@ -1376,6 +1376,7 @@
         formData.append("audio", blob, "voice.webm");
         formData.append("ignore_global_history", "true");
         formData.append("client_history", JSON.stringify(currentThreadHistory));
+        formData.append("session_id", currentSessionId);
         if (!isAuthenticated && guestId) formData.append("guest_id", guestId);
 
         const file = fileInput.files[0];
@@ -1686,7 +1687,9 @@
       function mergeChatHistory(existingItems, newItems) {
         const merged = new Map();
         [...existingItems, ...newItems].forEach((chat) => {
-          const key = chat.id ? `id:${chat.id}` : `local:${chat.created_at}:${chat.mensagem_usuario}`;
+          const key = chat.id
+            ? `id:${chat.id}`
+            : `local:${chat.session_id || ""}:${chat.created_at}:${chat.mensagem_usuario}`;
           merged.set(key, chat);
         });
 
@@ -1695,6 +1698,37 @@
           const dateB = new Date(b.created_at || 0).getTime();
           return dateA - dateB;
         });
+      }
+
+      function getChatSessionId(chat, index = 0) {
+        const sessionId = String(chat?.session_id || "").trim();
+        if (sessionId) return sessionId;
+        return `legacy-${chat?.id || chat?.created_at || index}`;
+      }
+
+      function groupChatHistory(items = chatHistoryItems) {
+        const grouped = new Map();
+        [...items]
+          .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0))
+          .forEach((chat, index) => {
+            const sid = getChatSessionId(chat, index);
+            if (!chat.session_id) chat.session_id = sid;
+
+            if (!grouped.has(sid)) {
+              grouped.set(sid, {
+                session_id: sid,
+                topic: chat.topic || "Novo Chat",
+                created_at: chat.created_at,
+                firstMessage: chat.mensagem_usuario,
+                messages: [],
+              });
+            }
+
+            const group = grouped.get(sid);
+            group.messages.push(chat);
+            if (chat.topic && chat.topic !== "Novo Chat") group.topic = chat.topic;
+          });
+        return grouped;
       }
 
       function setSidebarOpen(open) {
@@ -1706,22 +1740,7 @@
         if (!chatHistoryList) return;
         const query = normalizeHistoryText(chatHistorySearch?.value || "");
 
-        const grouped = new Map();
-        [...chatHistoryItems].sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)).forEach(chat => {
-            const sid = chat.session_id || `legacy-${chat.id || Math.random()}`;
-            if (!grouped.has(sid)) {
-                grouped.set(sid, {
-                    session_id: sid,
-                    topic: chat.topic || "Novo Chat",
-                    created_at: chat.created_at,
-                    firstMessage: chat.mensagem_usuario,
-                    messages: [],
-                });
-            }
-            const group = grouped.get(sid);
-            group.messages.push(chat);
-            if (chat.topic && chat.topic !== "Novo Chat") group.topic = chat.topic;
-        });
+        const grouped = groupChatHistory(chatHistoryItems);
 
         const items = Array.from(grouped.values())
           .reverse()
@@ -1776,12 +1795,13 @@
         });
       }
 
-      function renderSession(group) {
+      function renderSession(group, options = {}) {
         messagesDiv.innerHTML = "";
-        currentSessionId = group.session_id.startsWith('legacy-') ? generateUUID() : group.session_id;
+        currentSessionId = group.session_id;
         activeHistoryKey = group.session_id;
         
         currentThreadHistory = [];
+        lastAnalysisText = "";
         group.messages.forEach(chat => {
           renderChatEntry(chat);
           appendToCurrentThread(chat.mensagem_usuario, chat.resposta_ia);
@@ -1789,26 +1809,32 @@
         });
 
         renderHistoryList();
-        setSidebarOpen(false);
+        if (options.closeSidebar !== false) setSidebarOpen(false);
         scrollToBottom();
       }
 
       async function deleteChatHistoryBySession(sessionId, button) {
           button.disabled = true;
           try {
-             const messagesToDelete = chatHistoryItems.filter(c => (c.session_id || `legacy-${c.id}`) === sessionId);
+             const messagesToDelete = chatHistoryItems.filter(c => getChatSessionId(c) === sessionId);
              for(let m of messagesToDelete) {
-                if(m.id) {
+                if(m.id && isAuthenticated && typeof Auth !== "undefined") {
                     await Auth.authenticatedFetch(`/api/chat/history/${encodeURIComponent(m.id)}`, { method: "DELETE" }).catch(() => {});
                 }
              }
-             chatHistoryItems = chatHistoryItems.filter(c => (c.session_id || `legacy-${c.id}`) !== sessionId);
+             chatHistoryItems = chatHistoryItems.filter(c => getChatSessionId(c) !== sessionId);
              if (activeHistoryKey === sessionId) {
-                 activeHistoryKey = null;
-                 currentThreadHistory = [];
-                 messagesDiv.innerHTML = "";
-                 lastAnalysisText = "";
-                 currentSessionId = generateUUID();
+                 const remainingGroups = Array.from(groupChatHistory(chatHistoryItems).values());
+                 const latestGroup = remainingGroups[remainingGroups.length - 1];
+                 if (latestGroup) {
+                   renderSession(latestGroup, { closeSidebar: false });
+                 } else {
+                   activeHistoryKey = null;
+                   currentThreadHistory = [];
+                   messagesDiv.innerHTML = "";
+                   lastAnalysisText = "";
+                   currentSessionId = generateUUID();
+                 }
              }
              writeChatHistoryCache(chatHistoryItems);
              renderHistoryList();
@@ -1858,8 +1884,9 @@
       function addChatToHistory(chat) {
         if (!chat) return;
         if (!chat.session_id) chat.session_id = currentSessionId;
+        currentSessionId = chat.session_id;
         chatHistoryItems = [...chatHistoryItems, chat];
-        activeHistoryKey = currentSessionId;
+        activeHistoryKey = chat.session_id;
         writeChatHistoryCache(chatHistoryItems);
         renderHistoryList();
       }
@@ -2229,13 +2256,19 @@
 
       function renderChatHistory(chats) {
         chatHistoryItems = Array.isArray(chats) ? chats : [];
-        activeHistoryKey = null;
-        renderHistoryList();
-        if (!chatHistoryItems.length) return;
+        if (!chatHistoryItems.length) {
+          activeHistoryKey = null;
+          renderHistoryList();
+          return;
+        }
 
-        messagesDiv.innerHTML = "";
-        const latestIndex = chatHistoryItems.length - 1;
-        renderSingleChat(chatHistoryItems[latestIndex], latestIndex);
+        const groups = Array.from(groupChatHistory(chatHistoryItems).values());
+        const activeGroup = groups.find((group) => group.session_id === activeHistoryKey) || groups[groups.length - 1];
+        if (activeGroup) {
+          renderSession(activeGroup, { closeSidebar: false });
+        } else {
+          renderHistoryList();
+        }
       }
     </script>
   </body>

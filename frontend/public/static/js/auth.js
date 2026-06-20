@@ -59,19 +59,38 @@ const Auth = (() => {
 
   async function syncGuestHistory() {
     try {
-      const GUEST_HISTORY_CACHE_KEY = "autoassist_guest_chat_history";
-      const cached = localStorage.getItem(GUEST_HISTORY_CACHE_KEY);
-      if (!cached) return;
-      const parsed = JSON.parse(cached);
-      const items = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.items) ? parsed.items : []);
-      if (items.length > 0) {
-        await authenticatedFetch("/api/chat/sync_guest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chats: items }),
-        });
+      const guestHistoryKeys = [
+        "autoassist_guest_chat_history_cache_v1",
+        "autoassist_guest_chat_history",
+      ];
+      const items = [];
+
+      guestHistoryKeys.forEach((key) => {
+        const cached = localStorage.getItem(key);
+        if (!cached) return;
+        try {
+          const parsed = JSON.parse(cached);
+          const parsedItems = Array.isArray(parsed)
+            ? parsed
+            : (Array.isArray(parsed?.items) ? parsed.items : []);
+          parsedItems.forEach((item) => items.push(item));
+        } catch {
+          // Cache antigo ou corrompido: ignora sem apagar para nao perder historico.
+        }
+      });
+
+      if (!items.length) return;
+
+      const res = await authenticatedFetch("/api/chat/sync_guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chats: items }),
+        redirectOnInvalid: false,
+      });
+
+      if (res.ok) {
+        guestHistoryKeys.forEach((key) => localStorage.removeItem(key));
       }
-      localStorage.removeItem(GUEST_HISTORY_CACHE_KEY);
     } catch (e) {
       console.warn("Falha ao sincronizar histórico do visitante:", e);
     }
@@ -182,7 +201,7 @@ const Auth = (() => {
         localStorage.setItem(KEYS.COOKIE_SESSION, "1");
         localStorage.setItem(KEYS.USER, JSON.stringify(data));
         Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data });
-        syncGuestHistory();
+        await syncGuestHistory();
         return data;
       }
     } catch (e) {
@@ -359,7 +378,7 @@ const Auth = (() => {
     // Fluxo normal (sem 2FA)
     if (data.access_token) {
       saveSession(data.access_token, data.refresh_token, data.user);
-      syncGuestHistory();
+      await syncGuestHistory();
     }
 
     // Fluxo com 2FA — o chamador trata o campo `two_factor_required`
@@ -383,7 +402,7 @@ const Auth = (() => {
     }
 
     saveSession(data.access_token, data.refresh_token, data.user);
-    syncGuestHistory();
+    await syncGuestHistory();
     return data;
   }
 
@@ -408,7 +427,7 @@ const Auth = (() => {
   //
   // Este bloco processa esses parâmetros assim que o script carrega.
 
-  (function processOAuthCallback() {
+  (async function processOAuthCallback() {
     const params = new URLSearchParams(window.location.search);
     const oauthSuccess = params.get("oauth") === "success";
     const accessToken = params.get("access_token");
@@ -418,7 +437,7 @@ const Auth = (() => {
     if (oauthSuccess) {
       localStorage.setItem(KEYS.COOKIE_SESSION, "1");
       window.history.replaceState({}, document.title, window.location.pathname);
-      syncUser({ redirectOnInvalid: false, force: true });
+      await syncUser({ redirectOnInvalid: false, force: true });
       return;
     }
 
@@ -431,7 +450,7 @@ const Auth = (() => {
       }
 
       saveSession(accessToken, refreshToken, user);
-      syncGuestHistory();
+      await syncGuestHistory();
 
       // Remove os tokens da URL por segurança
       const cleanUrl = window.location.pathname;
