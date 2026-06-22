@@ -93,7 +93,7 @@ def get_dashboard_data():
                 "MesReferencia": row.get("fipe_mes_referencia", "---"),
             }
         else:
-            fipe_info = {"Valor": "---", "MesReferencia": "---"}
+            fipe_info = {"Valor": "Não listado na Tabela FIPE", "MesReferencia": "---"}
 
         # 3️⃣  Predição
         try:
