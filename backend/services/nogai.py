@@ -124,6 +124,19 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
 
         modelos_resp = _get_fipe_json(f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos")
         candidatos = [m for m in modelos_resp.get("modelos", []) if modelo_query in m["nome"].lower()]
+
+        # Fallback 1: tentar com apenas a primeira palavra do modelo
+        if not candidatos:
+            first_word = modelo_query.split()[0] if " " in modelo_query else None
+            if first_word:
+                candidatos = [m for m in modelos_resp.get("modelos", []) if first_word in m["nome"].lower()]
+
+        # Fallback 2: remover sufixos comuns (v8, v6, 4x4, tb, cd, etc.)
+        if not candidatos:
+            simpler = re.sub(r"\b(v8|v6|v4|4x4|4x2|tb|cd|aut|mec|flex|die|gas|ht)\b", "", modelo_query).strip()
+            if simpler and simpler != modelo_query:
+                candidatos = [m for m in modelos_resp.get("modelos", []) if simpler in m["nome"].lower()]
+
         if not candidatos:
             return None
 
