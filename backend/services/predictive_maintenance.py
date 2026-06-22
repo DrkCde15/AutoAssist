@@ -25,15 +25,27 @@ class MaintenancePredictor:
         self._iso_forest: IsolationForest | None = None
 
     def _load_models(self) -> None:
-        try:
-            self._model_km = joblib.load(PREDICTIVE_MODEL_DIR / "model_km.pkl")
-            self._model_date = joblib.load(PREDICTIVE_MODEL_DIR / "model_date.pkl")
-            self._iso_forest = joblib.load(PREDICTIVE_MODEL_DIR / "model_anomaly.pkl")
-            self.le_type = joblib.load(PREDICTIVE_MODEL_DIR / "label_encoder.pkl")
-            self.scaler = joblib.load(PREDICTIVE_MODEL_DIR / "scaler.pkl")
-        except FileNotFoundError as fnf_err:
-            logger.error("Missing model file during lazy load: %s", fnf_err)
-            raise
+        model_files = [
+            PREDICTIVE_MODEL_DIR / "model_km.pkl",
+            PREDICTIVE_MODEL_DIR / "model_date.pkl",
+            PREDICTIVE_MODEL_DIR / "model_anomaly.pkl",
+            PREDICTIVE_MODEL_DIR / "label_encoder.pkl",
+            PREDICTIVE_MODEL_DIR / "scaler.pkl",
+        ]
+        if not all(p.exists() for p in model_files):
+            logger.info("Model files not found — attempting auto-train...")
+            if self.train():
+                logger.info("Auto-train concluído, carregando modelos.")
+            else:
+                logger.warning("Auto-train falhou — dados insuficientes.")
+                raise FileNotFoundError(
+                    "Modelos não encontrados e não foi possível treinar automaticamente."
+                )
+        self._model_km = joblib.load(PREDICTIVE_MODEL_DIR / "model_km.pkl")
+        self._model_date = joblib.load(PREDICTIVE_MODEL_DIR / "model_date.pkl")
+        self._iso_forest = joblib.load(PREDICTIVE_MODEL_DIR / "model_anomaly.pkl")
+        self.le_type = joblib.load(PREDICTIVE_MODEL_DIR / "label_encoder.pkl")
+        self.scaler = joblib.load(PREDICTIVE_MODEL_DIR / "scaler.pkl")
 
     def fetch_training_data(self):
         try:

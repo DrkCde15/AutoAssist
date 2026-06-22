@@ -23,13 +23,8 @@ from services.nogai import (
     gerar_termos_busca,
     prever_intervalo_manutencao
 )
-from utils.async_task import train_in_background
+from utils.async_task import _predictor, train_in_background
 import json
-
-
-def _predictor():
-    from services.predictive_maintenance import predictor
-    return predictor
 from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
 from services.attachment_ai import analisar_arquivo

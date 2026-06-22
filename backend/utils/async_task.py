@@ -3,10 +3,14 @@ import threading
 
 _logger = logging.getLogger(__name__)
 
+_predictor_instance = None
 
 def _predictor():
-    from services.predictive_maintenance import predictor
-    return predictor
+    global _predictor_instance
+    if _predictor_instance is None:
+        from services.predictive_maintenance import predictor
+        _predictor_instance = predictor
+    return _predictor_instance
 
 
 def _train_task():
