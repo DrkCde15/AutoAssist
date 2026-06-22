@@ -11,7 +11,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
-      :root {
+:root {
         --bg-primary: #09090b;
         --bg-secondary: #18181b;
         --bg-card: #1c1c1f;
@@ -29,13 +29,6 @@
         --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
         --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       }
-
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
       body {
         font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         background: var(--bg-primary);
@@ -47,7 +40,6 @@
         color: var(--text-primary);
         -webkit-font-smoothing: antialiased;
       }
-
       body::before {
         content: '';
         position: fixed;
@@ -58,7 +50,6 @@
         pointer-events: none;
         z-index: 0;
       }
-
       .container {
         position: relative;
         z-index: 1;
@@ -70,13 +61,11 @@
         padding: 40px;
         box-shadow: var(--shadow-lg);
       }
-
       /* Logo */
       .logo {
         text-align: center;
         margin-bottom: 32px;
       }
-
       .logo-mark {
         display: inline-flex;
         align-items: center;
@@ -88,25 +77,21 @@
         margin-bottom: 16px;
         box-shadow: none;
       }
-
       .logo-mark i {
         font-size: 24px;
         color: white;
       }
-
       .logo h1 {
         font-size: 24px;
         font-weight: 700;
         letter-spacing: -0.5px;
         color: var(--text-primary);
       }
-
       .logo p {
         color: var(--text-secondary);
         font-size: 14px;
         margin-top: 6px;
       }
-
       /* Google Button */
       .google-btn {
         display: flex;
@@ -125,17 +110,14 @@
         border: none;
         cursor: pointer;
       }
-
       .google-btn:hover {
         background: #e4e4e7;
         transform: translateY(-1px);
       }
-
       .google-btn img {
         width: 18px;
         height: 18px;
       }
-
       /* Divider */
       .divider {
         display: flex;
@@ -143,7 +125,6 @@
         gap: 16px;
         margin: 24px 0;
       }
-
       .divider::before,
       .divider::after {
         content: '';
@@ -151,7 +132,6 @@
         height: 1px;
         background: var(--border-color);
       }
-
       .divider span {
         font-size: 12px;
         color: var(--text-muted);
@@ -159,7 +139,6 @@
         letter-spacing: 1px;
         font-weight: 500;
       }
-
       /* Alerts */
       .alert {
         display: none;
@@ -170,18 +149,15 @@
         font-weight: 500;
         border: 1px solid;
       }
-
       .alert-error {
         background: rgba(239, 68, 68, 0.1);
         border-color: rgba(239, 68, 68, 0.2);
         color: #fca5a5;
       }
-
       /* Form */
       .form-group {
         margin-bottom: 18px;
       }
-
       label {
         display: block;
         font-size: 13px;
@@ -189,11 +165,9 @@
         color: var(--text-secondary);
         margin-bottom: 8px;
       }
-
       .input-wrapper {
         position: relative;
       }
-
       .input-wrapper i.icon {
         position: absolute;
         left: 14px;
@@ -203,7 +177,6 @@
         font-size: 14px;
         pointer-events: none;
       }
-
       .input-wrapper i.password-toggle {
         position: absolute;
         right: 14px;
@@ -214,11 +187,9 @@
         padding: 4px;
         transition: var(--transition);
       }
-
       .input-wrapper i.password-toggle:hover {
         color: var(--text-primary);
       }
-
       input, select {
         width: 100%;
         padding: 14px 16px 14px 44px;
@@ -231,17 +202,14 @@
         transition: var(--transition);
         outline: none;
       }
-
       input::placeholder {
         color: var(--text-muted);
       }
-
       input:focus, select:focus {
         border-color: var(--border-focus);
         background: var(--bg-primary);
         box-shadow: 0 0 0 3px var(--accent-soft);
       }
-
       select {
         appearance: none;
         cursor: pointer;
@@ -251,12 +219,10 @@
         background-size: 16px;
         padding-right: 44px;
       }
-
       select option {
         background: var(--bg-secondary);
         color: var(--text-primary);
       }
-
       /* Checkbox */
       .checkbox-wrapper {
         display: flex;
@@ -270,11 +236,9 @@
         transition: var(--transition);
         margin: 20px 0;
       }
-
       .checkbox-wrapper:hover {
         background: transparent;
       }
-
       .checkbox-wrapper input[type="checkbox"] {
         flex: 0 0 20px;
         width: 20px;
@@ -289,20 +253,17 @@
         accent-color: var(--accent);
         cursor: pointer;
       }
-
       .checkbox-wrapper input[type="checkbox"]:focus {
         background: transparent;
         border: 0;
         box-shadow: none;
       }
-
       .checkbox-wrapper label {
         margin-bottom: 0;
         cursor: pointer;
         color: var(--text-primary);
         font-size: 14px;
       }
-
       /* Vehicle Section */
       .vehicle-section {
         display: none;
@@ -313,7 +274,6 @@
         margin-bottom: 16px;
         animation: slideDown 0.3s ease-out;
       }
-
       @keyframes slideDown {
         from { 
           opacity: 0; 
@@ -324,14 +284,12 @@
           transform: translateY(0); 
         }
       }
-
       .vehicle-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
       }
-
       .vehicle-title {
         display: flex;
         align-items: center;
@@ -340,11 +298,9 @@
         font-size: 15px;
         font-weight: 600;
       }
-
       .vehicle-title i {
         color: var(--accent);
       }
-
       .btn-remove {
         background: none;
         border: none;
@@ -358,17 +314,14 @@
         border-radius: 6px;
         transition: var(--transition);
       }
-
       .btn-remove:hover {
         background: rgba(239, 68, 68, 0.1);
       }
-
       .grid-2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
       }
-
       /* Buttons */
       .btn {
         width: 100%;
@@ -385,26 +338,22 @@
         justify-content: center;
         gap: 10px;
       }
-
       .btn-primary {
         background: linear-gradient(135deg, var(--accent), #1d4ed8);
         color: white;
         box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
         margin-top: 8px;
       }
-
       .btn-primary:hover:not(:disabled) {
         background: linear-gradient(135deg, var(--accent-hover), #1e40af);
         transform: translateY(-1px);
         box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
       }
-
       .btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
       }
-
       .btn-add {
         background: transparent;
         border: 1px dashed var(--border-color);
@@ -412,13 +361,11 @@
         margin-bottom: 16px;
         font-weight: 500;
       }
-
       .btn-add:hover {
         border-color: var(--accent);
         color: var(--accent);
         background: var(--accent-soft);
       }
-
       /* Links */
       .links {
         text-align: center;
@@ -426,46 +373,40 @@
         font-size: 14px;
         color: var(--text-secondary);
       }
-
       .links a {
         color: var(--accent);
         text-decoration: none;
         font-weight: 500;
         transition: var(--transition);
       }
-
       .links a:hover {
         color: var(--accent-hover);
         text-decoration: underline;
       }
-
       .legal-links {
         margin-top: 14px;
         font-size: 12px;
         line-height: 1.55;
       }
-
       /* Responsive */
       @media (max-width: 480px) {
         body {
           padding: 16px;
         }
-
         .container {
           padding: 28px 20px;
         }
-
         .grid-2 {
           grid-template-columns: 1fr;
         }
-
         input, select {
           padding: 12px 12px 12px 40px;
         }
       }
-    </style>
+</style>
     <link rel="stylesheet" href="static/css/responsive.css">
-  </head>
+    <link rel="stylesheet" href="static/css/shared.css">
+</head>
   <body class="auth-page">
     <div class="container">
       <div class="logo">

@@ -23,9 +23,13 @@ from services.nogai import (
     gerar_termos_busca,
     prever_intervalo_manutencao
 )
-from services.predictive_maintenance import predictor
 from utils.async_task import train_in_background
 import json
+
+
+def _predictor():
+    from services.predictive_maintenance import predictor
+    return predictor
 from services.youtube_service import buscar_videos_youtube
 from services.vision_ai import analisar_imagem
 from services.attachment_ai import analisar_arquivo
@@ -581,7 +585,7 @@ def build_user_chat_data_context(cursor, user_id, veiculos):
     predictions = []
     for vehicle in veiculos[:3]:
         try:
-            prediction = predictor.predict_next(
+            prediction = _predictor().predict_next(
                 vehicle_id=vehicle["id"],
                 maintenance_type="troca_oleo",
                 kilometers_actual=vehicle.get("quilometragem"),

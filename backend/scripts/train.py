@@ -3,11 +3,10 @@ import sys
 from pathlib import Path
 import logging
 
-# Ensure the project root (AutoAssist) is in PYTHONPATH so we can import backend modules
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
-from backend.services.predictive_maintenance import MaintenancePredictor
+from services.predictive_maintenance import MaintenancePredictor
 
 def main() -> None:
     """Entrypoint to train all predictive‑maintenance models.
@@ -19,9 +18,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     predictor = MaintenancePredictor()
     if predictor.train():
-        print("✅  Model training completed successfully.")
+        print("[OK] Model training completed successfully.")
     else:
-        print("⚠️  Model training skipped – not enough historical records.")
+        print("[SKIP] Not enough historical records for training.")
 
 if __name__ == "__main__":
     main()

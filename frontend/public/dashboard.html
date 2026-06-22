@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
-        :root {
+:root {
             --primary: #1a1a1a;
             --accent: #007aff;
             --bg-dark: #0f0f0f;
@@ -21,13 +21,6 @@
             --warning: #ffcc00;
             --danger: #ff3b30;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         body {
             background-color: var(--bg-dark);
             color: var(--text);
@@ -36,7 +29,6 @@
             padding: 0;
             overflow-x: hidden;
         }
-
         /* Navbar */
         .navbar {
             background: rgba(28, 28, 30, 0.8);
@@ -49,7 +41,6 @@
             z-index: 1000;
             height: 96px;
         }
-
         .nav-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -59,7 +50,6 @@
             height: 100%;
             padding: 0 2rem;
         }
-
         .logo {
             font-weight: 800;
             font-size: 1.5rem;
@@ -71,18 +61,15 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
         .logo img {
             height: 72px !important;
             width: auto;
         }
-
         .nav-links {
             display: flex;
             gap: 24px;
             align-items: center;
         }
-
         .nav-link {
             color: var(--text-dim);
             text-decoration: none;
@@ -98,42 +85,34 @@
             padding: 4px 8px;
             border-radius: 0;
         }
-
         .nav-link:hover {
             color: var(--text);
             transform: translateY(-1px);
         }
-
         .nav-link.active {
             color: var(--accent);
         }
-
         /* Content Area */
         .dashboard-content {
             max-width: 1000px;
             margin: 100px auto 40px;
             padding: 0 2rem;
         }
-
         .dashboard-header {
             margin-bottom: 2.5rem;
             animation: fadeInUp 0.8s ease-out;
         }
-
         .dashboard-header h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
         }
-
         .dashboard-header h1 span {
             color: var(--accent);
         }
-
         .dashboard-header p {
             color: var(--text-dim);
             font-size: 1.1rem;
         }
-
         /* Vehicle Card */
         .vehicle-card {
             background: var(--card-bg);
@@ -147,7 +126,6 @@
             transition: transform 0.3s ease;
             animation: fadeInUp 0.8s ease-out 0.2s both;
         }
-
         .vehicle-icon {
             width: 80px;
             height: 80px;
@@ -159,24 +137,20 @@
             font-size: 2.5rem;
             color: var(--accent);
         }
-
         .vehicle-info h2 {
             margin: 0 0 0.5rem 0;
             font-size: 1.8rem;
         }
-
         .vehicle-meta {
             display: flex;
             gap: 1.5rem;
             color: var(--text-dim);
         }
-
         .vehicle-meta span {
             display: flex;
             align-items: center;
             gap: 6px;
         }
-
         /* Stats Grid */
         .stats-grid {
             display: grid;
@@ -185,21 +159,18 @@
             margin-bottom: 2rem;
             animation: fadeInUp 0.8s ease-out 0.4s both;
         }
-
         .stat-card {
             background: var(--card-bg);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 1.5rem;
         }
-
         .stat-card-header {
             display: flex;
             align-items: center;
             gap: 12px;
             margin-bottom: 1rem;
         }
-
         .stat-card-icon {
             width: 40px;
             height: 40px;
@@ -210,24 +181,20 @@
             justify-content: center;
             color: var(--accent);
         }
-
         .stat-card-title {
             color: var(--text-dim);
             font-size: 0.9rem;
             font-weight: 500;
         }
-
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 0.25rem;
         }
-
         .stat-subtitle {
             color: var(--text-dim);
             font-size: 0.85rem;
         }
-
         /* Health Score SVG Circular Chart */
         .health-score-container {
             display: flex;
@@ -272,7 +239,6 @@
             color: var(--text-dim);
             line-height: 1.4;
         }
-
         /* State of Health Section */
         .alert-item {
             background: rgba(255, 255, 255, 0.03);
@@ -283,17 +249,14 @@
             align-items: center;
             margin-bottom: 8px;
         }
-
         .alert-title {
             font-weight: 600;
             font-size: 0.95rem;
         }
-
         .alert-desc {
             font-size: 0.85rem;
             color: var(--text-dim);
         }
-
         .alert-badge {
             font-size: 0.75rem;
             padding: 4px 10px;
@@ -301,11 +264,9 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-
         .badge-crítico { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
         .badge-atenção { background: rgba(255, 204, 0, 0.15); color: var(--warning); }
         .badge-ok { background: rgba(52, 199, 89, 0.15); color: var(--success); }
-
         .btn-action {
             background: var(--accent);
             color: white;
@@ -322,12 +283,10 @@
             justify-content: center;
             transition: all 0.3s ease;
         }
-
         .btn-action:hover {
             transform: translateY(-2px);
             filter: brightness(1.1);
         }
-
         .loading {
             display: flex;
             flex-direction: column;
@@ -336,13 +295,11 @@
             min-height: 400px;
             color: var(--text-dim);
         }
-
         .loading i {
             font-size: 3rem;
             color: var(--accent);
             margin-bottom: 1rem;
         }
-
         .no-vehicle {
             text-align: center;
             padding: 4rem 2rem;
@@ -350,24 +307,20 @@
             border-radius: 32px;
             border: 1px dashed rgba(255, 255, 255, 0.2);
         }
-
         .no-vehicle-icon {
             font-size: 4rem;
             color: var(--text-dim);
             margin-bottom: 1.5rem;
         }
-
         .section-divider {
             border: none;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             margin: 4rem 0;
         }
-
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
         @media (max-width: 768px) {
             .nav-container { padding: 0 1rem; }
             .nav-links span { display: none; }
@@ -375,8 +328,9 @@
             .vehicle-meta { justify-content: center; flex-wrap: wrap; }
             .dashboard-header h1 { font-size: 2rem; }
         }
-    </style>
+</style>
     <link rel="stylesheet" href="static/css/responsive.css">
+  <link rel="stylesheet" href="static/css/shared.css">
 </head>
 <body>
     <nav class="navbar">

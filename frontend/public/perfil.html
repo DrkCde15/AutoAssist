@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
 
     <style>
-        :root {
+:root {
             --bg-primary: #09090b;
             --bg-secondary: #18181b;
             --bg-card: #1c1c1f;
@@ -33,13 +33,6 @@
             --radius-lg: 16px;
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
@@ -47,7 +40,6 @@
             color: var(--text-primary);
             -webkit-font-smoothing: antialiased;
         }
-
         /* Navbar */
         .navbar {
             background: rgba(15, 23, 42, 0.85);
@@ -58,7 +50,6 @@
             top: 0;
             z-index: 100;
         }
-
         .nav-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -66,7 +57,6 @@
             justify-content: space-between;
             align-items: center;
         }
-
         .nav-logo {
             display: flex;
             align-items: center;
@@ -78,7 +68,6 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
         .nav-logo img {
             height: 80px !important;
             width: 80px;
@@ -86,13 +75,11 @@
             object-position: center;
             display: block;
         }
-
         .nav-links {
             display: flex;
             gap: 24px;
             align-items: center;
         }
-
         .nav-link {
             display: flex;
             align-items: center;
@@ -109,23 +96,19 @@
             transition: all 0.2s ease;
             font-family: inherit;
         }
-
         .nav-link:hover {
             color: var(--text-primary);
             transform: translateY(-1px);
         }
-
         .nav-link.active {
             color: var(--accent);
         }
-
         /* Profile Container */
         .profile-container {
             max-width: 640px;
             margin: 40px auto 80px;
             padding: 0 24px;
         }
-
         /* Profile Card */
         .profile-card {
             background: var(--bg-card);
@@ -134,7 +117,6 @@
             padding: 32px;
             margin-bottom: 24px;
         }
-
         .profile-header {
             display: flex;
             align-items: center;
@@ -144,13 +126,11 @@
             padding-bottom: 24px;
             border-bottom: 1px solid var(--border-color);
         }
-
         .profile-info {
             display: flex;
             align-items: center;
             gap: 16px;
         }
-
         .profile-avatar {
             width: 64px;
             height: 64px;
@@ -164,18 +144,15 @@
             justify-content: center;
             text-transform: uppercase;
         }
-
         .profile-name {
             font-size: 20px;
             font-weight: 700;
             margin-bottom: 4px;
         }
-
         .profile-email {
             color: var(--text-secondary);
             font-size: 14px;
         }
-
         .btn-danger {
             display: flex;
             align-items: center;
@@ -191,25 +168,21 @@
             transition: var(--transition);
             font-family: inherit;
         }
-
         .btn-danger:hover {
             background: rgba(239, 68, 68, 0.2);
             border-color: var(--danger);
         }
-
         /* Form Fields */
         .fields {
             display: grid;
             gap: 16px;
         }
-
         .field-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
             padding: 16px;
         }
-
         .field-label {
             font-size: 12px;
             font-weight: 600;
@@ -218,7 +191,6 @@
             color: var(--text-muted);
             margin-bottom: 8px;
         }
-
         .input-field {
             width: 100%;
             background: transparent;
@@ -229,47 +201,39 @@
             outline: none;
             font-family: inherit;
         }
-
         .input-field::placeholder {
             color: var(--text-muted);
         }
-
         .field-value {
             font-size: 14px;
             font-weight: 600;
             color: var(--text-primary);
         }
-
         .field-value.premium {
             color: var(--success);
         }
-
         /* Security Section */
         .security-card {
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
-
         .security-header {
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
             gap: 16px;
         }
-
         .security-title {
             font-size: 15px;
             font-weight: 700;
             color: var(--text-primary);
         }
-
         .security-copy {
             color: var(--text-secondary);
             font-size: 13px;
             line-height: 1.5;
         }
-
         .security-pill {
             display: inline-flex;
             align-items: center;
@@ -283,61 +247,50 @@
             font-weight: 700;
             white-space: nowrap;
         }
-
         .security-pill.enabled {
             background: rgba(34, 197, 94, 0.1);
             border-color: rgba(34, 197, 94, 0.25);
             color: var(--success);
         }
-
         .security-pill.disabled {
             background: rgba(239, 68, 68, 0.08);
             border-color: rgba(239, 68, 68, 0.2);
             color: #f87171;
         }
-
         .security-actions {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
         }
-
         .security-actions .btn-secondary {
             border-style: solid;
         }
-
         .btn-secondary.danger-action {
             color: #f87171;
             border-color: rgba(239, 68, 68, 0.25);
         }
-
         .btn-secondary.danger-action:hover {
             color: #fca5a5;
             border-color: var(--danger);
             background: var(--danger-soft);
         }
-
         .two-factor-setup {
             padding-top: 16px;
             border-top: 1px dashed var(--border-color);
         }
-
         .two-factor-setup[hidden] {
             display: none;
         }
-
         .two-factor-fields {
             display: grid;
             gap: 14px;
             max-width: 420px;
         }
-
         .password-helper {
             color: var(--text-muted);
             font-size: 13px;
             line-height: 1.5;
         }
-
         /* Buttons */
         .btn-primary {
             display: flex;
@@ -356,12 +309,10 @@
             transition: var(--transition);
             font-family: inherit;
         }
-
         .btn-primary:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
         }
-
         .btn-video {
             display: flex;
             align-items: center;
@@ -381,12 +332,10 @@
             text-decoration: none;
             margin-top: 12px;
         }
-
         .btn-video:hover {
             background: rgba(139, 92, 246, 0.2);
             border-color: var(--purple);
         }
-
         .btn-secondary {
             display: flex;
             align-items: center;
@@ -403,13 +352,11 @@
             transition: var(--transition);
             font-family: inherit;
         }
-
         .btn-secondary:hover {
             border-color: var(--accent);
             color: var(--accent);
             background: var(--accent-soft);
         }
-
         /* Vehicle Section */
         .vehicle-section-header {
             display: flex;
@@ -417,13 +364,11 @@
             align-items: center;
             margin-bottom: 16px;
         }
-
         .vehicle-list {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
-
         .vehicle-item {
             display: flex;
             justify-content: space-between;
@@ -433,13 +378,11 @@
             border-radius: var(--radius);
             padding: 16px;
         }
-
         .vehicle-item-info {
             display: flex;
             align-items: center;
             gap: 12px;
         }
-
         .vehicle-item-icon {
             width: 40px;
             height: 40px;
@@ -449,23 +392,19 @@
             align-items: center;
             justify-content: center;
         }
-
         .vehicle-item-icon i {
             color: var(--accent);
             font-size: 16px;
         }
-
         .vehicle-item-name {
             font-weight: 600;
             font-size: 14px;
             margin-bottom: 2px;
         }
-
         .vehicle-item-year {
             font-size: 13px;
             color: var(--text-muted);
         }
-
         .btn-delete-vehicle {
             background: none;
             border: none;
@@ -475,12 +414,10 @@
             border-radius: 6px;
             transition: var(--transition);
         }
-
         .btn-delete-vehicle:hover {
             color: var(--danger);
             background: var(--danger-soft);
         }
-
         /* New Vehicle Form */
         .new-vehicle-form {
             display: none;
@@ -490,25 +427,21 @@
             padding-top: 16px;
             border-top: 1px dashed var(--border-color);
         }
-
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
-
         .form-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
-
         .form-group label {
             font-size: 12px;
             font-weight: 500;
             color: var(--text-secondary);
         }
-
         .form-group input,
         .form-group select {
             width: 100%;
@@ -522,17 +455,14 @@
             outline: none;
             transition: var(--transition);
         }
-
         .form-group input:focus,
         .form-group select:focus {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-soft);
         }
-
         .form-group input::placeholder {
             color: var(--text-muted);
         }
-
         .form-group select {
             cursor: pointer;
             appearance: none;
@@ -542,17 +472,14 @@
             background-size: 16px;
             padding-right: 40px;
         }
-
         .form-group select option {
             background: var(--bg-secondary);
         }
-
         .form-actions {
             display: flex;
             gap: 12px;
             margin-top: 8px;
         }
-
         .btn-save {
             flex: 1;
             display: flex;
@@ -570,19 +497,15 @@
             transition: var(--transition);
             font-family: inherit;
         }
-
         .btn-save:hover {
             background: var(--accent-hover);
         }
-
         .btn-save.danger-save {
             background: var(--danger);
         }
-
         .btn-save.danger-save:hover {
             background: #dc2626;
         }
-
         .btn-cancel {
             padding: 12px 20px;
             background: transparent;
@@ -595,61 +518,51 @@
             transition: var(--transition);
             font-family: inherit;
         }
-
         .btn-cancel:hover {
             background: var(--bg-input);
             color: var(--text-primary);
         }
-
         /* Responsive */
         @media (max-width: 640px) {
             .navbar {
                 padding: 12px 16px;
             }
-
             .nav-logo-text {
                 display: none;
             }
-
             .profile-container {
                 padding: 0 16px;
                 margin: 24px auto 60px;
             }
-
             .profile-card {
                 padding: 24px;
             }
-
             .profile-header {
                 flex-direction: column;
                 align-items: flex-start;
             }
-
             .btn-danger {
                 width: 100%;
                 justify-content: center;
             }
-
             .security-header,
             .security-actions {
                 flex-direction: column;
                 align-items: stretch;
             }
-
             .security-actions .btn-secondary {
                 width: 100%;
             }
-
             .form-row {
                 grid-template-columns: 1fr;
             }
-
             .form-actions {
                 flex-direction: column;
             }
         }
-    </style>
+</style>
     <link rel="stylesheet" href="static/css/responsive.css">
+  <link rel="stylesheet" href="static/css/shared.css">
 </head>
 <body>
 

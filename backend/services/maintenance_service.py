@@ -13,9 +13,11 @@ from decimal import Decimal
 try:
     import spacy
     from spacy.matcher import PhraseMatcher
+    from spacy.pipeline import EntityRuler
 except ImportError:
     spacy = None
     PhraseMatcher = None
+    EntityRuler = None
 
 
 logger = logging.getLogger(__name__)
@@ -108,6 +110,66 @@ SPACY_BLANK_MODEL_VALUES = {"", "blank"}
 SPACY_DISABLED_PIPES = ["ner", "parser"]
 SPACY_FALLBACK_LANGUAGE = "pt"
 
+ENTITY_LABEL_SERVICO = "SERVICO"
+ENTITY_LABEL_KM = "KM"
+ENTITY_LABEL_INTERVALO_KM = "INTERVALO_KM"
+ENTITY_LABEL_INTERVALO_TEMPO = "INTERVALO_TEMPO"
+ENTITY_LABEL_VALOR = "VALOR"
+
+_ENTITY_PATTERNS = []
+for _key, _config in MAINTENANCE_RULES.items():
+    for _keyword in _config["keywords"]:
+        _tokens = _keyword.strip().split()
+        if len(_tokens) >= 2:
+            _ENTITY_PATTERNS.append({
+                "label": ENTITY_LABEL_SERVICO,
+                "pattern": [{"LOWER": t} for t in _tokens],
+                "id": _key,
+            })
+
+_ENTITY_PATTERNS.extend([
+    {"label": ENTITY_LABEL_KM, "pattern": [
+        {"LOWER": {"IN": ["com", "aos", "marcando"]}},
+        {"LIKE_NUM": True},
+        {"LOWER": {"IN": ["km", "quilometro", "quilometros", "quilômetro", "quilômetros"]}},
+    ]},
+    {"label": ENTITY_LABEL_KM, "pattern": [
+        {"LIKE_NUM": True, "LENGTH": {">=": 3}},
+        {"LOWER": {"IN": ["km", "quilometro", "quilometros", "quilômetro", "quilômetros"]}},
+    ]},
+    {"label": ENTITY_LABEL_KM, "pattern": [
+        {"LIKE_NUM": True},
+        {"LOWER": "mil"},
+        {"LOWER": {"IN": ["km", "quilometro", "quilometros", "quilômetro", "quilômetros"]}},
+    ]},
+    {"label": ENTITY_LABEL_INTERVALO_KM, "pattern": [
+        {"LOWER": {"IN": ["a", "daqui", "proxima", "proximo"]}},
+        {"LOWER": {"IN": ["cada", "a", "troca", "servico"]}, "OP": "?"},
+        {"LOWER": {"IN": ["em", "com"]}, "OP": "?"},
+        {"LIKE_NUM": True},
+        {"LOWER": {"IN": ["mil", "k"]}, "OP": "?"},
+        {"LOWER": {"IN": ["km", "quilometro", "quilometros", "quilômetro", "quilômetros"]}},
+    ]},
+    {"label": ENTITY_LABEL_INTERVALO_TEMPO, "pattern": [
+        {"LOWER": {"IN": ["a", "daqui"]}},
+        {"LOWER": {"IN": ["cada", "a"]}},
+        {"LIKE_NUM": True},
+        {"LOWER": {"IN": ["dia", "dias", "mes", "meses", "mês", "mêses", "ano", "anos"]}},
+    ]},
+    {"label": ENTITY_LABEL_VALOR, "pattern": [
+        {"LOWER": {"IN": ["r$", "rs", "rs$"]}},
+        {"LIKE_NUM": True},
+    ]},
+    {"label": ENTITY_LABEL_VALOR, "pattern": [
+        {"LOWER": {"IN": ["r$", "rs", "rs$"]}},
+        {"SHAPE": "d,d"},
+    ]},
+    {"label": ENTITY_LABEL_VALOR, "pattern": [
+        {"LIKE_NUM": True},
+        {"LOWER": {"IN": ["reais", "real", "r$", "rs"]}},
+    ]},
+])
+
 
 @dataclass(frozen=True)
 class MaintenanceDetection:
@@ -130,7 +192,7 @@ def normalize_text(text):
 
 @lru_cache(maxsize=1)
 def _load_spacy_pipeline():
-    if spacy is None:
+    if spacy is None or EntityRuler is None:
         return None
 
     model_name = os.getenv(MAINTENANCE_SPACY_MODEL_ENV, DEFAULT_SPACY_MODEL).strip()
@@ -139,7 +201,7 @@ def _load_spacy_pipeline():
 
     if model_name.lower() not in SPACY_BLANK_MODEL_VALUES:
         try:
-            return spacy.load(model_name, disable=SPACY_DISABLED_PIPES)
+            nlp = spacy.load(model_name, disable=SPACY_DISABLED_PIPES)
         except (OSError, ValueError) as exc:
             logger.info(
                 "Modelo spaCy '%s' indisponivel. Usando pipeline blank '%s'. Motivo: %s",
@@ -147,8 +209,15 @@ def _load_spacy_pipeline():
                 SPACY_FALLBACK_LANGUAGE,
                 exc,
             )
+            nlp = spacy.blank(SPACY_FALLBACK_LANGUAGE)
+    else:
+        nlp = spacy.blank(SPACY_FALLBACK_LANGUAGE)
 
-    return spacy.blank(SPACY_FALLBACK_LANGUAGE)
+    if "entity_ruler" not in nlp.pipe_names:
+        ruler = nlp.add_pipe("entity_ruler", config={"phrase_matcher_attr": "LOWER", "overwrite_ents": True})
+        ruler.add_patterns(_ENTITY_PATTERNS)
+
+    return nlp
 
 
 def _spacy_engine_name(nlp):
@@ -207,6 +276,17 @@ def _collect_spacy_matches(text):
 
     _add_lemma_matches(doc, matches_by_key)
     return matches_by_key, _spacy_engine_name(nlp)
+
+
+def _get_entities(text):
+    nlp = _load_spacy_pipeline()
+    if nlp is None:
+        return {}
+    doc = nlp(text)
+    entities = defaultdict(list)
+    for ent in doc.ents:
+        entities[ent.label_].append(ent)
+    return dict(entities)
 
 
 def _collect_keyword_matches(normalized_text):
@@ -394,6 +474,13 @@ def detect_maintenance_type_details(text):
     normalized = normalize_text(text)
     keyword_matches = _collect_keyword_matches(normalized)
     spacy_matches, nlp_engine = _collect_spacy_matches(text)
+
+    entities = _get_entities(text)
+    for ent in entities.get(ENTITY_LABEL_SERVICO, []):
+        key = ent.ent_id_ or ""
+        if key in MAINTENANCE_RULES:
+            spacy_matches[key].add(normalize_text(ent.text))
+
     return _choose_detection(spacy_matches, keyword_matches, nlp_engine)
 
 
@@ -409,6 +496,14 @@ def detect_maintenance_type(text):
 
 
 def extract_cost(text):
+    entities = _get_entities(text)
+    valor_ents = entities.get(ENTITY_LABEL_VALOR, [])
+    if valor_ents:
+        for ent in valor_ents:
+            val = to_float(re.sub(r"[^\d,.]", "", ent.text.replace(" ", "")))
+            if val is not None:
+                return val
+
     normalized = normalize_text(text)
     number_group = r"(\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)"
     patterns = [
@@ -423,50 +518,106 @@ def extract_cost(text):
     return None
 
 
+def _parse_km_value(text):
+    val = to_float(text)
+    if val is None:
+        return None
+    return int(round(val))
+
+
 def extract_intervals(text, service_date):
-    normalized = normalize_text(text)
+    entities = _get_entities(text)
 
     date_interval = None
     km_interval = None
     next_due_date = None
 
-    date_match = re.search(
-        (
-            r"(?:a cada|daqui a?|proxima(?:\s+troca)?\s+em|"
-            r"proximo(?:\s+servico)?\s+em|retornar em)\s*"
-            r"(\d{1,3})\s*(dias?|mes(?:es)?|anos?)"
-        ),
-        normalized,
-    )
-    if date_match:
-        value = int(date_match.group(1))
-        unit = date_match.group(2)
-        computed_due = _apply_interval(service_date, value, unit)
-        if computed_due:
-            date_interval = (computed_due - service_date).days
-            next_due_date = computed_due
+    tempo_ents = entities.get(ENTITY_LABEL_INTERVALO_TEMPO, [])
+    if tempo_ents:
+        tokens = normalize_text(tempo_ents[0].text).split()
+        for i, tok in enumerate(tokens):
+            if tok.isdigit():
+                value = int(tok)
+                unit = tokens[-1]
+                computed_due = _apply_interval(service_date, value, unit)
+                if computed_due:
+                    date_interval = (computed_due - service_date).days
+                    next_due_date = computed_due
+                break
 
-    km_match = re.search(
-        (
-            r"(?:a cada|daqui a?|proxima(?:\s+troca)?\s+em|"
-            r"proximo(?:\s+servico)?\s+com|retornar com)\s*"
-            r"(\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?)\s*"
-            r"(mil|k)?\s*(?:km|quilometros?)"
-        ),
-        normalized,
-    )
-    if km_match:
-        km_value = to_float(km_match.group(1))
-        if km_value is not None:
-            scale = km_match.group(2)
-            if scale in ("mil", "k") and km_value < 1000:
-                km_value *= 1000
-            km_interval = int(round(km_value))
+    km_ents = entities.get(ENTITY_LABEL_INTERVALO_KM, [])
+    if km_ents:
+        tokens = normalize_text(km_ents[0].text).split()
+        for i, tok in enumerate(tokens):
+            if tok.replace(".", "").replace(",", "").isdigit():
+                raw_value = tokens[i]
+                if i + 1 < len(tokens) and tokens[i + 1] in ("mil", "k"):
+                    km_value = _parse_km_value(raw_value)
+                    if km_value is not None and km_value < 1000:
+                        km_value *= 1000
+                    km_interval = km_value
+                else:
+                    km_interval = _parse_km_value(raw_value)
+                break
+
+    if date_interval is not None and km_interval is not None:
+        return date_interval, km_interval, next_due_date
+
+    normalized = normalize_text(text)
+
+    if date_interval is None:
+        date_match = re.search(
+            (
+                r"(?:a cada|daqui a?|proxima(?:\s+troca)?\s+em|"
+                r"proximo(?:\s+servico)?\s+em|retornar em)\s*"
+                r"(\d{1,3})\s*(dias?|mes(?:es)?|anos?)"
+            ),
+            normalized,
+        )
+        if date_match:
+            value = int(date_match.group(1))
+            unit = date_match.group(2)
+            computed_due = _apply_interval(service_date, value, unit)
+            if computed_due:
+                date_interval = (computed_due - service_date).days
+                next_due_date = computed_due
+
+    if km_interval is None:
+        km_match = re.search(
+            (
+                r"(?:a cada|daqui a?|proxima(?:\s+troca)?\s+em|"
+                r"proximo(?:\s+servico)?\s+com|retornar com)\s*"
+                r"(\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?)\s*"
+                r"(mil|k)?\s*(?:km|quilometros?)"
+            ),
+            normalized,
+        )
+        if km_match:
+            km_value = to_float(km_match.group(1))
+            if km_value is not None:
+                scale = km_match.group(2)
+                if scale in ("mil", "k") and km_value < 1000:
+                    km_value *= 1000
+                km_interval = int(round(km_value))
 
     return date_interval, km_interval, next_due_date
 
 
 def extract_service_km(text):
+    entities = _get_entities(text)
+    km_ents = entities.get(ENTITY_LABEL_KM, [])
+
+    if km_ents:
+        for ent in km_ents:
+            tokens = normalize_text(ent.text).split()
+            for i, tok in enumerate(tokens):
+                cleaned = tok.replace(".", "").replace(",", "")
+                if cleaned.isdigit():
+                    val = int(cleaned)
+                    if i > 0 and tokens[i - 1] in ("mil", "k") and val < 1000:
+                        val *= 1000
+                    return val
+
     normalized = normalize_text(text)
     interval_pattern = (
         r"(?:a cada|daqui a?|proxima(?:\s+troca)?\s+em|proximo(?:\s+servico)?\s+com|retornar com)\s*"

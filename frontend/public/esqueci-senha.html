@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
 
     <style>
-      :root {
+:root {
         --bg-primary: #09090b;
         --bg-secondary: #18181b;
         --bg-card: #1c1c1f;
@@ -28,13 +28,6 @@
         --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
         --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       }
-
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
       body {
         font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         background: var(--bg-primary);
@@ -46,7 +39,6 @@
         color: var(--text-primary);
         -webkit-font-smoothing: antialiased;
       }
-
       body::before {
         content: '';
         position: fixed;
@@ -57,7 +49,6 @@
         pointer-events: none;
         z-index: 0;
       }
-
       .container {
         position: relative;
         z-index: 1;
@@ -69,13 +60,11 @@
         padding: 40px;
         box-shadow: var(--shadow-lg);
       }
-
       /* Logo */
       .logo {
         text-align: center;
         margin-bottom: 32px;
       }
-
       .logo-mark {
         display: inline-flex;
         align-items: center;
@@ -87,25 +76,21 @@
         margin-bottom: 16px;
         box-shadow: none;
       }
-
       .logo-mark i {
         font-size: 24px;
         color: white;
       }
-
       .logo h1 {
         font-size: 24px;
         font-weight: 700;
         letter-spacing: -0.5px;
         color: var(--text-primary);
       }
-
       .logo p {
         color: var(--text-secondary);
         font-size: 14px;
         margin-top: 6px;
       }
-
       /* Alerts */
       .alert {
         display: none;
@@ -116,24 +101,20 @@
         font-weight: 500;
         border: 1px solid;
       }
-
       .alert-error {
         background: rgba(239, 68, 68, 0.1);
         border-color: rgba(239, 68, 68, 0.2);
         color: #fca5a5;
       }
-
       .alert-success {
         background: rgba(34, 197, 94, 0.1);
         border-color: rgba(34, 197, 94, 0.2);
         color: #86efac;
       }
-
       /* Form */
       .form-group {
         margin-bottom: 20px;
       }
-
       label {
         display: block;
         font-size: 13px;
@@ -141,11 +122,9 @@
         color: var(--text-secondary);
         margin-bottom: 8px;
       }
-
       .input-wrapper {
         position: relative;
       }
-
       .input-wrapper i {
         position: absolute;
         left: 14px;
@@ -154,7 +133,6 @@
         color: var(--text-muted);
         font-size: 14px;
       }
-
       input {
         width: 100%;
         padding: 14px 16px 14px 44px;
@@ -167,17 +145,14 @@
         transition: var(--transition);
         outline: none;
       }
-
       input::placeholder {
         color: var(--text-muted);
       }
-
       input:focus {
         border-color: var(--border-focus);
         background: var(--bg-primary);
         box-shadow: 0 0 0 3px var(--accent-soft);
       }
-
       /* Button */
       .btn {
         width: 100%;
@@ -194,25 +169,21 @@
         justify-content: center;
         gap: 10px;
       }
-
       .btn-primary {
         background: linear-gradient(135deg, var(--accent), #1d4ed8);
         color: white;
         box-shadow: 0 2px 12px rgba(59, 130, 246, 0.3);
       }
-
       .btn-primary:hover:not(:disabled) {
         background: linear-gradient(135deg, var(--accent-hover), #1e40af);
         transform: translateY(-1px);
         box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
       }
-
       .btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
       }
-
       /* Links */
       .links {
         text-align: center;
@@ -220,40 +191,35 @@
         font-size: 14px;
         color: var(--text-secondary);
       }
-
       .links a {
         color: var(--accent);
         text-decoration: none;
         font-weight: 500;
         transition: var(--transition);
       }
-
       .links a:hover {
         color: var(--accent-hover);
         text-decoration: underline;
       }
-
       /* Responsive */
       @media (max-width: 480px) {
         body {
           padding: 16px;
         }
-
         .container {
           padding: 28px 20px;
         }
-
         .logo h1 {
           font-size: 22px;
         }
-
         input {
           padding: 12px 12px 12px 40px;
         }
       }
-    </style>
+</style>
     <link rel="stylesheet" href="static/css/responsive.css">
-  </head>
+    <link rel="stylesheet" href="static/css/shared.css">
+</head>
 
   <body class="auth-page">
     <div class="container">

@@ -1,8 +1,13 @@
 import logging
 import threading
-from services.predictive_maintenance import predictor
 
 _logger = logging.getLogger(__name__)
+
+
+def _predictor():
+    from services.predictive_maintenance import predictor
+    return predictor
+
 
 def _train_task():
     """Internal helper to train the predictive model.
@@ -10,7 +15,7 @@ def _train_task():
     Wrapped in a separate thread to avoid blocking the request handling.
     """
     try:
-        predictor.train()
+        _predictor().train()
     except Exception as e:
         _logger.warning("Failed to train predictive model in background: %s", e)
 

@@ -219,31 +219,48 @@ const Auth = (() => {
       throw new Error("Sem refresh token.");
     }
 
-    if (!refreshPromise) {
-      refreshPromise = (async () => {
-        const headers = { "Content-Type": "application/json" };
-        if (refreshToken) headers.Authorization = `Bearer ${refreshToken}`;
-        const csrfToken = getCsrfToken("/api/refresh");
-        if (csrfToken) headers["X-CSRF-TOKEN"] = csrfToken;
+    const doRefresh = async (attempt = 1) => {
+      const headers = { "Content-Type": "application/json" };
+      if (refreshToken) headers.Authorization = `Bearer ${refreshToken}`;
+      const csrfToken = getCsrfToken("/api/refresh");
+      if (csrfToken) headers["X-CSRF-TOKEN"] = csrfToken;
 
-        const res = await fetch(`${CONFIG.API_URL}/api/refresh`, {
+      let res;
+      try {
+        res = await fetch(`${CONFIG.API_URL}/api/refresh`, {
           method: "POST",
           credentials: "include",
           headers,
         });
-
-        if (!res.ok) {
-          throw new Error("refresh_failed");
+      } catch (netErr) {
+        if (attempt <= 2) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1) + Math.random() * 500, 3000);
+          await new Promise((r) => setTimeout(r, delay));
+          return doRefresh(attempt + 1);
         }
+        throw netErr;
+      }
 
-        const data = await res.json();
-        if (refreshToken && data.access_token) {
-          localStorage.setItem(KEYS.ACCESS, data.access_token);
+      if (!res.ok) {
+        if (res.status >= 500 && attempt <= 2) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1) + Math.random() * 500, 3000);
+          await new Promise((r) => setTimeout(r, delay));
+          return doRefresh(attempt + 1);
         }
-        localStorage.setItem(KEYS.COOKIE_SESSION, "1");
-        invalidSessionHandled = false;
-        return data.access_token;
-      })().finally(() => {
+        throw new Error("refresh_failed");
+      }
+
+      const data = await res.json();
+      if (refreshToken && data.access_token) {
+        localStorage.setItem(KEYS.ACCESS, data.access_token);
+      }
+      localStorage.setItem(KEYS.COOKIE_SESSION, "1");
+      invalidSessionHandled = false;
+      return data.access_token;
+    };
+
+    if (!refreshPromise) {
+      refreshPromise = doRefresh().finally(() => {
         refreshPromise = null;
       });
     }
@@ -289,7 +306,13 @@ const Auth = (() => {
       ? buildHeaders(token, fetchOptions.headers || {})
       : buildHeaders(token, { "Content-Type": "application/json", ...(fetchOptions.headers || {}) });
 
-    let res = await fetch(url, { ...fetchOptions, credentials: "include", headers: baseHeaders });
+    let res;
+    try {
+      res = await fetch(url, { ...fetchOptions, credentials: "include", headers: baseHeaders });
+    } catch {
+      handleInvalidSession({ redirect: redirectOnInvalid });
+      throw new Error("Erro de conexao. Verifique sua internet.");
+    }
 
     // Tenta renovar o token se expirado
     if (res.status === 401) {
@@ -299,16 +322,16 @@ const Auth = (() => {
           ? buildHeaders(token, fetchOptions.headers || {})
           : buildHeaders(token, { "Content-Type": "application/json", ...(fetchOptions.headers || {}) });
         res = await fetch(url, { ...fetchOptions, credentials: "include", headers: retryHeaders });
-      } catch {
+      } catch (refreshErr) {
         if (!redirectOnInvalid) return res;
-        throw new Error("Sessão encerrada.");
+        throw refreshErr;
       }
-    }
 
-    if (res.status === 401 || (res.status === 404 && endpoint === "/api/user")) {
-      handleInvalidSession({ redirect: redirectOnInvalid });
-      if (!redirectOnInvalid) return res;
-      throw new Error("Sessao encerrada.");
+      if (res.status === 401 || (res.status === 404 && endpoint === "/api/user")) {
+        handleInvalidSession({ redirect: redirectOnInvalid });
+        if (!redirectOnInvalid) return res;
+        throw new Error("Sessao encerrada.");
+      }
     }
 
     if (res.status === 200 && endpoint === "/api/user" && method === "GET") {

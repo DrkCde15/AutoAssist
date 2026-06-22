@@ -6,7 +6,7 @@
   <title>Pagamento confirmado | AutoAssist</title>
   <link rel="icon" type="image/png" href="icon-dark-32x32.png">
   <style>
-    :root {
+:root {
       color-scheme: dark;
       --bg: #101820;
       --panel: #172330;
@@ -20,11 +20,9 @@
       --brand: #0f8f7d;
       --brand-strong: #0a7a69;
     }
-
     * {
       box-sizing: border-box;
     }
-
     body {
       margin: 0;
       min-height: 100vh;
@@ -35,7 +33,6 @@
       place-items: center;
       padding: 24px;
     }
-
     main {
       width: min(100%, 520px);
       background: var(--panel);
@@ -44,25 +41,21 @@
       box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
       padding: 28px;
     }
-
     .brand {
       display: flex;
       align-items: center;
       gap: 12px;
       margin-bottom: 24px;
     }
-
     .brand img {
       width: 42px;
       height: 42px;
       object-fit: contain;
     }
-
     .brand span {
       font-size: 1.05rem;
       font-weight: 800;
     }
-
     .status-icon {
       width: 54px;
       height: 54px;
@@ -74,25 +67,21 @@
       border: 1px solid rgba(25, 195, 125, 0.32);
       color: var(--ok);
     }
-
     .status-icon svg {
       width: 28px;
       height: 28px;
     }
-
     h1 {
       margin: 0 0 10px;
       font-size: 1.6rem;
       line-height: 1.2;
       letter-spacing: 0;
     }
-
     p {
       margin: 0;
       color: var(--muted);
       line-height: 1.6;
     }
-
     .status {
       margin-top: 20px;
       padding: 14px 16px;
@@ -102,29 +91,24 @@
       color: var(--muted);
       font-size: 0.95rem;
     }
-
     .status.ok {
       color: #bff4db;
       border-color: rgba(25, 195, 125, 0.34);
     }
-
     .status.warn {
       color: #ffe0ad;
       border-color: rgba(246, 180, 75, 0.34);
     }
-
     .status.error {
       color: #ffc7c7;
       border-color: rgba(239, 91, 91, 0.34);
     }
-
     .actions {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
       margin-top: 24px;
     }
-
     button,
     a.button {
       min-height: 44px;
@@ -142,25 +126,21 @@
       cursor: pointer;
       transition: filter 0.18s ease, transform 0.18s ease;
     }
-
     button:hover,
     a.button:hover {
       filter: brightness(1.05);
       transform: translateY(-1px);
     }
-
     a.button.secondary,
     button.secondary {
       background: #314255;
       color: #e6eef7;
     }
-
     button:disabled {
       cursor: wait;
       opacity: 0.72;
       transform: none;
     }
-
     .spinner {
       width: 18px;
       height: 18px;
@@ -169,28 +149,25 @@
       border-top-color: #ffffff;
       animation: spin 0.8s linear infinite;
     }
-
     @keyframes spin {
       to {
         transform: rotate(360deg);
       }
     }
-
     @media (max-width: 520px) {
       main {
         padding: 22px;
       }
-
       .actions {
         flex-direction: column;
       }
-
       button,
       a.button {
         width: 100%;
       }
     }
-  </style>
+</style>
+  <link rel="stylesheet" href="static/css/shared.css">
 </head>
 <body>
   <main>

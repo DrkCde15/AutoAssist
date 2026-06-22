@@ -3,8 +3,12 @@ import logging
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from routes.database import get_db
-from services.predictive_maintenance import predictor
 from services.nogai import get_fipe_value
+
+
+def _predictor():
+    from services.predictive_maintenance import predictor
+    return predictor
 from datetime import datetime
 
 # Blueprint for dashboard data (JSON) consumed by front‑end
@@ -71,7 +75,7 @@ def get_dashboard_data():
         # ------------------------------------------------------------------
         # 3️⃣  Predictive maintenance – use the predictor service.
         # ------------------------------------------------------------------
-        pred = predictor.predict_next(
+        pred = _predictor().predict_next(
             vehicle_id=vehicle["id"],
             maintenance_type="troca_oleo",
             kilometers_actual=vehicle.get("quilometragem")
