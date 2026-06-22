@@ -1,0 +1,47 @@
+{
+  "filtro_ar": {
+    "avg_km": 1707.0,
+    "avg_days": 122.8,
+    "count": 5
+  },
+  "troca_oleo": {
+    "avg_km": 2938.923076923077,
+    "avg_days": 439.9230769230769,
+    "count": 13
+  },
+  "suspensao": {
+    "avg_km": 0.0,
+    "avg_days": 693.5,
+    "count": 2
+  },
+  "revisao_geral": {
+    "avg_km": 1525.0,
+    "avg_days": 592.6,
+    "count": 5
+  },
+  "pneus": {
+    "avg_km": 2648.5555555555557,
+    "avg_days": 798.5555555555555,
+    "count": 9
+  },
+  "correia_dentada": {
+    "avg_km": 7730.875,
+    "avg_days": 255.5,
+    "count": 8
+  },
+  "arrefecimento": {
+    "avg_km": 6333.5,
+    "avg_days": 598.25,
+    "count": 4
+  },
+  "bateria": {
+    "avg_km": 5498.0,
+    "avg_days": 137.33333333333334,
+    "count": 3
+  },
+  "freios": {
+    "avg_km": 5590.0,
+    "avg_days": 122.0,
+    "count": 1
+  }
+}

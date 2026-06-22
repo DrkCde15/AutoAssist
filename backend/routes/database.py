@@ -115,7 +115,10 @@ def init_db():
         cursor.execute("SHOW COLUMNS FROM veiculos")
         existing_veiculos_columns = {row['Field'] for row in cursor.fetchall()}
         veiculos_columns = [
-            ("quilometragem", "INT")
+            ("quilometragem", "INT"),
+            ("fipe_valor", "VARCHAR(50) NULL"),
+            ("fipe_mes_referencia", "VARCHAR(50) NULL"),
+            ("fipe_updated_at", "DATETIME NULL"),
         ]
         for col, dtype in veiculos_columns:
             if col not in existing_veiculos_columns:
