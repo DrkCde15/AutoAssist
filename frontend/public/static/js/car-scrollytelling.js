@@ -275,7 +275,7 @@
         const accent = accents[activeIndex] || accents[0];
         const baseX = width * 0.5;
         const baseY = height * (width < 700 ? 0.43 : 0.52);
-        const baseW = Math.min(width * (width < 700 ? 1.08 : 0.78), 1120);
+        const baseW = Math.min(width * (width < 700 ? 1.08 : 0.78), 896);
         const baseH = baseW * (width < 700 ? 0.62 : 0.54);
 
         const panels = loadedCars.map((image, index) => {
@@ -300,8 +300,8 @@
             if (panel.abs > 2.4) return;
             const active = panel.abs < 0.54;
             const wave = prefersReducedMotion ? 0 : Math.sin(elapsed * 0.0012 + panel.index) * 0.012;
-            const x = baseX + panel.distance * Math.min(width * 0.34, 480);
-            const y = baseY + panel.abs * (width < 700 ? 36 : 58) - panel.activeBoost * 24;
+            const x = baseX + panel.distance * Math.min(width * 0.34, 384);
+            const y = baseY + panel.abs * (width < 700 ? 36 : 46) - panel.activeBoost * 19;
             const w = baseW * panel.scale;
             const h = baseH * panel.scale;
             const rotation = panel.distance * -0.12 + wave;

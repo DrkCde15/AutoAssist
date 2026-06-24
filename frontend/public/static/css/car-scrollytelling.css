@@ -200,10 +200,10 @@
     top: var(--car-scroll-header-offset);
     right: 0;
     left: 0;
-    width: min(980px, calc(100% - 48px));
+    width: min(784px, calc(100% - 38px));
     min-height: calc(92svh - var(--car-scroll-header-offset));
     margin: 0 auto;
-    padding: 24px 0 58px;
+    padding: 19px 0 46px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -213,13 +213,13 @@
 }
 
 .brand-hero__mark {
-    width: clamp(78px, 9vw, 116px);
+    width: clamp(62px, 7.2vw, 93px);
     aspect-ratio: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 16px;
-    filter: drop-shadow(0 16px 34px rgba(56, 189, 248, 0.32));
+    margin-bottom: 13px;
+    filter: drop-shadow(0 13px 27px rgba(56, 189, 248, 0.32));
 }
 
 .brand-hero__mark img {
@@ -229,53 +229,53 @@
 }
 
 .brand-hero__eyebrow {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     color: #67e8f9;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 800;
-    letter-spacing: 1.2px;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    text-shadow: 0 2px 18px rgba(8, 13, 24, 0.9);
+    text-shadow: 0 2px 14px rgba(8, 13, 24, 0.9);
 }
 
 .brand-hero h1 {
     margin: 0;
     color: #f8fafc;
-    font-size: clamp(46px, 7.5vw, 88px);
+    font-size: clamp(37px, 6vw, 70px);
     font-weight: 800;
     line-height: 0.96;
     letter-spacing: 0;
-    text-shadow: 0 18px 44px rgba(0, 0, 0, 0.72);
+    text-shadow: 0 14px 35px rgba(0, 0, 0, 0.72);
 }
 
 .brand-hero__copy {
-    max-width: 690px;
-    margin: 20px auto 0;
+    max-width: 552px;
+    margin: 16px auto 0;
     color: #dbeafe;
-    font-size: clamp(16px, 1.7vw, 21px);
+    font-size: clamp(13px, 1.36vw, 17px);
     line-height: 1.58;
-    text-shadow: 0 2px 16px rgba(8, 13, 24, 0.9);
+    text-shadow: 0 2px 13px rgba(8, 13, 24, 0.9);
 }
 
 .brand-hero__actions {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-top: 30px;
+    margin-top: 24px;
 }
 
 .brand-hero__primary,
 .brand-hero__secondary {
-    min-height: 48px;
-    border-radius: 8px;
-    padding: 0 20px;
+    min-height: 38px;
+    border-radius: 6px;
+    padding: 0 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 7px;
     color: #f8fafc;
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.2;
     text-decoration: none;
@@ -285,7 +285,7 @@
 .brand-hero__primary {
     border: 1px solid rgba(96, 165, 250, 0.6);
     background: linear-gradient(135deg, #2563eb, #0891b2);
-    box-shadow: 0 16px 34px rgba(37, 99, 235, 0.32);
+    box-shadow: 0 13px 27px rgba(37, 99, 235, 0.32);
 }
 
 .brand-hero__secondary {
@@ -300,7 +300,7 @@
 }
 
 .brand-hero__primary:hover {
-    box-shadow: 0 18px 40px rgba(14, 165, 233, 0.36);
+    box-shadow: 0 14px 32px rgba(14, 165, 233, 0.36);
 }
 
 .brand-hero__secondary:hover {
@@ -503,17 +503,17 @@
     }
 
     .brand-hero {
-        width: min(680px, calc(100% - 32px));
+        width: min(544px, calc(100% - 26px));
         min-height: calc(94svh - var(--car-scroll-header-offset));
-        padding: 22px 0 46px;
+        padding: 18px 0 37px;
     }
 
     .brand-hero h1 {
-        font-size: clamp(40px, 12vw, 66px);
+        font-size: clamp(32px, 9.6vw, 53px);
     }
 
     .brand-hero__copy {
-        font-size: 16px;
+        font-size: 13px;
         line-height: 1.55;
     }
 
@@ -572,41 +572,41 @@
 
     .brand-hero {
         justify-content: flex-start;
-        padding-top: 24px;
-        padding-bottom: 36px;
+        padding-top: 19px;
+        padding-bottom: 29px;
     }
 
     .brand-hero__mark {
-        width: 72px;
-        margin-bottom: 12px;
+        width: 58px;
+        margin-bottom: 10px;
     }
 
     .brand-hero h1 {
         max-width: 100%;
-        font-size: clamp(36px, 10vw, 42px);
+        font-size: clamp(29px, 8vw, 34px);
         line-height: 1.02;
         white-space: nowrap;
     }
 
     .brand-hero__eyebrow {
-        font-size: 11px;
+        font-size: 9px;
         line-height: 1.3;
     }
 
     .brand-hero__copy {
-        max-width: 320px;
-        margin-top: 16px;
-        font-size: 15px;
+        max-width: 256px;
+        margin-top: 13px;
+        font-size: 12px;
     }
 
     .brand-hero__actions {
         width: 100%;
-        margin-top: 24px;
+        margin-top: 19px;
     }
 
     .brand-hero__primary,
     .brand-hero__secondary {
-        width: min(100%, 312px);
+        width: min(100%, 250px);
     }
 
     .car-scroll__hud {
