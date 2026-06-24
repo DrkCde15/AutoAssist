@@ -4,18 +4,23 @@
 
 # AutoAssist IA 🚗💨
 
-O **AutoAssist IA** é um ecossistema de inteligência artificial de última geração, desenvolvido especificamente para o mercado automotivo brasileiro. A plataforma integra Processamento de Linguagem Natural (NLP) e Visão Computacional para fornecer diagnósticos precisos, avaliações de mercado e consultoria técnica especializada, operando com alta performance através da integração com a API do **Google Gemini**.
+O **AutoAssist IA** é um ecossistema de inteligência artificial de última geração, desenvolvido especificamente para o mercado automotivo brasileiro. A plataforma integra Processamento de Linguagem Natural (NLP) e Visão Computacional para fornecer diagnósticos precisos, avaliações de mercado e consultoria técnica especializada.
 
 ---
 
 ## ✨ Funcionalidades
+
+### **Landing Page e Apresentação**
+
+- **Carrossel 3D imersivo:** Seção heróica com animação de carros em perspectiva 3D (Canvas 2D), cards com highlight dinâmico e efeito de estrada em movimento.
+- **Design responsivo:** Layout adaptável a qualquer viewport com navbar fixa isolada via `body.home`, escalonamento visual consistente entre zoom 80%–100%.
 
 ### **Recursos Inteligentes (NOG IA)**
 
 - **Consultoria Contextual:** O assistente "NOG" agora utiliza o **histórico da conversa** para oferecer respostas mais profundas e evitar resultados repetitivos.
 - **E-commerce Automotivo Integrado:** Recomendação automática de links para compra de **veículos (WebMotors)** e **peças (Mercado Livre)** baseada na necessidade do usuário.
 - **IA de Previsão de Manutenção:** Sistema que analisa descrições (ex: "Troquei o óleo hoje") e utiliza IA para prever a data e quilometragem da próxima revisão.
-- **Raio-X Mecânico:** Análise visual avançada alimentada pelo **Gemini Vision** para identificação de ferrugem, desalinhamentos e vazamentos em fotos.
+- **Raio-X Mecânico:** Análise visual avançada para identificação de ferrugem, desalinhamentos e vazamentos em fotos.
 
 ### **Dashboard e Gestão**
 
@@ -41,7 +46,7 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 | Tecnologia            | Função                                                 |
 | :-------------------- | :----------------------------------------------------- |
 | **Flask**             | Servidor robusto e orquestração de APIs REST.          |
-| **Google Gemini SDK** | Integração com Gemini 2.0 Flash (Texto e Visão).       |
+| **Groq API**         | Modelos de linguagem (LLaMA, Groq Compound) para texto e visão. |
 | **PyMySQL + SSL**     | Conexão segura e resiliente com o banco de dados.      |
 | **SMTP / Gmail API**  | Motor de disparo de notificações proativas por e-mail. |
 | **JWT + Refresh**     | Autenticação moderna com Tokens de Acesso e Refresh.   |
@@ -62,16 +67,29 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 ```
 AutoAssist/
 ├── backend/
-│   ├── app.py                  # Entry-point (Servidor Flask)
-│   ├── routes/                 # Módulos de API (Auth, Pages, Database)
-│   ├── services/               # IA e Logica (NOG IA, Vision, Maintenance)
-│   └── .env                    # Variáveis de ambiente
+│   ├── app.py                     # Entry-point (Servidor Flask)
+│   ├── routes/                    # Módulos de API (Auth, Pages, Database)
+│   ├── services/                  # IA e Lógica (NOG IA, Vision, Maintenance)
+│   └── .env                       # Variáveis de ambiente
 ├── frontend/
-│   ├── index.html              # Landing Page / Dashboard
-│   ├── chat.html               # Consultor NOG IA
-│   ├── library.html             # Galeria de Vídeos YouTube
-│   ├── maintenance_history.html # Gestão de Manutenções
-│   └── static/                 # CSS, JS (auth.js, config.js)
+│   ├── index.html                 # Landing Page / Dashboard
+│   ├── chat.html                  # Consultor NOG IA
+│   ├── library.html               # Galeria de Vídeos YouTube
+│   ├── maintenance_history.html   # Gestão de Manutenções
+│   ├── profile.html               # Perfil do Usuário
+│   └── static/
+│       ├── css/
+│       │   ├── car-scrollytelling.css   # Estilos do carrossel 3D e hero
+│       │   ├── shared.css               # Estilos compartilhados (navbar, footer)
+│       │   ├── responsive.css           # Media queries globais
+│       │   ├── chat.css                 # Estilos do consultor NOG IA
+│       │   ├── dashboard.css            # Estilos do dashboard
+│       │   └── profile.css              # Estilos do perfil
+│       ├── js/
+│       │   ├── car-scrollytelling.js    # Canvas 2D carousel com física de perspectiva
+│       │   ├── auth.js                  # Autenticação Google OAuth 2.0
+│       │   └── config.js                # Configurações do frontend
+│       └── logo2.png                    # Logotipo do projeto
 └── README.md
 ```
 
@@ -83,17 +101,21 @@ AutoAssist/
 
 - Python 3.10 ou superior
 - Servidor MySQL (Local ou Nuvem)
-- Chave de API do Google Gemini
+- Chave de API do Groq (https://console.groq.com)
 
 ### 2. Configuração do Ambiente
 
 Crie um arquivo `.env` na pasta `backend/` com:
 
 ```env
-API_GEMINI=sua_chave_aqui
-GEMINI_TEXT_MODEL=gemini-2.5-flash
-GEMINI_FALLBACK_MODELS=gemini-2.0-flash,gemini-2.0-flash-lite
-GEMINI_FALLBACK_ON_QUOTA=true
+API_GROQ=sua_chave_aqui
+GROQ_PRIMARY_MODEL=groq/compound-mini
+GROQ_UTILITY_MODEL=llama-3.1-8b-instant
+GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
+GROQ_FALLBACK_MODELS=groq/compound
+
+# Cache de respostas (segundos). 0 desativa o cache.
+AI_CACHE_TTL_SECONDS=300
 DB_HOST=seu_host
 DB_USER=seu_usuario
 DB_PASSWORD=sua_senha
