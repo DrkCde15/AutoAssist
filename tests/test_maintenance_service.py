@@ -5,8 +5,9 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(BACKEND_DIR / "backend"))
 
-from services.maintenance_service import (  # noqa: E402
+from backend.services.maintenance_service import (  # noqa: E402
     detect_maintenance_type,
     parse_maintenance_entry,
 )

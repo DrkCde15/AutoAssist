@@ -110,7 +110,7 @@ Crie um arquivo `.env` na pasta `backend/` com:
 ```env
 API_GROQ=sua_chave_aqui
 GROQ_PRIMARY_MODEL=groq/compound-mini
-GROQ_UTILITY_MODEL=llama-3.1-8b-instant
+GROQ_UTILITY_MODEL=gpt-oss-20b
 GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 GROQ_FALLBACK_MODELS=groq/compound
 

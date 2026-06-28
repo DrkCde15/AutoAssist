@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_PRIMARY_MODEL = "groq/compound-mini"
-DEFAULT_UTILITY_MODEL = "llama-3.1-8b-instant"
+DEFAULT_UTILITY_MODEL = "gpt-oss-20b"
 DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 DEFAULT_FALLBACK_MODELS = ("groq/compound",)
 DEFAULT_VISION_FALLBACK_MODELS = ()

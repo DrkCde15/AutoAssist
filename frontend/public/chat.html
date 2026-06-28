@@ -13,37 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" crossorigin="anonymous"></script>
 
     <style>
-:root {
-        --bg-primary: #0a0a0c;
-        --bg-secondary: #101013;
-        --bg-card: #15151a;
-        --bg-card-hover: #1a1a20;
-        --bg-input: #1f1f25;
-        --bg-elevated: #1c1c22;
-        --border-color: #232329;
-        --border-subtle: #1d1d23;
-        --border-hover: #34343d;
-        --text-primary: #f4f4f5;
-        --text-secondary: #a1a1aa;
-        --text-muted: #6b6b75;
-        --accent: #4f8cff;
-        --accent-blue: #4f8cff;
-        --accent-hover: #3b7afe;
-        --accent-strong: #2563eb;
-        --accent-soft: rgba(79, 140, 255, 0.08);
-        --accent-ring: rgba(79, 140, 255, 0.18);
-        --danger: #f25555;
-        --success: #22c55e;
-        --radius-sm: 8px;
-        --radius: 10px;
-        --radius-lg: 14px;
-        --radius-xl: 18px;
-        --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
-        --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
-        --shadow-lg: 0 12px 32px rgba(0,0,0,0.35);
-        --shadow-glow: 0 0 0 1px var(--accent-ring), 0 8px 24px rgba(37, 99, 235, 0.18);
-      }
+
       html, body { height: 100%; }
       body {
         font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -1014,6 +984,8 @@
       const GUEST_MESSAGE_COUNT_KEY = "autoassist_guest_message_count";
       const AUTH_HISTORY_CACHE_PREFIX = "autoassist_chat_history_cache_v2";
       const GUEST_HISTORY_CACHE_KEY = "autoassist_guest_chat_history_cache_v1";
+      const CHAT_USE_WEBSOCKET = false; // Set to true to enable WebSocket mode (real-time streaming)
+
       const supportedAttachmentTypes = new Set([
         "image/jpeg",
         "image/png",
@@ -1447,6 +1419,78 @@
         `;
         addMessage(html, "msg-bot", true);
         updateGuestNotice();
+      }
+
+      // WebSocket support
+      let wsChat = null;
+      let wsReconnectTimer = null;
+
+      function handleWebSocketResponse(data) {
+        const typingDiv = document.getElementById("typing");
+        const botResponse = data.resposta_ia || "Desculpe, não consegui processar.";
+        lastAnalysisText = botResponse;
+
+        const cleanHtml = DOMPurify.sanitize(marked.parse(botResponse));
+        if (typingDiv) {
+          typingDiv.innerHTML = cleanHtml;
+          appendVideosToDiv(typingDiv, data.videos || []);
+          appendLinksToDiv(typingDiv, data.links || []);
+          typingDiv.id = "";
+        }
+        appendToCurrentThread(data.mensagem_usuario || "", botResponse);
+        addChatToHistory(data.chat || {
+          mensagem_usuario: data.mensagem_usuario || "",
+          resposta_ia: botResponse,
+          created_at: data.created_at || new Date().toISOString(),
+          videos: data.videos || [],
+          links: data.links || [],
+          topic: data.topic || "",
+        });
+        scrollToBottom();
+      }
+
+      function initWebSocketChat() {
+        if (!CHAT_USE_WEBSOCKET) return;
+
+        function connectWebSocket() {
+          const token = typeof Auth !== "undefined" && Auth.getAccessToken ? Auth.getAccessToken() : null;
+          const gid = isAuthenticated ? null : guestId;
+          const params = new URLSearchParams();
+          if (token) params.set("token", token);
+          if (gid) params.set("guest_id", gid);
+
+          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+          const wsUrl = `${protocol}//${window.location.host}/ws/chat?${params}`;
+
+          wsChat = new WebSocket(wsUrl);
+
+          wsChat.onopen = () => {
+            if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+          };
+
+          wsChat.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "status") {
+              // Status update, ignore
+            } else if (data.type === "response") {
+              handleWebSocketResponse(data);
+            } else if (data.error) {
+              const typingDiv = document.getElementById("typing");
+              if (typingDiv) {
+                typingDiv.innerHTML = `<strong>Erro:</strong> ${data.error}`;
+                typingDiv.id = "";
+              }
+            }
+          };
+
+          wsChat.onclose = () => {
+            if (!wsReconnectTimer) {
+              wsReconnectTimer = setTimeout(() => connectWebSocket(), 5000);
+            }
+          };
+        }
+
+        connectWebSocket();
       }
 
       async function chatApiFetch(endpoint, options = {}) {
@@ -1899,43 +1943,46 @@
           if (attachmentPayload) payload.attachment = attachmentPayload;
           if (!isAuthenticated && guestId) payload.guest_id = guestId;
 
-          const res = await chatApiFetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+          if (CHAT_USE_WEBSOCKET && wsChat && wsChat.readyState === WebSocket.OPEN) {
+            wsChat.send(JSON.stringify(payload));
+          } else {
+            const res = await chatApiFetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
 
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || data.error) {
-            if (data.code === "guest_limit_reached") {
-              typingDiv.closest(".message-row")?.remove();
-              setGuestMessageCount(FREE_GUEST_MESSAGE_LIMIT);
-              showGuestLimitPrompt();
-              return;
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.error) {
+              if (data.code === "guest_limit_reached") {
+                typingDiv.closest(".message-row")?.remove();
+                setGuestMessageCount(FREE_GUEST_MESSAGE_LIMIT);
+                showGuestLimitPrompt();
+                return;
+              }
+              throw new Error(data.error || "Não foi possível enviar a mensagem.");
             }
-            throw new Error(data.error || "Não foi possível enviar a mensagem.");
+
+            const botResponse = data.response || data.text || "Desculpe, não consegui processar.";
+            lastAnalysisText = botResponse;
+
+            const cleanHtml = DOMPurify.sanitize(marked.parse(botResponse));
+            typingDiv.innerHTML = cleanHtml;
+            appendVideosToDiv(typingDiv, data.videos);
+            appendLinksToDiv(typingDiv, data.links);
+            typingDiv.id = "";
+            updateGuestUsageFromServer(data.guest_messages_remaining, data.guest_limit);
+            appendToCurrentThread(data.chat?.mensagem_usuario || userMessageText, botResponse);
+            addChatToHistory(data.chat || {
+              mensagem_usuario: userMessageText,
+              resposta_ia: botResponse,
+              created_at: new Date().toISOString(),
+              videos: data.videos || [],
+              links: data.links || [],
+              topic: "",
+              attachments: attachmentMetadataFromFile(file),
+            });
           }
-
-          const botResponse = data.response || data.text || "Desculpe, não consegui processar.";
-          lastAnalysisText = botResponse;
-
-          const cleanHtml = DOMPurify.sanitize(marked.parse(botResponse));
-          typingDiv.innerHTML = cleanHtml;
-          appendVideosToDiv(typingDiv, data.videos);
-          appendLinksToDiv(typingDiv, data.links);
-          typingDiv.id = "";
-          updateGuestUsageFromServer(data.guest_messages_remaining, data.guest_limit);
-          appendToCurrentThread(data.chat?.mensagem_usuario || userMessageText, botResponse);
-          addChatToHistory(data.chat || {
-            mensagem_usuario: userMessageText,
-            resposta_ia: botResponse,
-            created_at: new Date().toISOString(),
-            videos: data.videos || [],
-            links: data.links || [],
-            topic: "",
-            attachments: attachmentMetadataFromFile(file),
-          });
-
         } catch (err) {
           typingDiv.innerHTML = `<strong>Erro:</strong> ${err.message || "Falha na conexão."}`;
         }
@@ -2117,6 +2164,8 @@
           if (!chatHistoryItems.length) renderHistoryList();
         }
       })();
+
+      initWebSocketChat();
 
       function renderChatHistory(chats) {
         chatHistoryItems = Array.isArray(chats) ? chats : [];

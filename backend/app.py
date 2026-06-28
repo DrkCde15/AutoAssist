@@ -1,6 +1,13 @@
 import os
+import sys
 import logging
+from pathlib import Path
 from datetime import timedelta
+
+print("Iniciando carregamento do Flask...")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from routes.training import training_bp
 from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, request, redirect
@@ -11,30 +18,35 @@ from flask_compress import Compress
 from werkzeug.exceptions import HTTPException
 from routes.gateway import gateway_bp
 
-# Carrega variaveis de ambiente localizando o arquivo .env no diretorio atual do script
 basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, ".env"))
+env_path = os.path.join(basedir, ".env")
+try:
+    from utils.secrets_encrypt import load_env_decrypted
+    decrypted_path = load_env_decrypted()
+    if decrypted_path:
+        env_path = decrypted_path
+except Exception:
+    pass
+load_dotenv(env_path)
 
 from extensions import limiter
 
-print("Iniciando carregamento do Flask...")
 app = Flask(__name__, static_folder="../frontend/public", static_url_path="")
 print("Flask instanciado.")
 Compress(app)
+from websocket_handler import sock as ws_sock, ws_bp
+app.register_blueprint(ws_bp)
+ws_sock.init_app(app)
 limiter.init_app(app)
 print("Extensoes inicializadas.")
 app.json.sort_keys = False
 app.json.compact = True
 
-# Registrar blueprint de treinamento
 app.register_blueprint(training_bp, url_prefix="/api")
 
-# [SEGURANCA] Limite de upload (16MB) e protecao DoS
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Configuracao de Logging
-import sys
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 print("Importando rotas...")
@@ -111,7 +123,9 @@ csp = {
         "'self'",
         "https://api.cakto.com.br",
         "http://localhost:5000",
-        "http://127.0.0.1:5000"
+        "http://127.0.0.1:5000",
+        "ws://localhost:5000",
+        "wss://autoassist-l9lr.onrender.com"
     ]
 }
 
@@ -274,10 +288,259 @@ if _env_flag("AUTO_INIT_DB", default=not is_production):
         if is_production:
             raise
 
-# Rota de Health Check
+# Health Check Robusto
 @app.route("/health")
 def health():
-    return jsonify(status="healthy"), 200
+    checks = {"status": "healthy", "timestamp": __import__('datetime').datetime.now().isoformat()}
+
+    # Verifica conexao com banco
+    try:
+        from routes.database import get_db
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT 1 AS ok")
+            checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {e}"
+        checks["status"] = "degraded"
+
+    # Verifica Redis (se configurado)
+    redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI", "")
+    if redis_url and redis_url != "memory://":
+        try:
+            import redis
+            r = redis.from_url(redis_url)
+            r.ping()
+            checks["redis"] = "ok"
+        except Exception as e:
+            checks["redis"] = f"error: {e}"
+            checks["status"] = "degraded"
+
+    # Verifica Groq API (ping leve)
+    api_key = os.getenv("API_GROQ") or os.getenv("GROQ_API_KEY", "")
+    if api_key:
+        try:
+            import requests
+            groq_base = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+            r = requests.get(f"{groq_base}/models", headers={"Authorization": f"Bearer {api_key}"}, timeout=5)
+            if r.status_code < 500:
+                checks["groq_api"] = "ok"
+            else:
+                checks["groq_api"] = f"error: HTTP {r.status_code}"
+                checks["status"] = "degraded"
+        except Exception as e:
+            checks["groq_api"] = f"error: {e}"
+            checks["status"] = "degraded"
+
+    status_code = 200 if checks["status"] == "healthy" else 503
+    return jsonify(checks), status_code
+
+# Documentacao da API (Swagger/OpenAPI)
+SWAGGER_SPEC = {
+    "openapi": "3.0.3",
+    "info": {
+        "title": "AutoAssist IA API",
+        "version": "1.0.0",
+        "description": "API do AutoAssist - Ecossistema automotivo com IA. Consulte os endpoints para chat, manutenção preditiva, FIPE, pagamentos e mais.",
+    },
+    "servers": [
+        {"url": "https://autoassist-l9lr.onrender.com", "description": "Producao"},
+        {"url": "http://localhost:5000", "description": "Desenvolvimento"},
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"},
+        }
+    },
+    "security": [{"bearerAuth": []}],
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health check do servidor",
+                "tags": ["Sistema"],
+                "responses": {"200": {"description": "Servidor saudavel"}, "503": {"description": "Servidor degradado"}},
+            }
+        },
+        "/api/cadastro": {
+            "post": {
+                "summary": "Cadastro de usuario",
+                "tags": ["Autenticacao"],
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CadastroInput"}}}},
+                "responses": {"201": {"description": "Conta criada"}, "409": {"description": "Email ja cadastrado"}},
+            }
+        },
+        "/api/login": {
+            "post": {
+                "summary": "Login do usuario",
+                "tags": ["Autenticacao"],
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LoginInput"}}}},
+                "responses": {"200": {"description": "Login bem-sucedido"}, "401": {"description": "Credenciais invalidas"}},
+            }
+        },
+        "/api/chat": {
+            "post": {
+                "summary": "Enviar mensagem para o NOG AI",
+                "tags": ["Chat"],
+                "security": [{"bearerAuth": []}, {}],
+                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatInput"}}}},
+                "responses": {"200": {"description": "Resposta da IA"}, "400": {"description": "Erro na requisicao"}},
+            }
+        },
+        "/api/user": {
+            "get": {
+                "summary": "Dados do usuario logado",
+                "tags": ["Usuario"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Dados do usuario"}},
+            },
+            "put": {
+                "summary": "Atualizar dados do usuario",
+                "tags": ["Usuario"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Usuario atualizado"}},
+            },
+        },
+        "/api/veiculos": {
+            "get": {
+                "summary": "Listar veiculos do usuario",
+                "tags": ["Veiculos"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Lista de veiculos"}},
+            },
+            "post": {
+                "summary": "Adicionar veiculo",
+                "tags": ["Veiculos"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"201": {"description": "Veiculo adicionado"}},
+            },
+        },
+        "/api/dashboard": {
+            "get": {
+                "summary": "Dashboard preditivo do veiculo",
+                "tags": ["Dashboard"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Dados do dashboard"}},
+            }
+        },
+        "/api/maintenance/history": {
+            "get": {
+                "summary": "Listar historico de manutencao",
+                "tags": ["Manutencao"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"200": {"description": "Historico de manutencao"}},
+            },
+            "post": {
+                "summary": "Registrar manutencao via NLP",
+                "tags": ["Manutencao"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"201": {"description": "Manutencao registrada"}},
+            },
+        },
+        "/api/pay/preference": {
+            "post": {
+                "summary": "Criar preferencia de pagamento Premium",
+                "tags": ["Pagamentos"],
+                "security": [{"bearerAuth": []}],
+                "responses": {"201": {"description": "Checkout gerado"}},
+            }
+        },
+        "/api/pay/webhook/cakto": {
+            "post": {
+                "summary": "Webhook da Cakto (pagamentos)",
+                "tags": ["Pagamentos"],
+                "responses": {"200": {"description": "Webhook processado"}},
+            }
+        },
+        "/api/feedback": {
+            "post": {
+                "summary": "Enviar feedback",
+                "tags": ["Feedback"],
+                "responses": {"201": {"description": "Feedback registrado"}},
+            }
+        },
+        "/api/analytics/events": {
+            "post": {
+                "summary": "Registrar evento de analytics",
+                "tags": ["Analytics"],
+                "responses": {"200": {"description": "Evento registrado"}},
+            }
+        },
+        "/api/docs": {
+            "get": {
+                "summary": "Documentacao OpenAPI/Swagger",
+                "tags": ["Sistema"],
+                "responses": {"200": {"description": "Especificacao OpenAPI"}},
+            }
+        },
+    },
+    "schemas": {
+        "CadastroInput": {
+            "type": "object",
+            "required": ["nome", "email", "password"],
+            "properties": {
+                "nome": {"type": "string", "example": "João Silva"},
+                "email": {"type": "string", "format": "email", "example": "joao@email.com"},
+                "password": {"type": "string", "minLength": 6, "example": "senha123"},
+                "veiculos": {"type": "array", "items": {"$ref": "#/components/schemas/VeiculoInput"}},
+            },
+        },
+        "LoginInput": {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "password": {"type": "string"},
+            },
+        },
+        "ChatInput": {
+            "type": "object",
+            "required": ["message"],
+            "properties": {
+                "message": {"type": "string", "example": "Qual o óleo ideal para meu carro?"},
+                "session_id": {"type": "string"},
+                "attachment": {"type": "object"},
+            },
+        },
+        "VeiculoInput": {
+            "type": "object",
+            "properties": {
+                "marca": {"type": "string"},
+                "modelo": {"type": "string"},
+                "ano_fabricacao": {"type": "integer"},
+                "tipo": {"type": "string", "enum": ["carro", "moto", "caminhao"]},
+                "quilometragem": {"type": "integer"},
+            },
+        },
+    },
+}
+
+@app.route("/api/docs")
+def api_docs():
+    return jsonify(SWAGGER_SPEC)
+
+@app.route("/api/swagger-ui")
+def swagger_ui():
+    return f"""
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>AutoAssist API - Swagger</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css" />
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js"></script>
+    <script>
+        SwaggerUIBundle({{
+            url: '{request.host_url}api/docs',
+            dom_id: '#swagger-ui',
+            presets: [SwaggerUIBundle.presets.apis],
+            layout: "BaseLayout",
+        }});
+    </script>
+</body>
+</html>
+"""
 
 
 @app.route("/", methods=["POST"])

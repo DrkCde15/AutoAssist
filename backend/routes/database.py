@@ -344,8 +344,8 @@ def is_trial_expired(user):
         except ValueError:
             return True
 
-    # Trial de 7 dias
-    expiry_date = created_at + timedelta(days=7)
+    # Trial de 30 dias
+    expiry_date = created_at + timedelta(days=30)
     return datetime.now(timezone.utc if created_at.tzinfo else None) > expiry_date
 
 def get_trial_days_remaining(user):
@@ -359,7 +359,7 @@ def get_trial_days_remaining(user):
         except ValueError:
             return 0
 
-    expiry_date = created_at + timedelta(days=7)
+    expiry_date = created_at + timedelta(days=30)
     delta = expiry_date - datetime.now(timezone.utc if created_at.tzinfo else None)
     return max(0, delta.days)
 

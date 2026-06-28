@@ -446,6 +446,28 @@ def cadastro():
 @auth_bp.route("/api/login", methods=["POST"])
 @limiter.limit("10 per minute")
 def login():
+    if request.args.get("demo") == "1":
+        from services.demo_mode import demo_user, demo_vehicle
+        user_data = demo_user()
+        vehicle_data = demo_vehicle()
+        access_token, refresh_token = create_user_tokens({"id": user_data["id"], "is_premium": True})
+        resp = jsonify(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user={
+                "id": user_data["id"],
+                "nome": user_data["nome"],
+                "is_premium": user_data["is_premium"],
+                "trial_expired": user_data["trial_expired"],
+                "trial_days_remaining": user_data["trial_days_remaining"],
+                "possui_veiculo": user_data["possui_veiculo"],
+                "veiculos": [vehicle_data],
+            }
+        )
+        set_access_cookies(resp, access_token)
+        set_refresh_cookies(resp, refresh_token)
+        return resp, 200
+
     data = request.get_json() or {}
     email, password = data.get("email"), data.get("password")
 

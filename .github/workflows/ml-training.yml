@@ -1,0 +1,54 @@
+name: ML Model Training
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          python -m spacy download pt_core_news_sm || true
+          
+      - name: Run model training
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          python backend/scripts/train.py
+          
+      - name: Commit updated models
+        run: |
+          git config user.name "AutoAssist ML Bot"
+          git config user.email "ml-bot@autoassist.app"
+          git add backend/models/predictive/
+          if git diff --staged --quiet; then
+            echo "Nenhuma alteracao nos modelos."
+          else
+            git commit -m "chore: atualiza modelos preditivos"
+            git push
+
+      - name: Trigger deploy
+        run: |
+          curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}'

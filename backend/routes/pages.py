@@ -84,6 +84,10 @@ TEXT_ATTACHMENT_TYPES = {
     "text/plain",
     "text/xml",
 }
+ALLOWED_ATTACHMENT_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "pdf", "txt", "md", "csv", "json"}
+MAX_IMAGE_DIMENSIONS = (5000, 5000)
+MAX_FILENAME_LENGTH = 120
+ATTACHMENT_RATE_LIMIT_SECONDS = 5
 
 def get_dashboard_url() -> str:
     # Return URL to the legacy HTML dashboard page
@@ -263,13 +267,53 @@ def parse_chat_attachment(data):
         return None
 
     raw_filename = (raw_attachment.get("name") or "anexo").replace("\\", "/").strip()
-    filename = os.path.basename(raw_filename)[:120] or "anexo"
+    if not raw_filename:
+        raise ValueError("Nome do arquivo vazio.")
+    filename = os.path.basename(raw_filename)[:MAX_FILENAME_LENGTH] or "anexo"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    # Validacao de extensao
+    if ext and ext not in ALLOWED_ATTACHMENT_EXTENSIONS:
+        raise ValueError(f"Extensao .{ext} nao permitida. Use: {', '.join(sorted(ALLOWED_ATTACHMENT_EXTENSIONS))}")
+
+    # Protecao contra path traversal
+    if ".." in raw_filename or raw_filename.startswith("/") or raw_filename.startswith("\\"):
+        raise ValueError("Nome de arquivo invalido.")
+
     data_url_type, file_data = decode_attachment_data(raw_attachment.get("data") or "")
     mime_type = infer_attachment_mime_type(filename, raw_attachment.get("type"), data_url_type)
+
+    # Validacao MIME contra extensao
+    mime_to_ext = {
+        "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
+        "image/gif": "gif", "application/pdf": "pdf",
+        "text/plain": "txt", "text/csv": "csv", "text/markdown": "md",
+        "application/json": "json",
+    }
+    expected_ext = mime_to_ext.get(mime_type)
+    if expected_ext and ext and ext != expected_ext:
+        logger.warning(f"MIME mismatch: {mime_type} vs extensao .{ext}")
+
     if len(file_data) > MAX_ATTACHMENT_BYTES:
-        raise ValueError("O arquivo anexado deve ter no máximo 8 MB.")
+        raise ValueError(f"O arquivo anexado deve ter no maximo {MAX_ATTACHMENT_BYTES // (1024*1024)} MB.")
+    if len(file_data) == 0:
+        raise ValueError("O arquivo anexado esta vazio.")
     if not is_supported_attachment_type(mime_type):
-        raise ValueError("Formato não suportado. Envie imagem PNG/JPG/WebP/GIF, PDF, TXT, CSV, Markdown ou JSON.")
+        raise ValueError("Formato nao suportado. Envie imagem PNG/JPG/WebP/GIF, PDF, TXT, CSV, Markdown ou JSON.")
+
+    # Validacao extra para imagens (dimensoes)
+    if mime_type in IMAGE_ATTACHMENT_TYPES:
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(file_data))
+            if img.width > MAX_IMAGE_DIMENSIONS[0] or img.height > MAX_IMAGE_DIMENSIONS[1]:
+                raise ValueError(f"Dimensoes da imagem excedem o limite de {MAX_IMAGE_DIMENSIONS[0]}x{MAX_IMAGE_DIMENSIONS[1]}px.")
+            img.verify()
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.warning(f"Falha ao validar imagem: {e}")
 
     kind = "text" if mime_type in TEXT_ATTACHMENT_TYPES else "binary"
     if mime_type in IMAGE_ATTACHMENT_TYPES:
