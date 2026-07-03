@@ -1,6 +1,5 @@
 import os
 import logging
-import threading
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -15,7 +14,20 @@ FIPE_CACHE_HOURS = 24
 
 
 def _refresh_fipe(vehicle_id, tipo, marca, modelo, ano):
-    """Busca FIPE em background e atualiza o cache no banco."""
+    try:
+        from redis import Redis
+        from rq import Queue
+        redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI", "redis://localhost:6379/0")
+        if redis_url != "memory://":
+            q = Queue("default", connection=Redis.from_url(redis_url))
+            q.enqueue("tasks.refresh_fipe", vehicle_id, tipo, marca, modelo, ano)
+        else:
+            _refresh_fipe_sync(vehicle_id, tipo, marca, modelo, ano)
+    except Exception:
+        _refresh_fipe_sync(vehicle_id, tipo, marca, modelo, ano)
+
+
+def _refresh_fipe_sync(vehicle_id, tipo, marca, modelo, ano):
     try:
         fipe = get_fipe_value(tipo, marca, modelo, ano)
         if fipe and "Valor" in fipe:
@@ -75,17 +87,7 @@ def get_dashboard_data():
         )
 
         if fipe_stale:
-            threading.Thread(
-                target=_refresh_fipe,
-                args=(
-                    row["id"],
-                    row["tipo"],
-                    row["marca"],
-                    row["modelo"],
-                    row["ano_fabricacao"],
-                ),
-                daemon=True,
-            ).start()
+            _refresh_fipe(row["id"], row["tipo"], row["marca"], row["modelo"], row["ano_fabricacao"])
 
         if row.get("fipe_valor"):
             fipe_info = {
@@ -125,6 +127,18 @@ def get_dashboard_data():
         ultima = row.get("ultima_manutencao")
         data_ultima = ultima.strftime('%d/%m/%Y') if ultima else "Nenhuma"
 
+        # Salva health score no histórico (async via RQ ou direto)
+        try:
+            from routes.database import get_db as _get_db
+            with _get_db() as (cur, conn):
+                cur.execute(
+                    "INSERT INTO health_score_history (user_id, vehicle_id, score) VALUES (%s, %s, %s)",
+                    (user_id, row["id"], health_score),
+                )
+                conn.commit()
+        except Exception:
+            pass
+
         return jsonify([{
             "veiculo": vehicle,
             "fipe": fipe_info,
@@ -141,3 +155,25 @@ def get_dashboard_data():
     except Exception as e:
         logger.error(f"Erro ao gerar dados do dashboard: {e}", exc_info=True)
         return jsonify([]), 500
+
+
+@dashboard_bp.get("/dashboard/health-trend")
+@jwt_required()
+def health_trend():
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cur, conn):
+            cur.execute(
+                "SELECT vehicle_id, score, recorded_at FROM health_score_history "
+                "WHERE user_id = %s ORDER BY recorded_at DESC LIMIT 30",
+                (user_id,),
+            )
+            rows = cur.fetchall()
+        return jsonify([{
+            "vehicle_id": r["vehicle_id"],
+            "score": r["score"],
+            "recorded_at": r["recorded_at"].isoformat() if r.get("recorded_at") else None,
+        } for r in reversed(rows)]), 200
+    except Exception as e:
+        logger.error("Erro ao buscar health trend: %s", e)
+        return jsonify([]), 200

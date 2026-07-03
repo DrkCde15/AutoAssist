@@ -6,9 +6,11 @@
     <title>AutoAssist • Chat</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="manifest" href="/manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="static/css/notifications.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" referrerpolicy="no-referrer" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" crossorigin="anonymous"></script>
 
@@ -883,6 +885,7 @@
             <i class="fas fa-user-plus"></i>
             <span>Criar conta</span>
           </a>
+          <div id="notif-bell-container"></div>
           <button id="logout" class="nav-btn nav-btn-danger">
             <i class="fas fa-sign-out-alt"></i>
             <span>Sair</span>
@@ -952,7 +955,9 @@
 
     <script src="./static/js/config.js"></script>
     <script src="./static/js/auth.js"></script>
+    <script src="./static/js/notifications.js" defer></script>
     <script src="./static/js/responsive.js" defer></script>
+    <script>if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}</script>
     <script>
       const messagesDiv = document.getElementById("messages");
       const input = document.getElementById("messageInput");

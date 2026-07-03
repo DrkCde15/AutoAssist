@@ -7,8 +7,9 @@
     <title>Feedbacks - AutoAssist</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link rel="manifest" href="/manifest.json">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
 :root {
             --bg-primary: #09090b;
@@ -319,6 +320,7 @@
 </style>
     <link rel="stylesheet" href="static/css/responsive.css">
   <link rel="stylesheet" href="static/css/shared.css">
+  <link rel="stylesheet" href="static/css/notifications.css">
 </head>
 <body>
 
@@ -334,6 +336,7 @@
             <a href="feedback.html" class="nav-link active"><i class="fas fa-star"></i> Feedbacks</a>
             <a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Entrar</a>
             <a href="cadastro.html" class="nav-link"><i class="fas fa-user-plus"></i> Criar conta</a>
+            <div id="notif-bell-container"></div>
         </div>
     </div>
 </nav>
@@ -406,6 +409,7 @@
 
 <script src="static/js/config.js"></script>
 <script src="static/js/auth.js"></script>
+<script src="static/js/notifications.js" defer></script>
 <script src="static/js/responsive.js" defer></script>
 <script>
     let selectedStars = 5;
@@ -668,5 +672,6 @@
 
     loadFeedbacks();
 </script>
+<script>if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}</script>
 </body>
 </html>

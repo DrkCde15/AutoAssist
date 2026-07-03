@@ -7,8 +7,9 @@
     <title>AutoAssist - Dashboard</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
 
         body {
@@ -321,6 +322,7 @@
 </style>
     <link rel="stylesheet" href="static/css/responsive.css">
   <link rel="stylesheet" href="static/css/shared.css">
+  <link rel="stylesheet" href="static/css/notifications.css">
 </head>
 <body>
     <nav class="navbar">
@@ -350,6 +352,7 @@
                     <i class="fas fa-user-circle"></i>
                     <span>Perfil</span>
                 </a>
+                <div id="notif-bell-container"></div>
                 <button onclick="Auth.logout()" class="nav-link">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Sair</span>
@@ -367,6 +370,7 @@
 
     <script src="static/js/config.js"></script>
     <script src="static/js/auth.js"></script>
+    <script src="static/js/notifications.js" defer></script>
     <script src="static/js/responsive.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -546,6 +550,73 @@ ${pred.predicted_next_km ? `
                 `;
             });
             content.innerHTML = htmlBuilder;
+            fetchHealthTrend();
+        }
+
+        async function fetchHealthTrend() {
+            try {
+                const res = await Auth.authenticatedFetch('/api/dashboard/health-trend', { redirectOnInvalid: false });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.length < 2) return;
+                renderHealthTrend(data);
+            } catch {}
+        }
+
+        function renderHealthTrend(data) {
+            const container = document.querySelector('.stats-grid');
+            if (!container) return;
+            const scores = data.map(d => d.score);
+            const labels = data.map(d => {
+                const date = new Date(d.recorded_at);
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            });
+            const min = Math.min(...scores);
+            const max = Math.max(...scores);
+            const range = max - min || 1;
+            const w = 280, h = 80;
+            const padding = { top: 6, bottom: 16, left: 4, right: 4 };
+            const chartW = w - padding.left - padding.right;
+            const chartH = h - padding.top - padding.bottom;
+
+            const points = scores.map((s, i) => {
+                const x = padding.left + (i / (scores.length - 1)) * chartW;
+                const y = padding.top + chartH - ((s - min) / range) * chartH;
+                return `${x},${y}`;
+            });
+            const line = points.join(' ');
+
+            const color = scores[scores.length - 1] >= 80 ? '#22c55e' : scores[scores.length - 1] >= 50 ? '#f59e0b' : '#ef4444';
+
+            const svg = `
+                <div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1)">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                        <div class="stat-card-icon" style="width:30px;height:30px;font-size:0.8rem;color:var(--accent);background:rgba(59,130,246,0.1);">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-card-title" style="font-size:13px;font-weight:600;color:var(--text-secondary)">Tendência do Health Score</div>
+                    </div>
+                    <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${w}px;display:block">
+                        <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                        ${points.map((p, i) => {
+                            const [cx, cy] = p.split(',');
+                            return `<circle cx="${cx}" cy="${cy}" r="3" fill="${color}" opacity="0.8"/>`;
+                        }).join('')}
+                        <text x="${padding.left}" y="${h - 2}" font-size="8" fill="var(--text-muted)">${labels[0] || ''}</text>
+                        <text x="${w - padding.right}" y="${h - 2}" font-size="8" fill="var(--text-muted)" text-anchor="end">${labels[labels.length - 1] || ''}</text>
+                    </svg>
+                </div>
+            `;
+            const statCard = container.querySelector('.stat-card');
+            if (statCard) {
+                statCard.insertAdjacentHTML('beforeend', svg);
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
         }
     </script>
 </body>

@@ -7,7 +7,8 @@
     <title>Biblioteca Automotiva - AutoAssist</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="manifest" href="/manifest.json">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -291,6 +292,7 @@
 </style>
     <link rel="stylesheet" href="static/css/responsive.css">
   <link rel="stylesheet" href="static/css/shared.css">
+  <link rel="stylesheet" href="static/css/notifications.css">
 </head>
 <body>
 
@@ -306,6 +308,7 @@
                 <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
                 <a href="library.html" class="nav-link active"><i class="fas fa-book"></i> Biblioteca</a>
                 <a href="perfil.html" class="nav-link"><i class="fas fa-user-circle"></i> Perfil</a>
+                <div id="notif-bell-container"></div>
                 <button onclick="Auth.logout()" class="nav-link" style="background:none; border:none; cursor:pointer;"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </div>
@@ -326,8 +329,9 @@
     </div>
 
     <script src="static/js/config.js"></script>
-    <script src="static/js/auth.js"></script>
-    <script src="static/js/responsive.js" defer></script>
+<script src="static/js/auth.js"></script>
+<script src="static/js/notifications.js" defer></script>
+<script src="static/js/responsive.js" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             if (!Auth.isAuthenticated()) {
@@ -435,5 +439,6 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
     </script>
+<script>if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}</script>
 </body>
 </html>

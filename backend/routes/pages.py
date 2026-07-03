@@ -38,6 +38,7 @@ from services.maintenance_service import (
 )
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
 from utils.email import enviar_email
+from .notifications import create_notification
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -910,13 +911,28 @@ def _send_maintenance_alert_logic(
     subject = f"AutoAssist: {len(alerts)} alerta(s) de manutencao para revisar"
     html_body = render_maintenance_email_html(user_row.get("nome"), alerts)
     sent_ok = enviar_email(user_row["email"], subject, html_body)
+
+    # Cria notificação in-app para cada alerta
+    user_id = user_row["id"]
+    for alert in alerts[:5]:
+        try:
+            create_notification(
+                user_id=user_id,
+                title=alert.get("item", "Alerta de manutenção"),
+                body=alert.get("msg", ""),
+                type="warning",
+                action_url="/dashboard.html",
+            )
+        except Exception:
+            pass
+
     if not sent_ok:
         return {"sent": False, "reason": "send_failed", "alerts_count": len(alerts)}
 
-    mark_maintenance_alerts_sent(cursor, user_row["id"], alerts)
+    mark_maintenance_alerts_sent(cursor, user_id, alerts)
     cursor.execute(
         "UPDATE users SET maintenance_email_last_sent = NOW() WHERE id = %s",
-        (user_row["id"],)
+        (user_id,)
     )
     return {"sent": True, "reason": "sent", "alerts_count": len(alerts)}
 
@@ -1013,6 +1029,31 @@ def run_maintenance_email_dispatch(
     }
 
 
+def _enqueue_alert_email(user_row):
+    try:
+        from redis import Redis
+        from rq import Queue
+        redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI", "redis://localhost:6379/0")
+        if redis_url != "memory://":
+            q = Queue("default", connection=Redis.from_url(redis_url))
+            q.enqueue("tasks.send_maintenance_alert_email", user_row, False, CRITICAL_MAINTENANCE_STATUSES, True)
+        else:
+            import threading
+            threading.Thread(
+                target=send_maintenance_alert_email_for_user,
+                args=(None, user_row),
+                kwargs={"force": False, "status_codes": CRITICAL_MAINTENANCE_STATUSES, "transition_only": True},
+                daemon=True,
+            ).start()
+    except Exception:
+        import threading
+        threading.Thread(
+            target=send_maintenance_alert_email_for_user,
+            args=(None, user_row),
+            kwargs={"force": False, "status_codes": CRITICAL_MAINTENANCE_STATUSES, "transition_only": True},
+            daemon=True,
+        ).start()
+
 def _dispatch_maintenance_emails_background() -> None:
     try:
         result = run_maintenance_email_dispatch(
@@ -1041,10 +1082,19 @@ def maybe_dispatch_maintenance_emails_from_backend():
             return None
         _maintenance_dispatch_last_started_at = now
 
-    threading.Thread(
-        target=_dispatch_maintenance_emails_background,
-        daemon=True,
-    ).start()
+    try:
+        from redis import Redis
+        from rq import Queue
+        redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI", "redis://localhost:6379/0")
+        if redis_url != "memory://":
+            q = Queue("default", connection=Redis.from_url(redis_url))
+            q.enqueue("tasks.dispatch_maintenance_emails")
+        else:
+            import threading
+            threading.Thread(target=_dispatch_maintenance_emails_background, daemon=True).start()
+    except Exception:
+        import threading
+        threading.Thread(target=_dispatch_maintenance_emails_background, daemon=True).start()
     return None
 
 
@@ -1210,16 +1260,7 @@ def edit_veiculo(v_id):
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    threading.Thread(
-                        target=send_maintenance_alert_email_for_user,
-                        args=(None, user_row), # Cursor None pois abriremos nova conexão na thread
-                        kwargs={
-                            "force": False,
-                            "status_codes": CRITICAL_MAINTENANCE_STATUSES,
-                            "transition_only": True,
-                        },
-                        daemon=True,
-                    ).start()
+                    _enqueue_alert_email(user_row)
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
@@ -1346,16 +1387,7 @@ def register_maintenance_history():
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    threading.Thread(
-                        target=send_maintenance_alert_email_for_user,
-                        args=(None, user_row),
-                        kwargs={
-                            "force": False,
-                            "status_codes": CRITICAL_MAINTENANCE_STATUSES,
-                            "transition_only": True,
-                        },
-                        daemon=True,
-                    ).start()
+                    _enqueue_alert_email(user_row)
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
@@ -1495,20 +1527,18 @@ def update_maintenance_history(maintenance_id):
                   parsed["interval_km"], parsed["next_due_date"], parsed["next_due_km"],
                   json.dumps(parser_metadata, ensure_ascii=False), maintenance_id, user_id))
 
-            # Gatilho imediato de e-mail em segundo plano
+            # Gatilho imediato de e-mail em segundo plano + notificação
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
-                    threading.Thread(
-                        target=send_maintenance_alert_email_for_user,
-                        args=(None, user_row),
-                        kwargs={
-                            "force": False,
-                            "status_codes": CRITICAL_MAINTENANCE_STATUSES,
-                            "transition_only": True,
-                        },
-                        daemon=True,
-                    ).start()
+                    _enqueue_alert_email(user_row)
+                    create_notification(
+                        user_id=user_id,
+                        title="Manutenção atualizada",
+                        body=f"{parsed.get('maintenance_label', 'Registro')} atualizado com sucesso.",
+                        type="info",
+                        action_url="/dashboard.html",
+                    )
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 

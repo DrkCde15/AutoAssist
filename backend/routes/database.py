@@ -306,6 +306,33 @@ def init_db():
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                body TEXT,
+                type VARCHAR(50) NOT NULL DEFAULT 'info',
+                action_url VARCHAR(500),
+                is_read TINYINT(1) DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_notif_user_read (user_id, is_read, created_at DESC),
+                INDEX idx_notif_user_created (user_id, created_at DESC),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS health_score_history (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                vehicle_id INT NULL,
+                score INT NOT NULL,
+                recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_health_user_vehicle (user_id, vehicle_id, recorded_at DESC),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+
         # Otimizações de Banco de Dados: Adicionando Índices para consultas frequentes
         indexes = [
             "CREATE INDEX idx_chats_user_created ON chats (user_id, created_at DESC)",

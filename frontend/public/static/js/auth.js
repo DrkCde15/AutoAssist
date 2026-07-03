@@ -39,13 +39,8 @@ const Auth = (() => {
   function saveSession(accessToken, refreshToken, user, options = {}) {
     invalidSessionHandled = false;
     localStorage.setItem(KEYS.COOKIE_SESSION, "1");
-    if (options.persistTokens) {
-      if (accessToken) localStorage.setItem(KEYS.ACCESS, accessToken);
-      if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
-    } else {
-      localStorage.removeItem(KEYS.ACCESS);
-      localStorage.removeItem(KEYS.REFRESH);
-    }
+    if (accessToken) localStorage.setItem(KEYS.ACCESS, accessToken);
+    if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
     if (user) {
       localStorage.setItem(KEYS.USER, JSON.stringify(user));
       Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data: user });
@@ -105,11 +100,15 @@ const Auth = (() => {
   }
 
   function handleInvalidSession({ redirect = true } = {}) {
+    if (!redirect) {
+      clearSession();
+      return;
+    }
     if (!invalidSessionHandled) {
       invalidSessionHandled = true;
       clearSession();
+      redirectToLogin();
     }
-    if (redirect) redirectToLogin();
   }
 
   function getAccessToken() {

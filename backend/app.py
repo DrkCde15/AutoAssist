@@ -51,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 print("Importando rotas...")
 from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db
+from routes.notifications import notifications_bp
 from routes.payment import cakto_webhook as cakto_webhook_handler
 print("Rotas importadas.")
 
@@ -563,7 +564,7 @@ app.register_blueprint(pages_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(gateway_bp)
-app.register_blueprint(notes_bp)
+app.register_blueprint(notifications_bp)
 
 # [SEGURANCA] Padronizacao de Erros (Information Disclosure)
 @app.errorhandler(Exception)
