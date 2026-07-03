@@ -989,7 +989,7 @@
       const GUEST_MESSAGE_COUNT_KEY = "autoassist_guest_message_count";
       const AUTH_HISTORY_CACHE_PREFIX = "autoassist_chat_history_cache_v2";
       const GUEST_HISTORY_CACHE_KEY = "autoassist_guest_chat_history_cache_v1";
-      const CHAT_USE_WEBSOCKET = false; // Set to true to enable WebSocket mode (real-time streaming)
+      const CHAT_USE_WEBSOCKET = true;
 
       const supportedAttachmentTypes = new Set([
         "image/jpeg",
@@ -1444,6 +1444,7 @@
         }
         appendToCurrentThread(data.mensagem_usuario || "", botResponse);
         addChatToHistory(data.chat || {
+          id: data.id || null,
           mensagem_usuario: data.mensagem_usuario || "",
           resposta_ia: botResponse,
           created_at: data.created_at || new Date().toISOString(),

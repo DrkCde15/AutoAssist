@@ -31,3 +31,4 @@ numpy
 scikit-learn
 joblib
 spacy>=3.7,<4
+pywebpush>=1.14,<2

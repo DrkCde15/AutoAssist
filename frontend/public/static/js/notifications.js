@@ -156,12 +156,87 @@ const Notifications = (() => {
     }
   }
 
+  /* ── Push Notification Subscription ── */
+
+  function urlBase64ToUint8Array(base64) {
+    const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+    const raw = atob(base64.replace(/-/g, "+").replace(/_/g, "/") + padding);
+    return Uint8Array.from(raw.split("").map((c) => c.charCodeAt(0)));
+  }
+
+  async function getVapidPublicKey() {
+    try {
+      const res = await Auth.authenticatedFetch("/api/push/vapid-public-key", { redirectOnInvalid: false });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.publicKey || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function subscribeToPush() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription) return subscription;
+
+    const publicKey = await getVapidPublicKey();
+    if (!publicKey) return;
+
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      await Auth.authenticatedFetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription.toJSON()),
+        redirectOnInvalid: false,
+      });
+    } catch {}
+  }
+
+  async function unsubscribeFromPush() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) return;
+      await subscription.unsubscribe();
+      await Auth.authenticatedFetch("/api/push/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
+        redirectOnInvalid: false,
+      });
+    } catch {}
+  }
+
+  async function requestPushPermission() {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      await subscribeToPush();
+      return;
+    }
+    if (Notification.permission === "denied") return;
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      await subscribeToPush();
+    }
+  }
+
+  /* ── Init ── */
+
   function init() {
     if (typeof Auth === "undefined" || !Auth.isAuthenticated()) return;
     if (document.getElementById("notif-bell-container")) {
       createBell();
       fetchUnreadCount();
       pollInterval = setInterval(fetchUnreadCount, 30000);
+      requestPushPermission();
     }
   }
 
@@ -171,5 +246,5 @@ const Notifications = (() => {
     init();
   }
 
-  return { init, fetchUnreadCount };
+  return { init, fetchUnreadCount, requestPushPermission, subscribeToPush, unsubscribeFromPush };
 })();

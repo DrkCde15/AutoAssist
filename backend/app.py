@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 print("Importando rotas...")
 from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db
 from routes.notifications import notifications_bp
+from routes.push import push_bp
 from routes.payment import cakto_webhook as cakto_webhook_handler
 print("Rotas importadas.")
 
@@ -565,6 +566,21 @@ app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(gateway_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(push_bp)
+
+# Gera VAPID keys se nao existirem
+if not os.getenv("VAPID_PRIVATE_KEY") or not os.getenv("VAPID_PUBLIC_KEY"):
+    try:
+        from cryptography import __version__
+        from pywebpush import generate_vapid_keys
+        vapid = generate_vapid_keys()
+        logger.info("VAPID keys geradas. Adicione ao .env:")
+        logger.info("VAPID_PRIVATE_KEY=%s", vapid["private_key"])
+        logger.info("VAPID_PUBLIC_KEY=%s", vapid["public_key"])
+        os.environ.setdefault("VAPID_PRIVATE_KEY", vapid["private_key"])
+        os.environ.setdefault("VAPID_PUBLIC_KEY", vapid["public_key"])
+    except ImportError:
+        logger.warning("pywebpush nao disponivel — VAPID keys devem ser configuradas manualmente no .env")
 
 # [SEGURANCA] Padronizacao de Erros (Information Disclosure)
 @app.errorhandler(Exception)

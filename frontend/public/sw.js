@@ -1,4 +1,4 @@
-const CACHE = "autoassist-v2";
+const CACHE = "autoassist-v3";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -51,6 +51,42 @@ self.addEventListener("fetch", (event) => {
         return response;
       }).catch(() => cached);
       return cached || fetchPromise;
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  try {
+    const data = event.data.json();
+    const title = data.title || "AutoAssist";
+    const options = {
+      body: data.body || "",
+      icon: data.icon || "/static/logo2.png",
+      badge: data.badge || "/static/logo2.png",
+      data: data.data || {},
+      requireInteraction: data.requireInteraction !== false,
+      vibrate: [200, 100, 200],
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {
+    const title = "AutoAssist";
+    const options = { body: event.data.text(), icon: "/static/logo2.png" };
+    event.waitUntil(self.registration.showNotification(title, options));
+  }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || "/";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url === urlToOpen && "focus" in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow(urlToOpen);
     })
   );
 });

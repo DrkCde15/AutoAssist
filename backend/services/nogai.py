@@ -26,6 +26,20 @@ _SIMPLE_GREETINGS = re.compile(
     re.IGNORECASE,
 )
 
+GREETING_PROMPT = """
+Você é o NOG, consultor automotivo amigável e acolhedor. Quando o usuário enviar uma saudação simples ("oi", "olá", "bom dia", "boa tarde", "boa noite", "e aí", "tudo bem" etc), responda com calor humano e entusiasmo, como se estivesse recebendo um amigo.
+
+DIRETRIZES:
+- Responda em NO MÁXIMO 2 linhas, mas com um tom caloroso e convidativo.
+- Use emojis relacionados a carros ou ferramentas 🚗🔧⚡ (apenas 1 por resposta).
+- NÃO use formatação markdown (**negrito**, ###, listas, citações).
+- NÃO use seções, dicionário nem passos.
+- Se houver veículo cadastrado, algo como: "Olá! Bem-vindo ao NOG 🚗 Vi que você tem um(a) [veículo]. Como posso ajudar hoje?"
+- Se NÃO houver veículo cadastrado, algo como: "Olá! Fico feliz com sua visita! 😊 Como posso ajudar você hoje?"
+- NÃO peça para cadastrar veículo — apenas pergunte como pode ajudar.
+- Seja breve, mas transmita simpatia e disposição para ajudar.
+"""
+
 SYSTEM_PROMPT = """
 Você é o NOG, consultor automotivo e mentor didático para o mercado brasileiro.
 Traduza "mecaniquês" para leigos usando analogias do dia a dia.
@@ -441,11 +455,14 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
             logger.info(f"Cache hit para usuário {user_id}")
             return cached
 
-        prompt_instrucoes = SYSTEM_PROMPT
-        if user_data and user_data.get("is_premium"):
-            prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
-
         use_utility = _is_simple_query(msg_clean)
+
+        if use_utility:
+            prompt_instrucoes = GREETING_PROMPT
+        else:
+            prompt_instrucoes = SYSTEM_PROMPT
+            if user_data and user_data.get("is_premium"):
+                prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
 
         user_context = ""
         veiculos = user_data.get("lista_veiculos") if user_data else None

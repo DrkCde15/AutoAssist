@@ -48,6 +48,7 @@ const Auth = (() => {
   }
 
   function clearSession() {
+    console.warn("[Auth] clearSession() chamado");
     Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
     Cache.clear();
   }
@@ -145,7 +146,7 @@ const Auth = (() => {
   }
 
   function isAuthenticated() {
-    return !!getAccessToken() || hasCookieSession();
+    return !!getAccessToken() || hasCookieSession() || !!getCookie("csrf_access_token") || !!getCookie("csrf_refresh_token");
   }
 
   function escapeHTML(value) {
@@ -459,7 +460,13 @@ const Auth = (() => {
     if (oauthSuccess) {
       localStorage.setItem(KEYS.COOKIE_SESSION, "1");
       window.history.replaceState({}, document.title, window.location.pathname);
-      await syncUser({ redirectOnInvalid: false, force: true });
+      const userData = await syncUser({ redirectOnInvalid: false, force: true });
+      if (userData) {
+        try {
+          const token = await refreshAccessToken({ redirectOnFailure: false });
+          if (token) localStorage.setItem(KEYS.ACCESS, token);
+        } catch {}
+      }
       return;
     }
 
