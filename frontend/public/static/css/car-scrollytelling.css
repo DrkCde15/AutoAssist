@@ -571,9 +571,9 @@
     }
 
     .brand-hero {
+        width: min(100%, calc(100% - 20px));
         justify-content: flex-start;
-        padding-top: 19px;
-        padding-bottom: 29px;
+        padding: 19px 8px 29px;
     }
 
     .brand-hero__mark {
@@ -583,9 +583,10 @@
 
     .brand-hero h1 {
         max-width: 100%;
-        font-size: clamp(29px, 8vw, 34px);
-        line-height: 1.02;
-        white-space: nowrap;
+        font-size: clamp(26px, 8vw, 34px);
+        line-height: 1.04;
+        overflow-wrap: anywhere;
+        white-space: normal;
     }
 
     .brand-hero__eyebrow {
@@ -594,13 +595,15 @@
     }
 
     .brand-hero__copy {
-        max-width: 256px;
+        max-width: min(100%, 280px);
         margin-top: 13px;
         font-size: 12px;
     }
 
     .brand-hero__actions {
         width: 100%;
+        flex-direction: column;
+        align-items: center;
         margin-top: 19px;
     }
 

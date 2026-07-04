@@ -217,6 +217,13 @@ body.aa-menu-lock {
     white-space: nowrap;
   }
 
+  .aa-mobile-menu-ready .nav-links .nav-link,
+  .aa-mobile-menu-ready .nav-links .nav-btn,
+  .aa-mobile-menu-ready .header-nav .nav-btn,
+  .aa-mobile-menu-ready .header-nav .nav-link {
+    white-space: normal;
+  }
+
   .aa-mobile-menu-ready .navbar .nav-links,
   .aa-mobile-menu-ready header .header-nav {
     display: none !important;
@@ -471,6 +478,10 @@ body.aa-menu-lock {
   .aa-mobile-menu-ready .logo img,
   .aa-mobile-menu-ready .logo-icon img {
     max-height: 48px !important;
+  }
+
+  body.home .nav-logo-text {
+    max-width: 96px;
   }
 
   .auth-page {

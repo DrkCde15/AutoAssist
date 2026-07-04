@@ -33,11 +33,11 @@ const Notifications = (() => {
     bell.style.cssText = "position:relative;display:inline-flex;align-items:center;";
 
     bell.innerHTML = `
-      <button type="button" class="notif-bell-btn" id="notifBellBtn" aria-label="Notificações">
+      <button type="button" class="nav-bell-btn notif-bell-btn" id="notifBellBtn" aria-label="Notificações">
         <i class="fas fa-bell"></i>
         <span class="notif-badge hidden" id="notifBadge">0</span>
       </button>
-      <div class="notif-panel" id="notifPanel">
+      <div class="notification-panel notif-panel" id="notifPanel">
         <div class="notif-panel-header">
           <span class="notif-panel-title">Notificações</span>
           <div class="notif-panel-actions">
@@ -60,8 +60,10 @@ const Notifications = (() => {
 
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      panel.classList.toggle("is-open");
-      if (panel.classList.contains("is-open")) {
+      const shouldOpen = !panel.classList.contains("is-open");
+      panel.classList.toggle("is-open", shouldOpen);
+      panel.classList.toggle("open", shouldOpen);
+      if (shouldOpen) {
         fetchNotifications();
       }
     });
@@ -69,6 +71,7 @@ const Notifications = (() => {
     document.addEventListener("click", (e) => {
       if (!container.contains(e.target)) {
         panel.classList.remove("is-open");
+        panel.classList.remove("open");
       }
     });
 

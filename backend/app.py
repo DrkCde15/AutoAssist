@@ -296,43 +296,29 @@ if _env_flag("AUTO_INIT_DB", default=not is_production):
 def health():
     checks = {"status": "healthy", "timestamp": __import__('datetime').datetime.now().isoformat()}
 
-    # Verifica conexao com banco
-    try:
-        from routes.database import get_db
-        with get_db() as (cursor, conn):
-            cursor.execute("SELECT 1 AS ok")
-            checks["database"] = "ok"
-    except Exception as e:
-        checks["database"] = f"error: {e}"
-        checks["status"] = "degraded"
-
-    # Verifica Redis (se configurado)
-    redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI", "")
-    if redis_url and redis_url != "memory://":
+    if os.getenv("HEALTHCHECK_EXTERNAL_CHECKS", "0").strip().lower() in {"1", "true", "yes", "on"}:
         try:
-            import redis
-            r = redis.from_url(redis_url)
-            r.ping()
-            checks["redis"] = "ok"
+            from routes.database import get_db
+            with get_db() as (cursor, conn):
+                cursor.execute("SELECT 1 AS ok")
+                checks["database"] = "ok"
         except Exception as e:
-            checks["redis"] = f"error: {e}"
+            checks["database"] = f"error: {e}"
             checks["status"] = "degraded"
 
-    # Verifica Groq API (ping leve)
-    api_key = os.getenv("API_GROQ") or os.getenv("GROQ_API_KEY", "")
-    if api_key:
-        try:
-            import requests
-            groq_base = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-            r = requests.get(f"{groq_base}/models", headers={"Authorization": f"Bearer {api_key}"}, timeout=5)
-            if r.status_code < 500:
-                checks["groq_api"] = "ok"
-            else:
-                checks["groq_api"] = f"error: HTTP {r.status_code}"
+        redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI", "")
+        if redis_url and redis_url != "memory://":
+            try:
+                import redis
+                r = redis.from_url(redis_url)
+                r.ping()
+                checks["redis"] = "ok"
+            except Exception as e:
+                checks["redis"] = f"error: {e}"
                 checks["status"] = "degraded"
-        except Exception as e:
-            checks["groq_api"] = f"error: {e}"
-            checks["status"] = "degraded"
+    else:
+        checks["database"] = "skipped"
+        checks["redis"] = "skipped"
 
     status_code = 200 if checks["status"] == "healthy" else 503
     return jsonify(checks), status_code

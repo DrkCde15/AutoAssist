@@ -8,39 +8,39 @@ import mimetypes
 import re
 import threading
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
+from functools import lru_cache
 from time import monotonic
 from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
-import speech_recognition as sr
-from pydub import AudioSegment
-from services.nogai import (
-    gerar_resposta,
-    get_fipe_value,
-    gerar_termos_busca,
-    prever_intervalo_manutencao
-)
 from utils.async_task import _predictor, train_in_background
 import json
-from services.youtube_service import buscar_videos_youtube
-from services.vision_ai import analisar_imagem
-from services.attachment_ai import analisar_arquivo
-from services.report_generator import criar_relatorio_pdf
-from services.maintenance_service import (
-    parse_maintenance_entry,
-    apply_manual_overrides,
-    serialize_maintenance_row,
-    consolidate_active_maintenance_records,
-    build_maintenance_alerts,
-    _status_from_remaining,
-)
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
 from utils.email import enviar_email
 from .notifications import create_notification
 from .push import send_push_notification
+
+
+@lru_cache(maxsize=1)
+def _load_maintenance_helpers():
+    from services.maintenance_service import (
+        parse_maintenance_entry,
+        apply_manual_overrides,
+        serialize_maintenance_row,
+        consolidate_active_maintenance_records,
+        build_maintenance_alerts,
+        _status_from_remaining,
+    )
+    return (
+        parse_maintenance_entry,
+        apply_manual_overrides,
+        serialize_maintenance_row,
+        consolidate_active_maintenance_records,
+        build_maintenance_alerts,
+        _status_from_remaining,
+    )
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -381,6 +381,9 @@ def build_recommendations(message, historico_recente, default_topic="Consultoria
     if is_generic_chat_message(message):
         return [], [], default_topic
 
+    from services.nogai import gerar_termos_busca
+    from services.youtube_service import buscar_videos_youtube
+
     termos = gerar_termos_busca(message, historico=historico_recente)
     termo_yt = termos.get("youtube")
     termo_loja = termos.get("loja")
@@ -428,36 +431,31 @@ def generate_assistant_payload(
     if attachment and attachment["kind"] == "text":
         prompt_message = build_text_attachment_message(message, attachment)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        if attachment and attachment["kind"] in ("image", "binary"):
-            resposta_future = executor.submit(
-                analisar_arquivo,
-                attachment["data"],
-                attachment["mime_type"],
-                attachment["name"],
-                message,
-            )
-        elif image_b64:
-            resposta_future = executor.submit(analisar_imagem, image_b64, message)
-        else:
-            resposta_future = executor.submit(
-                gerar_resposta,
-                prompt_message,
-                user_id,
-                user_data=user,
-                historico=historico_recente,
-            )
-        recommendations_future = None
-        if not attachment and not image_b64:
-            recommendations_future = executor.submit(
-                build_recommendations,
-                message,
-                historico_recente,
-                default_topic,
-            )
+    if attachment and attachment["kind"] in ("image", "binary"):
+        from services.attachment_ai import analisar_arquivo
+        resposta = analisar_arquivo(
+            attachment["data"],
+            attachment["mime_type"],
+            attachment["name"],
+            message,
+        )
+        videos, links, topic = [], [], default_topic
+        return resposta, videos, links, topic
 
-        resposta = resposta_future.result()
-        videos, links, topic = resolve_recommendations(recommendations_future, default_topic)
+    if image_b64:
+        from services.vision_ai import analisar_imagem
+        resposta = analisar_imagem(image_b64, message)
+        videos, links, topic = [], [], default_topic
+        return resposta, videos, links, topic
+
+    from services.nogai import gerar_resposta
+    resposta = gerar_resposta(
+        prompt_message,
+        user_id,
+        user_data=user,
+        historico=historico_recente,
+    )
+    videos, links, topic = build_recommendations(message, historico_recente, default_topic)
 
     return resposta, videos, links, topic or default_topic
 
@@ -721,6 +719,14 @@ def fetch_user_maintenance_alerts(cursor, user_id, vehicle_id=None, only_actiona
         tuple(history_params)
     )
     history_rows = cursor.fetchall()
+    (
+        _,
+        _,
+        _,
+        consolidate_active_maintenance_records,
+        build_maintenance_alerts,
+        _,
+    ) = _load_maintenance_helpers()
     active_records = consolidate_active_maintenance_records(history_rows)
     alerts = build_maintenance_alerts(active_records, vehicle_km_map=vehicle_km_map)
 
@@ -2206,6 +2212,7 @@ def generate_report():
             filepath = os.path.join(secure_reports_dir, filename)
 
             # Gerar o PDF
+            from services.report_generator import criar_relatorio_pdf
             success = criar_relatorio_pdf(user, text, filepath)
 
             if success:
