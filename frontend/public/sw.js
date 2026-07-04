@@ -1,4 +1,4 @@
-const CACHE = "autoassist-v3";
+const CACHE = "autoassist-v4";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -30,7 +30,12 @@ self.addEventListener("install", (event) => {
 // });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    clients.claim(),
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    )
+  );
 });
 
 /* ── Push Event ── */
