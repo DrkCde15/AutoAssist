@@ -39,6 +39,7 @@ from services.maintenance_service import (
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
 from utils.email import enviar_email
 from .notifications import create_notification
+from .push import send_push_notification
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -912,7 +913,7 @@ def _send_maintenance_alert_logic(
     html_body = render_maintenance_email_html(user_row.get("nome"), alerts)
     sent_ok = enviar_email(user_row["email"], subject, html_body)
 
-    # Cria notificação in-app para cada alerta
+    # Cria notificação in-app + push para cada alerta
     user_id = user_row["id"]
     for alert in alerts[:5]:
         try:
@@ -925,6 +926,18 @@ def _send_maintenance_alert_logic(
             )
         except Exception:
             pass
+
+    # Envia push notification com resumo dos alertas
+    if alerts:
+        try:
+            send_push_notification(
+                user_id=user_id,
+                title=f"🔧 {len(alerts)} alerta(s) de manutenção",
+                body=alerts[0].get("msg", ""),
+                data={"url": "/dashboard.html"},
+            )
+        except Exception:
+            logger.warning("Falha ao enviar push notification", exc_info=True)
 
     if not sent_ok:
         return {"sent": False, "reason": "send_failed", "alerts_count": len(alerts)}
@@ -1383,11 +1396,17 @@ def register_maintenance_history():
                 )
             )
             maintenance_id = cursor.lastrowid
-            # Gatilho imediato de e-mail em segundo plano
+            # Gatilho imediato de e-mail em segundo plano + push
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
                     _enqueue_alert_email(user_row)
+                    send_push_notification(
+                        user_id=user_id,
+                        title="📝 Anotação salva",
+                        body=f"{parsed.get('maintenance_label', 'Registro')} registrado com sucesso.",
+                        data={"url": "/maintenance_history.html"},
+                    )
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
@@ -1527,7 +1546,7 @@ def update_maintenance_history(maintenance_id):
                   parsed["interval_km"], parsed["next_due_date"], parsed["next_due_km"],
                   json.dumps(parser_metadata, ensure_ascii=False), maintenance_id, user_id))
 
-            # Gatilho imediato de e-mail em segundo plano + notificação
+            # Gatilho imediato de e-mail em segundo plano + notificação + push
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
@@ -1538,6 +1557,12 @@ def update_maintenance_history(maintenance_id):
                         body=f"{parsed.get('maintenance_label', 'Registro')} atualizado com sucesso.",
                         type="info",
                         action_url="/dashboard.html",
+                    )
+                    send_push_notification(
+                        user_id=user_id,
+                        title="🛠️ Manutenção atualizada",
+                        body=f"{parsed.get('maintenance_label', 'Registro')} atualizado com sucesso.",
+                        data={"url": "/maintenance_history.html"},
                     )
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")

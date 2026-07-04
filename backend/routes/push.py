@@ -1,12 +1,34 @@
 import json
 import logging
 import os
+import base64
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from .database import get_db
 
 push_bp = Blueprint("push", __name__)
 logger = logging.getLogger(__name__)
+
+
+def get_vapid_private_key() -> str | None:
+    """Retorna a chave privada VAPID como base64 DER cru (o formato que py_vapid.from_string espera)."""
+    return os.getenv("VAPID_PRIVATE_KEY") or None
+
+
+def get_vapid_public_raw() -> str | None:
+    """Retorna a chave publica VAPID como EC point raw (65 bytes) em base64url."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    raw_public = os.getenv("VAPID_PUBLIC_KEY", "")
+    if not raw_public:
+        return None
+    der = base64.b64decode(raw_public)
+    pub_key = serialization.load_der_public_key(der)
+    nums = pub_key.public_numbers()
+    x_bytes = nums.x.to_bytes(32, "big")
+    y_bytes = nums.y.to_bytes(32, "big")
+    raw = b"\x04" + x_bytes + y_bytes
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 
 def get_vapid_claims():
@@ -22,9 +44,8 @@ def send_push_notification(user_id, title, body, icon=None, data=None):
         logger.warning("pywebpush nao instalado — push notification ignorada")
         return False
 
-    vapid_private_key = os.getenv("VAPID_PRIVATE_KEY")
-    vapid_public_key = os.getenv("VAPID_PUBLIC_KEY")
-    if not vapid_private_key or not vapid_public_key:
+    vapid_private_key = get_vapid_private_key()
+    if not vapid_private_key:
         logger.warning("VAPID keys nao configuradas — push ignorada")
         return False
 
@@ -87,10 +108,10 @@ def send_push_notification(user_id, title, body, icon=None, data=None):
 
 @push_bp.route("/api/push/vapid-public-key", methods=["GET"])
 def vapid_public_key():
-    key = os.getenv("VAPID_PUBLIC_KEY")
-    if not key:
+    raw_key = get_vapid_public_raw()
+    if not raw_key:
         return jsonify(error="VAPID nao configurado"), 500
-    return jsonify({"publicKey": key}), 200
+    return jsonify({"publicKey": raw_key}), 200
 
 
 @push_bp.route("/api/push/subscribe", methods=["POST"])

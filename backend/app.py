@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from routes.training import training_bp
 from dotenv import load_dotenv
+load_dotenv()
 from flask import Flask, jsonify, make_response, request, redirect
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -571,14 +572,27 @@ app.register_blueprint(push_bp)
 # Gera VAPID keys se nao existirem
 if not os.getenv("VAPID_PRIVATE_KEY") or not os.getenv("VAPID_PUBLIC_KEY"):
     try:
-        from cryptography import __version__
-        from pywebpush import generate_vapid_keys
-        vapid = generate_vapid_keys()
+        import base64
+        from cryptography.hazmat.primitives import serialization
+        from pywebpush import Vapid
+        v = Vapid()
+        v.generate_keys()
+        private_der = v.private_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        public_der = v.public_key.public_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        private_b64 = base64.b64encode(private_der).decode()
+        public_b64 = base64.b64encode(public_der).decode()
         logger.info("VAPID keys geradas. Adicione ao .env:")
-        logger.info("VAPID_PRIVATE_KEY=%s", vapid["private_key"])
-        logger.info("VAPID_PUBLIC_KEY=%s", vapid["public_key"])
-        os.environ.setdefault("VAPID_PRIVATE_KEY", vapid["private_key"])
-        os.environ.setdefault("VAPID_PUBLIC_KEY", vapid["public_key"])
+        logger.info("VAPID_PRIVATE_KEY=%s", private_b64)
+        logger.info("VAPID_PUBLIC_KEY=%s", public_b64)
+        os.environ["VAPID_PRIVATE_KEY"] = private_b64
+        os.environ["VAPID_PUBLIC_KEY"] = public_b64
     except ImportError:
         logger.warning("pywebpush nao disponivel — VAPID keys devem ser configuradas manualmente no .env")
 
