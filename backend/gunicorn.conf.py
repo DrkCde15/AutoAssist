@@ -1,6 +1,7 @@
-import multiprocessing
+import os
 
-workers = multiprocessing.cpu_count() * 2 + 1
+# Render free tier = 1 worker (512MB RAM)
+workers = int(os.getenv("GUNICORN_WORKERS", "1"))
 worker_class = "sync"
 timeout = 120
 keepalive = 5
