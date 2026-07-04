@@ -626,6 +626,7 @@
     <link rel="stylesheet" href="static/css/responsive.css">
     <link rel="stylesheet" href="static/css/car-scrollytelling.css">
   <link rel="stylesheet" href="static/css/shared.css">
+  <link rel="stylesheet" href="static/css/notifications.css">
 </head>
 <body class="home">
 
@@ -751,6 +752,7 @@
     <script src="static/js/config.js"></script>
     <script src="static/js/analytics-consent.js"></script>
     <script src="static/js/auth.js"></script>
+    <script src="static/js/notifications.js" defer></script>
     <script src="static/js/responsive.js" defer></script>
     <script type="module" src="static/js/car-scrollytelling.js"></script>
     <script>
@@ -840,17 +842,7 @@
                         <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
                         <a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>
                         <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
-                        <button id="btnNotifications" class="nav-bell-btn" title="Notificacoes">
-                            <i class="fas fa-bell"></i>
-                            ${actionableAlerts.length ? `<span class="nav-bell-dot">${badgeCount}</span>` : ''}
-                        </button>
-                        <div id="notificationPanel" class="notification-panel">
-                            <div class="notif-header">
-                                <strong>Notificacoes</strong>
-                                <a href="maintenance_history.html" class="nav-link" style="font-size:12px;">Ver todas</a>
-                            </div>
-                            <div class="notif-list">${notificationsHtml}</div>
-                        </div>
+                        <div id="notif-bell-container"></div>
                         <button id="btnLogout" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i> Sair
                         </button>
@@ -860,20 +852,6 @@
                     if (btnLogout) {
                         btnLogout.addEventListener('click', () => Auth.logout());
                     }
-
-                    const btnNotifications = document.getElementById('btnNotifications');
-                    const notificationPanel = document.getElementById('notificationPanel');
-                    if (btnNotifications && notificationPanel) {
-                        btnNotifications.addEventListener('click', (event) => {
-                            event.stopPropagation();
-                            notificationPanel.classList.toggle('open');
-                        });
-                        document.addEventListener('click', (event) => {
-                            if (!notificationPanel.contains(event.target) && event.target !== btnNotifications) {
-                                notificationPanel.classList.remove('open');
-                            }
-                        });
-            }
         }
 
         document.addEventListener('click', (event) => {

@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from .database import get_db
 
@@ -82,6 +82,25 @@ def mark_all_read():
     except Exception as e:
         logger.error("Erro ao marcar todas notificações como lidas: %s", e)
         return jsonify(success=False), 500
+
+@notifications_bp.route("/api/notifications/<int:notif_id>", methods=["DELETE"])
+@jwt_required()
+def delete_notification(notif_id):
+    user_id = get_jwt_identity()
+    try:
+        with get_db() as (cur, conn):
+            cur.execute(
+                "DELETE FROM notifications WHERE id = %s AND user_id = %s",
+                (notif_id, user_id),
+            )
+            conn.commit()
+            if cur.rowcount == 0:
+                return jsonify(error="Notificação não encontrada"), 404
+        return jsonify(success=True), 200
+    except Exception as e:
+        logger.error("Erro ao excluir notificação: %s", e)
+        return jsonify(success=False), 500
+
 
 def create_notification(user_id, title, body=None, type="info", action_url=None):
     try:

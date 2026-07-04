@@ -59,3 +59,4 @@ frontend/test-results/
 *.mod
 
 .openclaude-profile.json
+*.pem

@@ -9,7 +9,7 @@ import re
 import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from time import monotonic
 from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
@@ -35,6 +35,7 @@ from services.maintenance_service import (
     serialize_maintenance_row,
     consolidate_active_maintenance_records,
     build_maintenance_alerts,
+    _status_from_remaining,
 )
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
 from utils.email import enviar_email
@@ -1396,17 +1397,29 @@ def register_maintenance_history():
                 )
             )
             maintenance_id = cursor.lastrowid
-            # Gatilho imediato de e-mail em segundo plano + push
+            # Gatilho imediato de e-mail + notificação in-app + push (só "Atencao")
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
                     _enqueue_alert_email(user_row)
-                    send_push_notification(
-                        user_id=user_id,
-                        title="📝 Anotação salva",
-                        body=f"{parsed.get('maintenance_label', 'Registro')} registrado com sucesso.",
-                        data={"url": "/maintenance_history.html"},
-                    )
+                    days_remaining = (parsed["next_due_date"] - date.today()).days if parsed.get("next_due_date") else None
+                    current_km = parsed.get("service_km") or fallback_vehicle_km
+                    km_remaining = (parsed["next_due_km"] - current_km) if (parsed.get("next_due_km") is not None and current_km is not None) else None
+                    status_label, status_code = _status_from_remaining(days_remaining, km_remaining)
+                    if status_code == "overdue":
+                        create_notification(
+                            user_id=user_id,
+                            title="Anotação salva",
+                            body=f"{parsed.get('maintenance_label', 'Registro')} registrado com sucesso.",
+                            type="warning",
+                            action_url="/maintenance_history.html",
+                        )
+                        send_push_notification(
+                            user_id=user_id,
+                            title="⚠️ Anotação em Atenção",
+                            body=f"{parsed.get('maintenance_label', 'Registro')} — vencida.",
+                            data={"url": "/maintenance_history.html"},
+                        )
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
@@ -1546,24 +1559,29 @@ def update_maintenance_history(maintenance_id):
                   parsed["interval_km"], parsed["next_due_date"], parsed["next_due_km"],
                   json.dumps(parser_metadata, ensure_ascii=False), maintenance_id, user_id))
 
-            # Gatilho imediato de e-mail em segundo plano + notificação + push
+            # Gatilho imediato de e-mail em segundo plano + notificação + push (só "Atencao")
             try:
                 user_row = get_user_by_id(cursor, user_id)
                 if user_row:
                     _enqueue_alert_email(user_row)
-                    create_notification(
-                        user_id=user_id,
-                        title="Manutenção atualizada",
-                        body=f"{parsed.get('maintenance_label', 'Registro')} atualizado com sucesso.",
-                        type="info",
-                        action_url="/dashboard.html",
-                    )
-                    send_push_notification(
-                        user_id=user_id,
-                        title="🛠️ Manutenção atualizada",
-                        body=f"{parsed.get('maintenance_label', 'Registro')} atualizado com sucesso.",
-                        data={"url": "/maintenance_history.html"},
-                    )
+                    days_remaining = (parsed["next_due_date"] - date.today()).days if parsed.get("next_due_date") else None
+                    current_km = parsed.get("service_km") or fallback_vehicle_km
+                    km_remaining = (parsed["next_due_km"] - current_km) if (parsed.get("next_due_km") is not None and current_km is not None) else None
+                    status_label, status_code = _status_from_remaining(days_remaining, km_remaining)
+                    if status_code == "overdue":
+                        create_notification(
+                            user_id=user_id,
+                            title="Manutenção atualizada",
+                            body=f"{parsed.get('maintenance_label', 'Registro')} atualizado — vencido.",
+                            type="warning",
+                            action_url="/dashboard.html",
+                        )
+                        send_push_notification(
+                            user_id=user_id,
+                            title="⚠️ Manutenção em Atenção",
+                            body=f"{parsed.get('maintenance_label', 'Registro')} — vencida.",
+                            data={"url": "/maintenance_history.html"},
+                        )
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 

@@ -118,18 +118,43 @@ const Notifications = (() => {
             ${n.body ? `<div class="notif-item-body">${escapeHTML(n.body)}</div>` : ""}
             <div class="notif-item-time">${timeAgo(n.created_at)}</div>
           </div>
+          <button class="notif-delete-btn" data-id="${n.id}" title="Excluir notificação"><i class="fas fa-trash"></i></button>
         </div>
       `;
     }).join("");
 
     list.querySelectorAll(".notif-item.unread").forEach((el) => {
-      el.addEventListener("click", async () => {
+      el.addEventListener("click", async (e) => {
+        if (e.target.closest(".notif-delete-btn")) return;
         const id = el.dataset.id;
         try {
           await Auth.authenticatedFetch(`/api/notifications/${id}/read`, { method: "POST" });
           el.classList.remove("unread");
           unreadCount = Math.max(0, unreadCount - 1);
           updateBadge();
+        } catch {}
+      });
+    });
+
+    list.querySelectorAll(".notif-delete-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        try {
+          const res = await Auth.authenticatedFetch(`/api/notifications/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            const item = btn.closest(".notif-item");
+            if (item.classList.contains("unread")) {
+              unreadCount = Math.max(0, unreadCount - 1);
+            }
+            item.remove();
+            updateBadge();
+            if (!list.querySelector(".notif-item")) {
+              list.innerHTML = '<div class="notif-empty">Nenhuma notificação</div>';
+              const markAllBtn = document.getElementById("notifMarkAllRead");
+              if (markAllBtn) markAllBtn.style.display = "none";
+            }
+          }
         } catch {}
       });
     });

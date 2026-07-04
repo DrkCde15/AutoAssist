@@ -11,8 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 def get_vapid_private_key() -> str | None:
-    """Retorna a chave privada VAPID como base64 DER cru (o formato que py_vapid.from_string espera)."""
-    return os.getenv("VAPID_PRIVATE_KEY") or None
+    """Retorna a chave privada VAPID formatada em base64url (o formato que py_vapid.from_string espera)."""
+    raw_key = os.getenv("VAPID_PRIVATE_KEY")
+    if not raw_key:
+        return None
+    return raw_key.replace("+", "-").replace("/", "_").replace("=", "")
 
 
 def get_vapid_public_raw() -> str | None:
@@ -61,6 +64,7 @@ def send_push_notification(user_id, title, body, icon=None, data=None):
         return False
 
     if not rows:
+        logger.info("Nenhuma subscription push para user_id=%s", user_id)
         return False
 
     payload = json.dumps({
@@ -103,6 +107,7 @@ def send_push_notification(user_id, title, body, icon=None, data=None):
         except Exception as e:
             logger.warning("Erro push inesperado: %s", e)
 
+    logger.info("Push %s — %d/%d subscriptions entregues", "OK" if sent else "FALHOU", sent, len(rows))
     return sent > 0
 
 

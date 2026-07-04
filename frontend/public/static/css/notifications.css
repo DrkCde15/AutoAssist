@@ -159,6 +159,27 @@
   color: var(--text-muted);
   margin-top: 4px;
 }
+.notif-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  transition: color 0.15s, background 0.15s;
+  opacity: 0;
+  margin-top: 2px;
+}
+.notif-item:hover .notif-delete-btn {
+  opacity: 1;
+}
+.notif-delete-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
 .notif-empty {
   text-align: center;
   padding: 32px 16px;
