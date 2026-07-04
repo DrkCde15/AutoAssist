@@ -296,7 +296,6 @@
           <img src="logo.png?v=20260511" alt="AutoAssist IA" style="height:72px;width:auto;">
         </div>
         <h1>AutoAssist</h1>
-        <p>Acesse sua conta</p>
       </div>
 
       <!-- Google Login -->
@@ -407,7 +406,9 @@
               form.style.display = "none";
               twoFactorForm.style.display = "block";
               registerLinks.style.display = "none";
-              logoText.textContent = "Senha de Segurança";
+              if (logoText) {
+                logoText.textContent = "Senha de Segurança";
+              }
               btnEntrar.disabled = false;
               btnEntrar.innerHTML = originalBtnContent;
             } else {
@@ -448,7 +449,9 @@
           twoFactorForm.style.display = "none";
           form.style.display = "block";
           registerLinks.style.display = "block";
-          logoText.textContent = "Acesse sua conta";
+          if (logoText) {
+            logoText.textContent = "";
+          }
           errorBox.style.display = "none";
         });
 

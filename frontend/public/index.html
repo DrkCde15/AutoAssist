@@ -853,6 +853,10 @@
                     if (btnLogout) {
                         btnLogout.addEventListener('click', () => Auth.logout());
                     }
+
+                    if (typeof Notifications !== 'undefined') {
+                        Notifications.init();
+                    }
         }
 
         document.addEventListener('click', (event) => {

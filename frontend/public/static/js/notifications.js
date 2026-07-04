@@ -28,6 +28,7 @@ const Notifications = (() => {
   function createBell() {
     const container = document.getElementById("notif-bell-container");
     if (!container) return;
+    if (container.querySelector("#notifBellBtn")) return;
 
     const bell = document.createElement("div");
     bell.style.cssText = "position:relative;display:inline-flex;align-items:center;";
