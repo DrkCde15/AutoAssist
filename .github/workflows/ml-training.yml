@@ -39,12 +39,15 @@ jobs:
         run: |
           git config user.name "AutoAssist ML Bot"
           git config user.email "ml-bot@autoassist.app"
+
           git add backend/models/predictive/
+
           if git diff --staged --quiet; then
             echo "Nenhuma alteracao nos modelos."
           else
             git commit -m "chore: atualiza modelos preditivos"
             git push
+          fi
 
       - name: Trigger deploy
         run: |
