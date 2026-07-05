@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from routes.training import training_bp
 from dotenv import load_dotenv
 load_dotenv()
-from flask import Flask, jsonify, make_response, request, redirect
+from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman

@@ -10,11 +10,6 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 
 ## ✨ Funcionalidades
 
-### **Landing Page e Apresentação**
-
-- **Carrossel 3D imersivo:** Seção heróica com animação de carros em perspectiva 3D (Canvas 2D), cards com highlight dinâmico e efeito de estrada em movimento.
-- **Design responsivo:** Layout adaptável a qualquer viewport com navbar fixa isolada via `body.home`, escalonamento visual consistente entre zoom 80%–100%.
-
 ### **Recursos Inteligentes (NOG IA)**
 
 - **Consultoria Contextual:** O assistente "NOG" agora utiliza o **histórico da conversa** para oferecer respostas mais profundas e evitar resultados repetitivos.
@@ -67,13 +62,17 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 ```
 AutoAssist/
 ├── backend/
-│   ├── app.py                     # Entry-point (Servidor Flask)
+│   ├── models/                    # Modelos de ML para treinamento
 │   ├── routes/                    # Módulos de API (Auth, Pages, Database)
+│   ├── scripts/                   # Treinamento do ML
 │   ├── services/                  # IA e Lógica (NOG IA, Vision, Maintenance)
+│   ├── utils/                     # Serviços de email e tasks assíncronas
+│   ├── app.py                     # Entry-point (Servidor Flask)
 │   └── .env                       # Variáveis de ambiente
 ├── frontend/
-│   ├── index.html                 # Landing Page / Dashboard
+│   ├── index.html                 # Landing Page
 │   ├── chat.html                  # Consultor NOG IA
+    ├── dashboard.html             # Dashboard
 │   ├── library.html               # Galeria de Vídeos YouTube
 │   ├── maintenance_history.html   # Gestão de Manutenções
 │   ├── profile.html               # Perfil do Usuário
@@ -86,7 +85,7 @@ AutoAssist/
 │       │   ├── dashboard.css            # Estilos do dashboard
 │       │   └── profile.css              # Estilos do perfil
 │       ├── js/
-│       │   ├── car-scrollytelling.js    # Canvas 2D carousel com física de perspectiva
+│       │   ├── car-scrollytelling.js    # Canvas 2D carrossel com física de perspectiva
 │       │   ├── auth.js                  # Autenticação Google OAuth 2.0
 │       │   └── config.js                # Configurações do frontend
 │       └── logo2.png                    # Logotipo do projeto
