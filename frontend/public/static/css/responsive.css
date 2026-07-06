@@ -154,6 +154,26 @@ body.aa-menu-lock {
     height: auto;
     transform: translate(-50%, 0);
   }
+
+  /* Right-align the tooltip for the PDF button to prevent it from getting cut off at the right edge of the screen */
+  #btnReport[data-nav-tooltip]::before {
+    left: auto;
+    right: 50%;
+    transform: translate(50%, -4px);
+  }
+  #btnReport[data-nav-tooltip]::after {
+    left: auto;
+    right: 0;
+    transform: translate(0, -4px);
+  }
+  #btnReport[data-nav-tooltip]:hover::before,
+  #btnReport[data-nav-tooltip]:focus-visible::before {
+    transform: translate(50%, 0);
+  }
+  #btnReport[data-nav-tooltip]:hover::after,
+  #btnReport[data-nav-tooltip]:focus-visible::after {
+    transform: translate(0, 0);
+  }
 }
 
 /* Telas de login/cadastro/recuperacao: foco em centralizacao e toque confortavel. */
