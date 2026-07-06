@@ -1,15 +1,14 @@
-# nogai.py - Módulo especializado em interações de texto automotivo usando Google Gemini (New SDK)
+# nogai.py - Módulo especializado em interações de texto automotivo usando Groq
 # backend/services/nogai.py
 import logging
 import os
 import requests
 import time
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
 import json
 import re
 from functools import lru_cache
+from types import SimpleNamespace
 
 load_dotenv()
 
@@ -19,38 +18,53 @@ HTTP_TIMEOUT = (3.05, 8)
 FIPE_BASE_URL = "https://parallelum.com.br/fipe/api/v1"
 FIPE_CACHE_TTL_SECONDS = max(60, int(os.getenv("FIPE_CACHE_TTL_SECONDS", "86400")))
 
+_ai_response_cache = {}
+_AI_CACHE_TTL = int(os.getenv("AI_CACHE_TTL_SECONDS", "300"))
+
+_SIMPLE_GREETINGS = re.compile(
+    r"^(oi|ol[áa]|bom dia|boa tarde|boa noite|e a[ií]|hello|hey|opa|iae|blz|be?leza|tudo bem|como vai)$",
+    re.IGNORECASE,
+)
+
+GREETING_PROMPT = """
+Você é o NOG, consultor automotivo amigável e acolhedor. Quando o usuário enviar uma saudação simples ("oi", "olá", "bom dia", "boa tarde", "boa noite", "e aí", "tudo bem" etc), responda com calor humano e entusiasmo, como se estivesse recebendo um amigo.
+Sempre que você receber um "oi" ou "olá", responda com 
+DIRETRIZES:
+- Responda em NO MÁXIMO 2 linhas, mas com um tom caloroso e convidativo.
+- Use emojis relacionados a carros ou ferramentas 🚗🔧⚡ (apenas 1 por resposta).
+- NÃO use formatação markdown (**negrito**, ###, listas, citações).
+- NÃO use seções, dicionário nem passos.
+- Se houver veículo cadastrado, algo como: "Olá! Sou o NOG, seu Consultor Automotivo Inteligente. Estou aqui para ajudar com suas dúvidas sobre automóveis. Vi que você tem um [veículo], como posso ajudar hoje? 🚗✨"
+- Se NÃO houver veículo cadastrado, algo como: Olá! Sou o NOG, seu Consultor Automotivo Inteligente. Estou aqui para ajudar com suas dúvidas sobre automóveis, como posso ajudar hoje? 🚗✨"
+- NÃO peça para cadastrar veículo — apenas pergunte como pode ajudar.
+- Seja breve, mas transmita simpatia e disposição para ajudar.
+"""
+
 SYSTEM_PROMPT = """
-Você é o NOG, um consultor automotivo profissional e mentor didático com ampla experiência no mercado brasileiro. 
-Sua missão é traduzir o "mecaniquês" para uma linguagem que qualquer pessoa, mesmo leiga, consiga entender com clareza.
-Sempre use o português correto e nunca exclua/"coma" palavras e informações importantes.
+Você é o NOG, consultor automotivo e mentor didático para o mercado brasileiro.
+Traduza "mecaniquês" para leigos usando analogias do dia a dia.
+Seja cético e protetor: evite gastos desnecessários e explique riscos.
 
-- Sempre que você receber um "oi" ou "olá", responda com "Olá! Sou o NOG, seu Consultor Automotivo Inteligente. Estou aqui para ajudar com suas dúvidas sobre automóveis. Como posso ajudar hoje? 🚗✨"
+Formatação: use **negrito** para termos técnicos, > citação para alertas, ### Título para seções, • para listas.
+Para saudações ("oi", "olá"), use a mensagem de boas-vindas padrão.
+Se o assunto não for automotivo, responda: "Desculpe, mas só posso ajudar com assuntos relacionados a automóveis."
 
-Diretrizes de Personalidade & Didática:
-- **Mecânico Mentor**: Você é experiente e técnico, mas explica tudo como um professor paciente para quem não entende nada de carros.
-- **Tradução de Termos**: Sempre que usar um termo técnico (como "junta do cabeçote", "homocinética" ou "estequiometria"), explique brevemente o que é de forma simples ou use uma analogia.
-- **Uso de Analogias**: Compare peças do carro com coisas do dia a dia (Ex: "Os freios são como os pneus de um tênis de corrida...").
-- **Cético e Protetor**: Continue protegendo o usuário de gastos desnecessários ou riscos de segurança, explicando o "porquê" de forma didática.
+Precisão:
+- [CONTEXTO AUTOASSIST] é a fonte principal para dados do usuário.
+- Diferencie fatos de previsões ML. Não invente dados não cadastrados.
 
-Regras de Formatação (Obrigatório):
-- Use **Negrito** para termos técnicos, peças, diagnósticos e valores.
-- Use > Citações para alertas de segurança ou avisos importantes.
-- Use Listas pontuadas (•) para listar sintomas ou passos de verificação.
-- Use Títulos (Ex: ### 💡 Entendendo o Problema) para organizar a explicação.
-- Deixe uma linha em branco entre cada parágrafo para facilitar a leitura.
-- Use bastante Emojis para manter o tom amigável (🔧, 🚗, ⚠️, 💡).
-- Caso o assunto não for sobre automóveis ou peças de automóveis, responda: "Desculpe, mas só posso ajudar com assuntos relacionados a automóveis."
-
-Estrutura de Resposta Padrão:
-1. 🏁 **Resumo Direto**: Uma explicação simples do que está acontecendo.
-2. 📖 **Dicionário do NOG**: Se houver peças complexas, explique o que elas fazem aqui.
-3. 🔧 **Passo a Passo**: O que o usuário deve fazer ou verificar, ou como falar com o mecânico.
-4. 💰 **Valores e FIPE**: Estimativas de custo e referências de mercado, sempre explicando o que influencia o preço.
+Estrutura da resposta:
+1. Resumo Direto: explicação simples do problema.
+2. Dicionário do NOG: termos técnicos explicados.
+3. Passo a Passo: o que fazer ou como falar com o mecânico.
+4. Valores e FIPE: estimativas de custo e referências de mercado.
 """
 
 PREMIUM_TUTORIAL_PROMPT = """
 [DIRETRIZ PREMIUM EXCLUSIVA PARA ESTE USUÁRIO]:
-- **VÍDEOS TUTORIAIS**: O sistema em anexo vai capturar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você "não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo sobre o assunto, confirme educadamente: "Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e termine o aviso, prosseguindo com dicas em texto.
+- **VÍDEOS TUTORIAIS**: O sistema em anexo vai capturar vídeos automaticamente abaixo da sua resposta. JAMAIS diga que você 
+"não consegue mostrar vídeos por ser uma IA de texto". Se o usuário pedir um vídeo sobre o assunto, confirme educadamente: 
+"Claro! Aqui estão alguns vídeos que encontrei para te ajudar com isso:" e termine o aviso, prosseguindo com dicas em texto.
 """
 
 @lru_cache(maxsize=512)
@@ -64,6 +78,33 @@ def _get_fipe_json(path: str):
     cache_bucket = int(time.time() // FIPE_CACHE_TTL_SECONDS)
     url = f"{FIPE_BASE_URL}/{path.lstrip('/')}"
     return _cached_fipe_json(url, cache_bucket)
+
+
+def _extract_fipe_year(value):
+    if isinstance(value, dict):
+        text = f"{value.get('nome', '')} {value.get('codigo', '')}"
+    else:
+        text = str(value or "")
+
+    match = re.search(r"\b(19\d{2}|20\d{2}|21\d{2})\b", text)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _enrich_fipe_result(result, match_type, requested_year, used_year=None, used_model=None):
+    if not isinstance(result, dict):
+        return result
+
+    enriched = dict(result)
+    enriched["fipe_match_type"] = match_type
+    if requested_year:
+        enriched["AnoConsultado"] = str(requested_year)
+    if used_year is not None:
+        enriched["AnoFipeUsado"] = str(used_year)
+    if used_model:
+        enriched["ModeloFipeUsado"] = used_model
+    return enriched
 
 
 def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
@@ -80,7 +121,8 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
 
     marca_query = str(marca_nome or "").strip().lower()
     modelo_query = str(modelo_nome or "").strip().lower()
-    ano_query = str(ano or "").strip()
+    requested_year = _extract_fipe_year(ano)
+    ano_query = str(requested_year or ano or "").strip()
     if not marca_query or not modelo_query or not ano_query:
         return None
 
@@ -92,30 +134,89 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
 
         modelos_resp = _get_fipe_json(f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos")
         candidatos = [m for m in modelos_resp.get("modelos", []) if modelo_query in m["nome"].lower()]
+
+        # Fallback 1: tentar com apenas a primeira palavra do modelo
+        if not candidatos:
+            first_word = modelo_query.split()[0] if " " in modelo_query else None
+            if first_word:
+                candidatos = [m for m in modelos_resp.get("modelos", []) if first_word in m["nome"].lower()]
+
+        # Fallback 2: remover sufixos comuns (v8, v6, 4x4, tb, cd, etc.)
+        if not candidatos:
+            simpler = re.sub(r"\b(v8|v6|v4|4x4|4x2|tb|cd|aut|mec|flex|die|gas|ht)\b", "", modelo_query).strip()
+            if simpler and simpler != modelo_query:
+                candidatos = [m for m in modelos_resp.get("modelos", []) if simpler in m["nome"].lower()]
+
         if not candidatos:
             return None
 
+        nearest_year_match = None
         for modelo in candidatos:
             anos_disponiveis = _get_fipe_json(
                 f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos"
             )
             ano_obj = next((a for a in anos_disponiveis if a["nome"].startswith(ano_query)), None)
             if ano_obj:
-                return _get_fipe_json(
+                result = _get_fipe_json(
                     f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}"
                 )
+                return _enrich_fipe_result(
+                    result,
+                    match_type="exact",
+                    requested_year=ano_query,
+                    used_year=_extract_fipe_year(ano_obj),
+                    used_model=modelo["nome"],
+                )
+
+            if requested_year is None:
+                continue
+
+            for available_year in anos_disponiveis:
+                year_number = _extract_fipe_year(available_year)
+                if year_number is None:
+                    continue
+
+                # In a tie, prefer an older year to avoid overestimating market value.
+                sort_key = (
+                    abs(year_number - requested_year),
+                    1 if year_number > requested_year else 0,
+                )
+                if nearest_year_match is None or sort_key < nearest_year_match["sort_key"]:
+                    nearest_year_match = {
+                        "sort_key": sort_key,
+                        "modelo": modelo,
+                        "ano": available_year,
+                        "year_number": year_number,
+                    }
+
+        if nearest_year_match:
+            modelo = nearest_year_match["modelo"]
+            ano_obj = nearest_year_match["ano"]
+            result = _get_fipe_json(
+                f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}"
+            )
+            enriched = _enrich_fipe_result(
+                result,
+                match_type="nearest_year",
+                requested_year=ano_query,
+                used_year=nearest_year_match["year_number"],
+                used_model=modelo["nome"],
+            )
+            if isinstance(enriched, dict):
+                enriched["fipe_warning"] = (
+                    f"FIPE exata para {ano_query} nao encontrada; "
+                    f"usado ano {nearest_year_match['year_number']}."
+                )
+            return enriched
         return None
     except Exception as e:
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
 
-from routes.database import get_mysql_history
+from services.groq_client import build_chat_messages, chat_completion, utility_model
 
-# Inicializa o cliente Gemini
-client = genai.Client(api_key=os.getenv("API_GEMINI"))
-
-DEFAULT_GEMINI_TEXT_MODEL = "gemini-2.5-flash"
-DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-2.0-flash", "gemini-2.0-flash-lite")
+DEFAULT_TEXT_MODEL = "groq/compound-mini"
+DEFAULT_FALLBACK_MODELS = ("groq/compound",)
 
 
 def _read_int_env(name, default, minimum=0):
@@ -125,16 +226,35 @@ def _read_int_env(name, default, minimum=0):
         return default
 
 
-GEMINI_QUOTA_COOLDOWN_SECONDS = _read_int_env("GEMINI_QUOTA_COOLDOWN_SECONDS", 60, minimum=5)
-GEMINI_FALLBACK_ON_QUOTA = os.getenv("GEMINI_FALLBACK_ON_QUOTA", "").strip().lower() in {"1", "true", "yes", "on"}
-GEMINI_QUOTA_MESSAGE = (
-    "O NOG atingiu o limite de uso da API do Gemini no momento. "
-    "Verifique a cota/billing do projeto no Google AI Studio ou tente novamente mais tarde."
+GROQ_QUOTA_COOLDOWN_SECONDS = _read_int_env("GROQ_QUOTA_COOLDOWN_SECONDS", 120, minimum=5)
+TRUE_ENV_VALUES = {"1", "true", "yes", "on"}
+FALSE_ENV_VALUES = {"0", "false", "no", "off"}
+
+
+def _read_bool_env(name, default=False):
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value in TRUE_ENV_VALUES:
+        return True
+    if normalized_value in FALSE_ENV_VALUES:
+        return False
+    return default
+
+
+GROQ_FALLBACK_ON_QUOTA = _read_bool_env("GROQ_FALLBACK_ON_QUOTA", default=True)
+GROQ_QUOTA_MESSAGE = (
+    "O NOG atingiu o limite de sua API no momento. Tente novamente em alguns minutos. Agradecemos sua compreensão!"
 )
-_gemini_quota_blocked_until = 0.0
+GROQ_TEMPORARY_UNAVAILABLE_MESSAGE = (
+    "O NOG está com alta demanda no momento. Tente novamente em alguns minutos."
+)
+_groq_quota_blocked_until_by_model = {}
 
 
-class GeminiQuotaError(RuntimeError):
+class GroqQuotaError(RuntimeError):
     pass
 
 
@@ -150,23 +270,42 @@ def _parse_model_list(raw_value, default_models):
     return tuple(models)
 
 
-GEMINI_TEXT_MODEL = (os.getenv("GEMINI_TEXT_MODEL") or os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_TEXT_MODEL).strip()
-MODELS_TO_TRY = _parse_model_list(os.getenv("GEMINI_FALLBACK_MODELS"), DEFAULT_GEMINI_FALLBACK_MODELS)
+GROQ_PRIMARY_MODEL = (os.getenv("GROQ_PRIMARY_MODEL") or os.getenv("GROQ_MODEL") or DEFAULT_TEXT_MODEL).strip()
+MODELS_TO_TRY = _parse_model_list(os.getenv("GROQ_FALLBACK_MODELS"), DEFAULT_FALLBACK_MODELS)
 
-def transformar_historico_gemini(historico_mysql):
-    """Converte o histórico do MySQL para o formato do novo SDK."""
-    gemini_history = []
+def _cache_key(mensagem: str, historico: list | None) -> str:
+    history_tail = json.dumps(historico[-2:] if historico else [], ensure_ascii=False)
+    return f"{mensagem[:200]}|{hash(history_tail)}"
+
+def _get_cached(key: str):
+    entry = _ai_response_cache.get(key)
+    if entry and time.time() < entry["expires_at"]:
+        return entry["response"]
+    _ai_response_cache.pop(key, None)
+    return None
+
+def _set_cache(key: str, response: str):
+    _ai_response_cache[key] = {
+        "response": response,
+        "expires_at": time.time() + _AI_CACHE_TTL,
+    }
+
+def _is_simple_query(mensagem: str) -> bool:
+    return bool(_SIMPLE_GREETINGS.match(mensagem.strip()))
+
+def transformar_historico(historico_mysql):
+    """Converte o histórico do MySQL para o formato OpenAI-compatible, truncando para economizar tokens."""
+    groq_history = []
     for msg in historico_mysql:
-        role = "user" if msg["role"] == "user" else "model"
-        gemini_history.append(types.Content(
-            role=role,
-            parts=[types.Part.from_text(text=msg["content"])]
-        ))
-    return gemini_history
+        role = "user" if msg["role"] == "user" else "assistant"
+        content = str(msg.get("content") or "").strip()[:1200]
+        if content:
+            groq_history.append({"role": role, "content": content})
+    return groq_history
 
 def _model_chain(primary_model=None):
     seen = set()
-    for model in (primary_model or GEMINI_TEXT_MODEL, *MODELS_TO_TRY):
+    for model in (primary_model or GROQ_PRIMARY_MODEL, *MODELS_TO_TRY):
         model_name = str(model or "").strip()
         if model_name and model_name not in seen:
             seen.add(model_name)
@@ -175,6 +314,13 @@ def _model_chain(primary_model=None):
 
 def _error_text(error: Exception) -> str:
     return str(error or "")
+
+
+def _error_summary(error: Exception, max_length=240) -> str:
+    summary = re.sub(r"\s+", " ", _error_text(error)).strip()
+    if len(summary) <= max_length:
+        return summary
+    return f"{summary[:max_length - 3]}..."
 
 
 def _error_status_code(error: Exception) -> int | None:
@@ -198,7 +344,7 @@ def _extract_retry_delay_seconds(error: Exception) -> int | None:
 
 
 def _is_quota_error(error: Exception) -> bool:
-    if isinstance(error, GeminiQuotaError):
+    if isinstance(error, GroqQuotaError):
         return True
 
     error_str = _error_text(error).lower()
@@ -229,21 +375,34 @@ def _is_retryable_model_error(error: Exception) -> bool:
 
 def _should_try_fallback(error: Exception) -> bool:
     if _is_quota_error(error):
-        return GEMINI_FALLBACK_ON_QUOTA
+        return GROQ_FALLBACK_ON_QUOTA
 
     return _is_retryable_model_error(error) or _is_model_not_found_error(error)
 
 
-def _mark_quota_limited(error: Exception):
-    global _gemini_quota_blocked_until
+def _mark_model_quota_limited(model_name: str, error: Exception):
+    retry_delay = _extract_retry_delay_seconds(error) or GROQ_QUOTA_COOLDOWN_SECONDS
+    blocked_until = time.time() + retry_delay
+    current_blocked_until = _groq_quota_blocked_until_by_model.get(model_name, 0.0)
+    _groq_quota_blocked_until_by_model[model_name] = max(current_blocked_until, blocked_until)
+    return retry_delay
 
-    retry_delay = _extract_retry_delay_seconds(error) or GEMINI_QUOTA_COOLDOWN_SECONDS
-    _gemini_quota_blocked_until = max(_gemini_quota_blocked_until, time.time() + retry_delay)
+
+def _is_model_quota_limited(model_name: str) -> bool:
+    blocked_until = _groq_quota_blocked_until_by_model.get(model_name, 0.0)
+    if time.time() < blocked_until:
+        return True
+
+    _groq_quota_blocked_until_by_model.pop(model_name, None)
+    return False
 
 
-def _raise_if_quota_cooldown_active():
-    if time.time() < _gemini_quota_blocked_until:
-        raise GeminiQuotaError("Gemini quota cooldown active")
+def _models_available_for_request(primary_model=None):
+    models = tuple(_model_chain(primary_model))
+    available_models = tuple(model_name for model_name in models if not _is_model_quota_limited(model_name))
+    if models and not available_models:
+        raise GroqQuotaError("All Groq models are in quota cooldown")
+    return available_models
 
 
 def _generate_content_with_fallback(
@@ -251,105 +410,105 @@ def _generate_content_with_fallback(
     contents,
     config=None,
     primary_model=None,
-    log_context="Gemini",
+    fallback_models=None,
+    log_context="Groq",
+    response_format=None,
+    temperature=None,
 ):
-    _raise_if_quota_cooldown_active()
-    last_error = None
-
-    for attempt, model_name in enumerate(_model_chain(primary_model)):
-        try:
-            return client.models.generate_content(
-                model=model_name,
-                config=config,
-                contents=contents,
-            )
-        except Exception as e:
-            last_error = e
-            if _is_quota_error(e):
-                _mark_quota_limited(e)
-
-            if not _should_try_fallback(e):
-                if _is_quota_error(e):
-                    logger.warning("%s bloqueado por quota do Gemini; fallback nao tentado.", log_context)
-                raise e
-
-            if attempt == 0:
-                logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
-            else:
-                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, e)
-
-    raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
+    text = chat_completion(
+        build_chat_messages("", contents, []),
+        primary_model=primary_model,
+        fallback_models=fallback_models,
+        response_format=response_format,
+        temperature=temperature,
+        log_context=log_context,
+    )
+    return SimpleNamespace(text=text)
 
 
-def _send_chat_with_fallback(*, prompt, system_instruction, history, log_context="NOG Gemini"):
-    _raise_if_quota_cooldown_active()
-    last_error = None
-
-    for attempt, model_name in enumerate(_model_chain()):
-        try:
-            chat = client.chats.create(
-                model=model_name,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.7,
-                ),
-                history=history,
-            )
-            response = chat.send_message(message=prompt)
-            return response.text
-        except Exception as e:
-            last_error = e
-            if _is_quota_error(e):
-                _mark_quota_limited(e)
-
-            if not _should_try_fallback(e):
-                if _is_quota_error(e):
-                    logger.warning("%s bloqueado por quota do Gemini; fallback nao tentado.", log_context)
-                raise e
-
-            if attempt == 0:
-                logger.warning("%s indisponivel em %s. Tentando modelos de fallback...", log_context, model_name)
-            else:
-                logger.error("Fallback para %s (%s) falhou: %s", model_name, log_context, e)
-
-    raise last_error or RuntimeError(f"{log_context} falhou sem modelos configurados")
+def _send_chat_with_fallback(*, prompt, system_instruction, history, primary_model=None, log_context="NOG Groq"):
+    return chat_completion(
+        build_chat_messages(system_instruction, prompt, history),
+        primary_model=primary_model,
+        log_context=log_context,
+    )
 
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historico: list | None = None) -> str:
     try:
-        logger.info(f"NOG Gemini: Processando msg do usuário {user_id}")
-        
-        historico_mysql = historico if historico is not None else get_mysql_history(user_id)
-        historico_gemini = transformar_historico_gemini(historico_mysql)
-        
-        prompt_instrucoes = SYSTEM_PROMPT
-        if user_data and user_data.get("is_premium"):
-            prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
-            
-        prompt_final = mensagem
-        if user_data and (user_data.get("possui_veiculo") or user_data.get("lista_veiculos")):
-            veiculos = user_data.get("lista_veiculos")
-            if veiculos:
-                lista_str = "; ".join([f"{v.get('tipo', 'veículo')} {v.get('marca', '')} {v.get('modelo', '')} ano {v.get('ano_fabricacao', '')}".strip() for v in veiculos])
-                contexto_veiculo = f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui os seguintes veículos cadastrados: {lista_str}. Responda considerando os veículos do usuário se for relevante."
-            else:
-                contexto_veiculo = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
-                                    f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
-                                    f"ano {user_data.get('veiculo_ano_fabricacao')}. "
-                                    f"Responda considerando este veículo se for relevante.")
-            prompt_final = contexto_veiculo + "\n\nPergunta do usuário: " + mensagem
-            
-        return _send_chat_with_fallback(
-            prompt=prompt_final,
-            system_instruction=prompt_instrucoes,
-            history=historico_gemini,
-        )
-        
+        logger.info(f"NOG Groq: Processando msg do usuário {user_id}")
+
+        if not mensagem or not mensagem.strip():
+            return "Por favor, digite uma mensagem para eu poder ajudar. 🚗"
+
+        msg_clean = mensagem.strip()
+
+        if historico is None:
+            from routes.database import get_mysql_history
+            historico_mysql = get_mysql_history(user_id)
+        else:
+            historico_mysql = historico
+        historico_groq = transformar_historico(historico_mysql)
+
+        cache_key = _cache_key(msg_clean, historico_groq)
+        cached = _get_cached(cache_key)
+        if cached:
+            logger.info(f"Cache hit para usuário {user_id}")
+            return cached
+
+        use_utility = _is_simple_query(msg_clean)
+
+        if use_utility:
+            prompt_instrucoes = GREETING_PROMPT
+        else:
+            prompt_instrucoes = SYSTEM_PROMPT
+            if user_data and user_data.get("is_premium"):
+                prompt_instrucoes += PREMIUM_TUTORIAL_PROMPT
+
+        user_context = ""
+        veiculos = user_data.get("lista_veiculos") if user_data else None
+
+        if veiculos:
+            lista_str = "; ".join([f"{v.get('tipo', 'veículo')} {v.get('marca', '')} {v.get('modelo', '')} ano {v.get('ano_fabricacao', '')}".strip() for v in veiculos])
+            user_context = f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui os seguintes veículos cadastrados: {lista_str}."
+        elif user_data and user_data.get("possui_veiculo"):
+            user_context = (f"\n\n[CONTEXTO DO USUÁRIO]: O usuário possui um(a) {user_data.get('veiculo_tipo')} "
+                            f"{user_data.get('veiculo_marca')} {user_data.get('veiculo_modelo')} "
+                            f"ano {user_data.get('veiculo_ano_fabricacao')}.")
+
+        autoassist_context = (user_data or {}).get("chat_context")
+        if autoassist_context:
+            user_context += f"\n\n[CONTEXTO AUTOASSIST]\n{autoassist_context}"
+
+        prompt_final = f"{user_context}\n\nPergunta do usuário: {msg_clean}" if user_context else msg_clean
+
+        if use_utility:
+            response = _send_chat_with_fallback(
+                prompt=prompt_final,
+                system_instruction=prompt_instrucoes,
+                history=historico_groq,
+                primary_model=utility_model(),
+                log_context="NOG (util)",
+            )
+        else:
+            response = _send_chat_with_fallback(
+                prompt=prompt_final,
+                system_instruction=prompt_instrucoes,
+                history=historico_groq,
+            )
+
+        _set_cache(cache_key, response)
+        return response
+
     except Exception as e:
         if _is_quota_error(e):
-            logger.error(f"Quota do Gemini esgotada no NOG: {e}", exc_info=True)
-            return GEMINI_QUOTA_MESSAGE
+            logger.warning("Quota da Groq esgotada no NOG: %s", _error_summary(e))
+            return GROQ_QUOTA_MESSAGE
 
-        logger.error(f"❌ Erro no NOG (Gemini): {e}", exc_info=True)
+        if _is_retryable_model_error(e):
+            logger.warning("Groq temporariamente indisponivel no NOG: %s", _error_summary(e))
+            return GROQ_TEMPORARY_UNAVAILABLE_MESSAGE
+
+        logger.error(f"❌ Erro no NOG (Groq): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
 
 def _clean_search_term(value):
@@ -365,21 +524,32 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
     try:
         contexto_historico = ""
         if historico:
-            resumo = "\n".join([f"{'Usuario' if m['role'] == 'user' else 'IA'}: {m['content']}" for m in historico[-3:]])
+            resumo = "\n".join([
+                f"{'Usuario' if m.get('role') == 'user' else 'IA'}: {str(m.get('content') or '')[:500]}"
+                for m in historico[-2:]
+                if isinstance(m, dict)
+            ])
             contexto_historico = f"\nHistorico recente:\n{resumo}\n"
 
+        mensagem_curta = str(mensagem or "")[:900]
         prompt = f"""
         Extraia termos de busca a partir de conversas automotivas.
         {contexto_historico}
-        Mensagem atual: "{mensagem}"
+        Mensagem atual: "{mensagem_curta}"
         Retorne JSON: {{"youtube": string|null, "loja": string|null, "pecas": string|null}}
         """
         response = _generate_content_with_fallback(
             contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            primary_model=utility_model(),
+            fallback_models=(),
+            response_format={"type": "json_object"},
+            temperature=0.2,
             log_context="Extracao de termos",
         )
-        data = json.loads(response.text)
+        try:
+            data = json.loads(response.text)
+        except json.JSONDecodeError:
+            return {"youtube": None, "loja": None, "pecas": None}
         return {
             "youtube": _clean_search_term(data.get("youtube")),
             "loja": _clean_search_term(data.get("loja")),
@@ -408,9 +578,15 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
         """
         response = _generate_content_with_fallback(
             contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            primary_model=utility_model(),
+            fallback_models=(),
+            response_format={"type": "json_object"},
+            temperature=0.2,
             log_context="Previsao manutencao",
         )
-        return json.loads(response.text)
+        try:
+            return json.loads(response.text)
+        except json.JSONDecodeError:
+            return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Erro ao processar resposta da IA"}
     except Exception:
         return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}

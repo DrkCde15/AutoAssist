@@ -153,6 +153,23 @@ def fetch_veiculos_user(cursor, user_id):
     return cursor.fetchall()
 
 
+FREE_JWT_EXPIRES = timedelta(days=30)
+PREMIUM_JWT_EXPIRES = False
+
+
+def get_jwt_expires_delta(user):
+    return PREMIUM_JWT_EXPIRES if bool(user.get("is_premium")) else FREE_JWT_EXPIRES
+
+
+def create_user_tokens(user):
+    expires_delta = get_jwt_expires_delta(user)
+    identity = str(user["id"])
+    return (
+        create_access_token(identity=identity, expires_delta=expires_delta),
+        create_refresh_token(identity=identity, expires_delta=expires_delta),
+    )
+
+
 # Configuração Google OAuth2
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -308,9 +325,8 @@ def google_callback():
             cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cursor.fetchone()
 
-        # Gerar tokens JWT (iguais ao login regular)
-        access_token = create_access_token(identity=str(user["id"]))
-        refresh_token = create_refresh_token(identity=str(user["id"]))
+        # Gerar tokens JWT conforme o plano atual do usuario.
+        access_token, refresh_token = create_user_tokens(user)
         
         # Obter a URL do frontend do .env
         frontend_base = get_frontend_url()
@@ -344,28 +360,68 @@ def google_callback():
 @auth_bp.route("/api/cadastro", methods=["POST"])
 @limiter.limit("5 per hour")
 def cadastro():
-    data = request.get_json()
-    nome, email, password = data.get("nome"), data.get("email"), data.get("password")
+    data = request.get_json(silent=True) or {}
+    nome = (data.get("nome") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    confirm_email = (data.get("confirm_email") or "").strip().lower()
+    password = data.get("password")
+    confirm_password = data.get("confirm_password")
     
     veiculo = data.get("veiculo", {})
     veiculos = data.get("veiculos", [])
+    if not isinstance(veiculos, list):
+        return jsonify(error="Lista de veículos inválida."), 400
+
     if veiculo and veiculo.get("possui"):
         veiculos.append(veiculo)
     
     possui_veiculo = len(veiculos) > 0
     
-    if not nome or not email or len(password) < 6: return jsonify(error="Dados inválidos"), 400
-    
+    if not nome:
+        return jsonify(error="Informe seu nome completo."), 400
+
+    if not email:
+        return jsonify(error="Informe seu e-mail."), 400
+
     if not is_valid_email_domain(email):
         return jsonify(error="Insira um endereço de email válido"), 400
+
+    if not confirm_email:
+        return jsonify(error="Confirme seu e-mail."), 400
+
+    if email != confirm_email:
+        return jsonify(error="Os e-mails informados não conferem."), 400
+
+    if not password or not isinstance(password, str):
+        return jsonify(error="Informe uma senha."), 400
+
+    if len(password) < 6:
+        return jsonify(error="A senha deve ter pelo menos 6 caracteres."), 400
+
+    if not confirm_password or not isinstance(confirm_password, str):
+        return jsonify(error="Confirme sua senha."), 400
+
+    if password != confirm_password:
+        return jsonify(error="As senhas informadas não conferem."), 400
+
+    for index, veiculo_data in enumerate(veiculos, start=1):
+        marca = (veiculo_data.get("marca") or "").strip()
+        modelo = (veiculo_data.get("modelo") or "").strip()
+        if not marca or not modelo:
+            return jsonify(error=f"Informe marca e modelo do veículo {index}."), 400
+
     try:
         with get_db() as (cursor, conn):
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return jsonify(error="Este e-mail já está cadastrado."), 409
+
             cursor.execute("""
                 INSERT INTO users (
                     nome, email, password, possui_veiculo, maintenance_email_enabled
                 ) VALUES (%s, %s, %s, %s, TRUE)
             """, (
-                nome, email.lower(), bcrypt.hash(password), possui_veiculo
+                nome, email, bcrypt.hash(password), possui_veiculo
             ))
             user_id = cursor.lastrowid
             
@@ -385,11 +441,33 @@ def cadastro():
         return jsonify(success=True), 201
     except Exception as e:
         logger.error(f"Erro no cadastro: {e}")
-        return jsonify(error="Erro ao processar cadastro ou email já existe"), 409
+        return jsonify(error="Erro ao processar cadastro. Tente novamente."), 500
 
 @auth_bp.route("/api/login", methods=["POST"])
 @limiter.limit("10 per minute")
 def login():
+    if request.args.get("demo") == "1":
+        from services.demo_mode import demo_user, demo_vehicle
+        user_data = demo_user()
+        vehicle_data = demo_vehicle()
+        access_token, refresh_token = create_user_tokens({"id": user_data["id"], "is_premium": True})
+        resp = jsonify(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user={
+                "id": user_data["id"],
+                "nome": user_data["nome"],
+                "is_premium": user_data["is_premium"],
+                "trial_expired": user_data["trial_expired"],
+                "trial_days_remaining": user_data["trial_days_remaining"],
+                "possui_veiculo": user_data["possui_veiculo"],
+                "veiculos": [vehicle_data],
+            }
+        )
+        set_access_cookies(resp, access_token)
+        set_refresh_cookies(resp, refresh_token)
+        return resp, 200
+
     data = request.get_json() or {}
     email, password = data.get("email"), data.get("password")
 
@@ -426,8 +504,7 @@ def login():
 
             veiculos = fetch_veiculos_user(cursor, user["id"])
             
-            access_token = create_access_token(identity=str(user["id"]))
-            refresh_token = create_refresh_token(identity=str(user["id"]))
+            access_token, refresh_token = create_user_tokens(user)
             
             resp = jsonify(
                 access_token=access_token,
@@ -452,12 +529,12 @@ def login():
 @auth_bp.route("/api/auth/2fa/verify", methods=["POST"])
 @limiter.limit("10 per minute")
 def verify_2fa_login():
-    data = request.get_json()
+    data = request.get_json() or {}
     pending_token = data.get("pending_token")
     code = data.get("code")
     
     if not pending_token or not code:
-        return jsonify(error="Token e código são obrigatórios"), 400
+        return jsonify(error="Token e senha secundaria sao obrigatorios"), 400
         
     try:
         decoded = decode_token(pending_token)
@@ -475,16 +552,16 @@ def verify_2fa_login():
                 
             secret = user.get("two_factor_secret")
             if not secret:
-                return jsonify(error="Configuração de 2FA corrompida"), 500
+                return jsonify(error="Configuracao de 2FA corrompida"), 500
                 
-            # Verificar se o segredo é um hash bcrypt (antigo) ou base32 (novo)
-            is_totp = not secret.startswith("$2") # Bcrypt hashes começam com $2
+            # Hash bcrypt indica senha secundaria; base32 fica apenas para TOTP legado.
+            is_totp = not secret.startswith("$2") # Bcrypt hashes comecam com $2
             
             if is_totp:
                 totp = pyotp.TOTP(secret)
                 is_valid = totp.verify(code)
             else:
-                # Fallback para o sistema antigo de senha secundária durante a transição
+                # Senha secundaria configurada pelo perfil.
                 try:
                     is_valid = bcrypt.verify(code, secret)
                 except Exception:
@@ -492,8 +569,7 @@ def verify_2fa_login():
             
             if is_valid:
                 veiculos = fetch_veiculos_user(cursor, user_id)
-                access_token = create_access_token(identity=str(user_id))
-                refresh_token = create_refresh_token(identity=str(user_id))
+                access_token, refresh_token = create_user_tokens(user)
                 
                 resp = jsonify(
                     access_token=access_token,
@@ -512,7 +588,7 @@ def verify_2fa_login():
                 set_refresh_cookies(resp, refresh_token)
                 return resp, 200
             else:
-                return jsonify(error="Código 2FA ou senha secundária inválida"), 401
+                return jsonify(error="Senha secundaria invalida"), 401
     except Exception as e:
         logger.error(f"Erro na verificação 2FA: {e}")
         return jsonify(error="Erro interno na verificação"), 500
@@ -523,11 +599,15 @@ def verify_2fa_login():
 def refresh():
     user_id = get_jwt_identity()
     with get_db() as (cursor, conn):
-        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
-        if not cursor.fetchone():
+        cursor.execute("SELECT id, is_premium FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user:
             return jsonify(error="Sessao invalida. Faca login novamente."), 401
 
-    access_token = create_access_token(identity=str(user_id))
+    access_token = create_access_token(
+        identity=str(user_id),
+        expires_delta=get_jwt_expires_delta(user)
+    )
     resp = jsonify(access_token=access_token)
     set_access_cookies(resp, access_token)
     return resp, 200
@@ -543,48 +623,48 @@ def logout():
 @auth_bp.route("/api/auth/2fa/setup", methods=["GET"])
 @jwt_required()
 def setup_2fa():
-    user_id = get_jwt_identity()
-    try:
-        with get_db() as (cursor, conn):
-            cursor.execute("SELECT email FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
-            if not user:
-                return jsonify(error="Usuário não encontrado"), 404
-            
-            secret = pyotp.random_base32()
-            totp = pyotp.TOTP(secret)
-            provisioning_url = totp.provisioning_uri(name=user["email"], issuer_name="AutoAssist")
-            
-            return jsonify(secret=secret, provisioning_url=provisioning_url), 200
-    except Exception as e:
-        logger.error(f"Erro no setup 2FA: {e}")
-        return jsonify(error="Erro ao configurar 2FA"), 500
+    return jsonify(
+        mode="secondary_password",
+        message="Crie uma senha secundaria no perfil para ativar o 2FA."
+    ), 200
 
 @auth_bp.route("/api/auth/2fa/confirm", methods=["POST"])
 @limiter.limit("10 per minute")
 @jwt_required()
 def confirm_2fa():
     user_id = get_jwt_identity()
-    data = request.get_json()
-    secret = data.get("secret")
-    code = data.get("code")
-    
-    if not secret or not code:
-        return jsonify(error="Secret e código são obrigatórios"), 400
+    data = request.get_json() or {}
+    password = data.get("password")
+    confirm_password = data.get("confirm_password")
+
+    if not password or not isinstance(password, str):
+        return jsonify(error="Senha secundaria e obrigatoria"), 400
+    if len(password) < 6:
+        return jsonify(error="A senha secundaria deve ter pelo menos 6 caracteres"), 400
+    if len(password) > 72:
+        return jsonify(error="A senha secundaria deve ter no maximo 72 caracteres"), 400
+    if confirm_password is not None and password != confirm_password:
+        return jsonify(error="As senhas secundarias nao conferem"), 400
         
     try:
-        totp = pyotp.TOTP(secret)
-        if totp.verify(code):
-            with get_db() as (cursor, conn):
-                cursor.execute("""
-                    UPDATE users 
-                    SET is_two_factor_enabled = TRUE, two_factor_secret = %s 
-                    WHERE id = %s
-                """, (secret, user_id))
-                conn.commit()
-            return jsonify(message="2FA (TOTP) ativado com sucesso"), 200
-        else:
-            return jsonify(error="Código inválido. Verifique se o relógio do seu celular está correto."), 400
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT password FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+            if not user:
+                return jsonify(error="Usuario nao encontrado"), 404
+
+            password_hash = user.get("password")
+            if password_hash and bcrypt.verify(password, password_hash):
+                return jsonify(error="A senha secundaria deve ser diferente da senha principal"), 400
+
+            cursor.execute("""
+                UPDATE users
+                SET is_two_factor_enabled = TRUE, two_factor_secret = %s
+                WHERE id = %s
+            """, (bcrypt.hash(password), user_id))
+            conn.commit()
+
+        return jsonify(message="2FA com senha secundaria ativado com sucesso"), 200
     except Exception as e:
         logger.error(f"Erro ao confirmar 2FA: {e}")
         return jsonify(error="Erro ao confirmar 2FA"), 500
@@ -594,11 +674,11 @@ def confirm_2fa():
 @jwt_required()
 def disable_2fa():
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = request.get_json() or {}
     password = data.get("password")
     
-    if not password:
-        return jsonify(error="Senha secundária é necessária para desativar"), 400
+    if not password or not isinstance(password, str):
+        return jsonify(error="Senha secundaria e necessaria para desativar"), 400
         
     try:
         with get_db() as (cursor, conn):
@@ -606,17 +686,24 @@ def disable_2fa():
             user = cursor.fetchone()
             
             if not user or not user["two_factor_secret"]:
-                return jsonify(error="Configuração de 2FA não encontrada"), 404
-            
-            # Para desativar, podemos exigir o código TOTP ou a senha principal
-            # Aqui vamos exigir o código TOTP para confirmar posse do dispositivo
-            totp = pyotp.TOTP(user["two_factor_secret"])
-            if totp.verify(password): # O campo 'password' aqui será o código de 6 dígitos
-                cursor.execute("UPDATE users SET is_two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = %s", (user_id,))
-                conn.commit()
-                return jsonify(message="2FA desativado com sucesso"), 200
+                return jsonify(error="Configuracao de 2FA nao encontrada"), 404
+
+            secret = user["two_factor_secret"]
+            if secret.startswith("$2"):
+                is_valid = bcrypt.verify(password, secret)
+                invalid_message = "Senha secundaria invalida"
             else:
-                return jsonify(error="Código TOTP inválido"), 400
+                # Compatibilidade com contas que ainda tenham TOTP configurado.
+                totp = pyotp.TOTP(secret)
+                is_valid = totp.verify(password)
+                invalid_message = "Codigo TOTP invalido"
+
+            if not is_valid:
+                return jsonify(error=invalid_message), 400
+
+            cursor.execute("UPDATE users SET is_two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = %s", (user_id,))
+            conn.commit()
+            return jsonify(message="2FA desativado com sucesso"), 200
     except Exception as e:
         logger.error(f"Erro ao desativar 2FA: {e}")
         return jsonify(error="Erro ao desativar 2FA"), 500

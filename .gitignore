@@ -48,5 +48,5 @@ htmlcov/
 
 # --- Misc ---
 *.mod
-
+*.pem
 .openclaude-profile.json

@@ -6,6 +6,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from services.cakto import CaktoService
 from .database import get_db
+from .push import send_push_notification
 
 payment_bp = Blueprint("payment", __name__)
 logger = logging.getLogger(__name__)
@@ -45,21 +46,37 @@ def _get_user_email(user_id: str) -> str | None:
 
 
 def _set_premium_by_user_id(user_id: str, is_premium: bool) -> int:
+    target_state = bool(is_premium)
     with get_db() as (cursor, conn):
         cursor.execute(
             "UPDATE users SET is_premium = %s WHERE id = %s",
-            (bool(is_premium), user_id),
+            (target_state, user_id),
         )
-        return int(cursor.rowcount or 0)
+        if int(cursor.rowcount or 0) > 0:
+            return 1
+
+        cursor.execute(
+            "SELECT id FROM users WHERE id = %s AND is_premium = %s",
+            (user_id, target_state),
+        )
+        return 1 if cursor.fetchone() else 0
 
 
 def _set_premium_by_email(email: str, is_premium: bool) -> int:
+    target_state = bool(is_premium)
     with get_db() as (cursor, conn):
         cursor.execute(
             "UPDATE users SET is_premium = %s WHERE email = %s",
-            (bool(is_premium), email),
+            (target_state, email),
         )
-        return int(cursor.rowcount or 0)
+        if int(cursor.rowcount or 0) > 0:
+            return 1
+
+        cursor.execute(
+            "SELECT id FROM users WHERE email = %s AND is_premium = %s",
+            (email, target_state),
+        )
+        return 1 if cursor.fetchone() else 0
 
 
 @payment_bp.route("/api/pay/preference", methods=["POST"])
@@ -210,10 +227,16 @@ def cakto_webhook():
     if user_id:
         updated = _set_premium_by_user_id(user_id, target_state)
     else:
-        # Fallback por email se falhar o ID do pedido (mantido por retrocompatibilidade se necessario)
+        # Fallback por email se falhar o ID do pedido
         email = service.extract_customer_email(payload)
         if email:
             updated = _set_premium_by_email(email, target_state)
+            if updated and target_state:
+                with get_db() as (cursor, conn):
+                    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+                    row = cursor.fetchone()
+                    if row:
+                        user_id = row["id"]
 
     if updated == 0:
         logger.warning(
@@ -222,6 +245,18 @@ def cakto_webhook():
             status,
         )
         return jsonify(success=False, error="Usuario nao encontrado para este evento."), 404
+
+    # Envia push notification ao ativar premium
+    if target_state and user_id:
+        try:
+            send_push_notification(
+                user_id=user_id,
+                title="🌟 Bem-vindo ao Premium!",
+                body="Sua assinatura AutoAssist Premium foi ativada com sucesso.",
+                data={"url": "/dashboard.html"},
+            )
+        except Exception:
+            logger.warning("Falha ao enviar push premium", exc_info=True)
 
     logger.info(
         "Webhook Cakto processado | event=%s status=%s premium=%s order=%s",

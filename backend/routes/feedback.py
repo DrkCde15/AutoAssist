@@ -2,7 +2,7 @@ import logging
 
 import bleach
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
 
 from extensions import limiter
 from .database import get_db
@@ -20,9 +20,16 @@ def _clean_text(value, max_length):
     return cleaned[:max_length]
 
 
+def _get_optional_user_id():
+    try:
+        verify_jwt_in_request(optional=True)
+        return get_jwt_identity()
+    except Exception:
+        return None
+
+
 @feedback_bp.route("/api/feedback", methods=["POST"])
 @limiter.limit("10 per minute")
-@jwt_required()
 def post_feedback():
     data = request.get_json(silent=True) or {}
     nome = _clean_text(data.get("nome"), 100)
@@ -39,7 +46,7 @@ def post_feedback():
         estrelas_int = 5
     estrelas_int = max(1, min(estrelas_int, 5))
 
-    user_id = get_jwt_identity()
+    user_id = _get_optional_user_id()
 
     try:
         with get_db() as (cursor, conn):
