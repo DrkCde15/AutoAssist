@@ -98,10 +98,10 @@ header {
   transform: translateY(-1px);
 }
 
-.nav-link::after,
-.nav-btn::after,
-.header-nav .nav-btn::after,
-.header-nav .nav-link::after {
+.nav-link span::after,
+.nav-btn span::after,
+.header-nav .nav-btn span::after,
+.header-nav .nav-link span::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -114,14 +114,14 @@ header {
   transition: width 0.25s ease;
 }
 
-.nav-link:hover::after,
-.nav-btn:hover::after,
-.header-nav .nav-btn:hover::after,
-.header-nav .nav-link:hover::after,
-.nav-link.active::after,
-.nav-btn.active::after,
-.header-nav .nav-btn.active::after,
-.header-nav .nav-link.active::after {
+.nav-link:hover span::after,
+.nav-btn:hover span::after,
+.header-nav .nav-btn:hover span::after,
+.header-nav .nav-link:hover span::after,
+.nav-link.active span::after,
+.nav-btn.active span::after,
+.header-nav .nav-btn.active span::after,
+.header-nav .nav-link.active span::after {
   width: calc(100% - 24px);
 }
 
