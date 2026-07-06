@@ -457,6 +457,7 @@ def login():
             user={
                 "id": user_data["id"],
                 "nome": user_data["nome"],
+                "email": user_data.get("email", ""),
                 "is_premium": user_data["is_premium"],
                 "trial_expired": user_data["trial_expired"],
                 "trial_days_remaining": user_data["trial_days_remaining"],
@@ -512,6 +513,7 @@ def login():
                 user={
                     "id": user["id"],
                     "nome": user["nome"],
+                    "email": user.get("email", ""),
                     "is_premium": bool(user.get("is_premium")),
                     "trial_expired": is_trial_expired(user),
                     "trial_days_remaining": get_trial_days_remaining(user),

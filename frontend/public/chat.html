@@ -76,28 +76,6 @@
         align-items: center;
         gap: 24px;
       }
-      .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 4px 8px;
-        background: transparent;
-        border: none;
-        border-radius: 0;
-        color: var(--text-secondary);
-        font-size: 14px;
-        font-weight: 500;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-family: inherit;
-        line-height: 1;
-        white-space: nowrap;
-      }
-      .nav-btn:hover {
-        color: var(--text-primary);
-        transform: translateY(-1px);
-      }
       .nav-btn-accent {
         color: var(--accent);
       }
@@ -974,6 +952,7 @@
       const sidebarSearch = document.getElementById("sidebarSearch");
       const chatHistorySearch = document.getElementById("chatHistorySearch");
       const chatHistoryList = document.getElementById("chatHistoryList");
+      const notifBellContainer = document.getElementById("notif-bell-container");
       const navDashboard = document.getElementById("navDashboard");
       const navMaintenance = document.getElementById("navMaintenance");
       const navProfile = document.getElementById("navProfile");
@@ -1016,6 +995,11 @@
       configureAccessControls();
       updateGuestNotice();
 
+      // Re-aplica após syncUser() completar para capturar is_premium fresco
+      if (isAuthenticated && typeof Auth !== "undefined" && Auth.syncUser) {
+        Auth.syncUser().then(() => configureAccessControls());
+      }
+
       function getGuestId() {
         const stored = localStorage.getItem(GUEST_ID_KEY);
         if (stored) return stored;
@@ -1056,15 +1040,15 @@
           navProfile.style.display = "inline-flex";
           logoutBtn.style.display = "inline-flex";
           btnReport.style.display = "inline-flex";
-          if (currentUser?.is_premium) {
-            navDashboard.style.display = "inline-flex";
-            btnMyVideos.style.display = "inline-flex";
-          }
+          navDashboard.style.display = "inline-flex";
+          btnMyVideos.style.display = "inline-flex";
+          if (notifBellContainer) notifBellContainer.style.display = "inline-flex";
           return;
         }
 
         navDashboard.style.display = "none";
         btnMyVideos.style.display = "none";
+        if (notifBellContainer) notifBellContainer.style.display = "none";
         navMaintenance.style.display = "none";
         navProfile.style.display = "none";
         logoutBtn.style.display = "none";

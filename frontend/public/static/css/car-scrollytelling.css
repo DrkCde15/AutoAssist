@@ -198,11 +198,11 @@
     position: absolute;
     z-index: 6;
     top: var(--car-scroll-header-offset);
-    right: 0;
-    left: 0;
-    width: min(784px, calc(100% - 38px));
+    left: 50%;
+    transform: translateX(-50%);
+    width: 784px;
+    max-width: calc(100% - 38px);
     min-height: calc(92svh - var(--car-scroll-header-offset));
-    margin: 0 auto;
     padding: 19px 0 46px;
     display: flex;
     flex-direction: column;
@@ -503,7 +503,8 @@
     }
 
     .brand-hero {
-        width: min(544px, calc(100% - 26px));
+        width: 544px;
+        max-width: calc(100% - 26px);
         min-height: calc(94svh - var(--car-scroll-header-offset));
         padding: 18px 0 37px;
     }
@@ -571,7 +572,8 @@
     }
 
     .brand-hero {
-        width: min(100%, calc(100% - 20px));
+        width: auto;
+        max-width: calc(100% - 20px);
         justify-content: flex-start;
         padding: 19px 8px 29px;
     }
