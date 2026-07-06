@@ -7,6 +7,10 @@ from flask_sock import Sock
 from flask_jwt_extended import decode_token
 from services.nogai import gerar_resposta, gerar_termos_busca
 from services.youtube_service import buscar_videos_youtube
+<<<<<<< HEAD
+=======
+from simple_websocket.errors import ConnectionClosed
+>>>>>>> main
 from urllib.parse import quote, quote_plus
 
 ws_bp = Blueprint("ws", __name__)
@@ -97,6 +101,12 @@ def chat_websocket(ws):
             }))
         except json.JSONDecodeError:
             ws.send(json.dumps({"error": "JSON invalido"}))
+<<<<<<< HEAD
+=======
+        except ConnectionClosed:
+            logger.info("WebSocket disconnected (client closed connection)")
+            break
+>>>>>>> main
         except Exception as e:
             logger.error("WebSocket error: %s", e, exc_info=True)
             try:

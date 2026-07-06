@@ -46,7 +46,22 @@ htmlcov/
 .ipynb_checkpoints/
 *.ipynb
 
+# --- Security ---
+.env.key
+.env.encrypted
+
+# --- Frontend (Node.js) ---
+frontend/node_modules/
+frontend/package-lock.json
+frontend/test-results/
+
 # --- Misc ---
 *.mod
+<<<<<<< HEAD
 *.pem
 .openclaude-profile.json
+=======
+
+.openclaude-profile.json
+*.pem
+>>>>>>> main

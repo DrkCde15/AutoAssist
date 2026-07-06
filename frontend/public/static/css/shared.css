@@ -1,0 +1,217 @@
+@import url("dark-theme.css");
+
+:root {
+  --navbar-bg: rgba(9, 9, 11, 0.88);
+  --navbar-border: rgba(255, 255, 255, 0.08);
+  --nav-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.navbar,
+header {
+  background: var(--navbar-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--navbar-border);
+  box-shadow: var(--nav-shadow);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+}
+
+.navbar {
+  min-height: 84px;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 84px;
+  padding: 12px 24px;
+}
+
+.nav-logo,
+.logo,
+.logo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-primary, #fafafa);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+
+.nav-logo img,
+.logo img,
+.logo-link img {
+  height: 72px;
+  width: auto;
+  display: block;
+}
+
+.nav-links,
+.header-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.nav-link,
+.nav-btn,
+.header-nav .nav-btn,
+.header-nav .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--text-secondary, #a1a1aa);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.nav-link,
+.nav-btn,
+.header-nav .nav-btn,
+.header-nav .nav-link {
+  position: relative;
+}
+
+.nav-link:hover,
+.nav-btn:hover,
+.header-nav .nav-btn:hover,
+.header-nav .nav-link:hover {
+  color: var(--text-primary, #fafafa);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.nav-link::after,
+.nav-btn::after,
+.header-nav .nav-btn::after,
+.header-nav .nav-link::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--accent, #3b82f6);
+  transform: translateX(-50%);
+  transition: width 0.25s ease;
+}
+
+.nav-link:hover::after,
+.nav-btn:hover::after,
+.header-nav .nav-btn:hover::after,
+.header-nav .nav-link:hover::after,
+.nav-link.active::after,
+.nav-btn.active::after,
+.header-nav .nav-btn.active::after,
+.header-nav .nav-link.active::after {
+  width: calc(100% - 24px);
+}
+
+.nav-link.active,
+.nav-btn.active,
+.header-nav .nav-btn.active,
+.header-nav .nav-link.active {
+  color: var(--accent, #3b82f6);
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.24);
+}
+
+#notif-bell-container {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.nav-bell-btn,
+.notif-bell-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.nav-bell-btn:hover,
+.notif-bell-btn:hover {
+  color: var(--text-primary, #fafafa);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notification-panel,
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(360px, calc(100vw - 24px));
+  display: none;
+  flex-direction: column;
+  background: var(--bg-card, #1c1c1f);
+  border: 1px solid var(--border-color, #27272a);
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  z-index: 1200;
+}
+
+.notification-panel.open,
+.notification-panel.is-open,
+.notif-panel.open,
+.notif-panel.is-open {
+  display: flex;
+}
+
+.header-left,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+}
+
+@media (max-width: 768px) {
+  .nav-container,
+  header {
+    padding: 12px 16px;
+  }
+
+  .nav-links,
+  .header-nav {
+    gap: 8px;
+  }
+
+  .nav-link span,
+  .nav-btn span,
+  .header-nav .nav-btn span {
+    display: none;
+  }
+}
