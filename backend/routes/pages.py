@@ -15,13 +15,16 @@ from urllib.parse import quote, quote_plus
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
+from backend.services.maintenance_service import _status_from_remaining, apply_manual_overrides, parse_maintenance_entry, serialize_maintenance_row
+from backend.services.nogai import prever_intervalo_manutencao
 from utils.async_task import _predictor, train_in_background
 import json
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
 from utils.email import enviar_email
 from .notifications import create_notification
 from .push import send_push_notification
-
+from pydub import AudioSegment
+import speech_recognition as sr
 
 @lru_cache(maxsize=1)
 def _load_maintenance_helpers():
