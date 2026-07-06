@@ -6,9 +6,9 @@ from flask import Blueprint, request
 from flask_sock import Sock
 from flask_jwt_extended import decode_token
 from services.nogai import gerar_resposta, gerar_termos_busca
+from services.web_scraping import WebScraper
 from services.youtube_service import buscar_videos_youtube
 from simple_websocket.errors import ConnectionClosed
-from urllib.parse import quote, quote_plus
 
 ws_bp = Blueprint("ws", __name__)
 sock = Sock()
@@ -76,9 +76,25 @@ def chat_websocket(ws):
                 except Exception:
                     pass
             if termos.get("loja"):
-                links.append({"titulo": f"Ver ofertas de {termos['loja']}", "url": f"https://www.webmotors.com.br/carros/estoque?q={quote_plus(termos['loja'])}", "tipo": "veiculo", "icon": "fas fa-car"})
+                try:
+                    scraper = WebScraper()
+                    lojas = scraper.search_car_stores(termos["loja"])
+                    for loja in lojas:
+                        loja.setdefault("tipo", "veiculo")
+                        loja.setdefault("icon", "fas fa-car")
+                    links.extend(lojas)
+                except Exception:
+                    pass
             if termos.get("pecas"):
-                links.append({"titulo": f"Comprar {termos['pecas']} no Mercado Livre", "url": f"https://lista.mercadolivre.com.br/{quote(termos['pecas'].replace(' ', '-'), safe='')}", "tipo": "peca", "icon": "fas fa-tools"})
+                try:
+                    scraper = WebScraper()
+                    pecas = scraper.search_car_parts(termos["pecas"])
+                    for peca in pecas:
+                        peca.setdefault("tipo", "peca")
+                        peca.setdefault("icon", "fas fa-tools")
+                    links.extend(pecas)
+                except Exception:
+                    pass
 
             topic = termos.get("youtube") or termos.get("loja") or termos.get("pecas") or "Consultoria Geral"
             now_iso = datetime.now().isoformat()

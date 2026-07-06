@@ -9,6 +9,7 @@ import json
 import re
 from functools import lru_cache
 from types import SimpleNamespace
+from services.web_scraping import WebScraper
 
 load_dotenv()
 
@@ -561,11 +562,37 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
 def gerar_termo_busca_youtube(mensagem: str, historico: list = None) -> str | None:
     return gerar_termos_busca(mensagem, historico).get("youtube")
 
-def gerar_termo_busca_loja(mensagem: str, historico: list = None) -> str | None:
-    return gerar_termos_busca(mensagem, historico).get("loja")
+def gerar_termo_busca_loja(mensagem: str, historico: list = None) -> list[dict]:
+    """Extrai termo de busca e retorna links para lojas de veículos."""
+    termo = gerar_termos_busca(mensagem, historico).get("loja")
+    if not termo:
+        return []
+    try:
+        scraper = WebScraper()
+        links = scraper.search_car_stores(termo)
+        for link in links:
+            link.setdefault("tipo", "veiculo")
+            link.setdefault("icon", "fas fa-car")
+        return links
+    except Exception as e:
+        logger.error(f"Erro ao gerar links de loja: {e}")
+        return []
 
-def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> str | None:
-    return gerar_termos_busca(mensagem, historico).get("pecas")
+def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> list[dict]:
+    """Extrai termo de busca e retorna links para compra de peças."""
+    termo = gerar_termos_busca(mensagem, historico).get("pecas")
+    if not termo:
+        return []
+    try:
+        scraper = WebScraper()
+        links = scraper.search_car_parts(termo)
+        for link in links:
+            link.setdefault("tipo", "peca")
+            link.setdefault("icon", "fas fa-tools")
+        return links
+    except Exception as e:
+        logger.error(f"Erro ao gerar links de peças: {e}")
+        return []
 
 def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
     """Preve o intervalo de manutenção com base na descrição."""

@@ -11,12 +11,12 @@ import unicodedata
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from time import monotonic
-from urllib.parse import quote, quote_plus
+from services.web_scraping import WebScraper
 from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
-from backend.services.maintenance_service import _status_from_remaining, apply_manual_overrides, parse_maintenance_entry, serialize_maintenance_row
-from backend.services.nogai import prever_intervalo_manutencao
+from services.maintenance_service import _status_from_remaining, apply_manual_overrides, parse_maintenance_entry, serialize_maintenance_row
+from services.nogai import prever_intervalo_manutencao
 from utils.async_task import _predictor, train_in_background
 import json
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
@@ -402,20 +402,26 @@ def build_recommendations(message, historico_recente, default_topic="Consultoria
             logger.warning(f"Erro ao buscar videos: {e}")
 
     if termo_loja:
-        links.append({
-            "titulo": f"Ver ofertas de {termo_loja}",
-            "url": f"https://www.webmotors.com.br/carros/estoque?q={quote_plus(termo_loja)}",
-            "tipo": "veiculo",
-            "icon": "fas fa-car"
-        })
+        try:
+            scraper = WebScraper()
+            lojas = scraper.search_car_stores(termo_loja)
+            for loja in lojas:
+                loja.setdefault("tipo", "veiculo")
+                loja.setdefault("icon", "fas fa-car")
+            links.extend(lojas)
+        except Exception as e:
+            logger.warning(f"Erro ao buscar links de loja: {e}")
 
     if termo_pecas:
-        links.append({
-            "titulo": f"Comprar {termo_pecas} no Mercado Livre",
-            "url": f"https://lista.mercadolivre.com.br/{quote(termo_pecas.replace(' ', '-'), safe='')}",
-            "tipo": "peca",
-            "icon": "fas fa-tools"
-        })
+        try:
+            scraper = WebScraper()
+            pecas = scraper.search_car_parts(termo_pecas)
+            for peca in pecas:
+                peca.setdefault("tipo", "peca")
+                peca.setdefault("icon", "fas fa-tools")
+            links.extend(pecas)
+        except Exception as e:
+            logger.warning(f"Erro ao buscar links de peças: {e}")
 
     topic = termo_yt or termo_loja or termo_pecas or default_topic
     return videos, links, topic
