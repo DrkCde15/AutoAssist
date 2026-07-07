@@ -15,6 +15,15 @@ sock = Sock()
 logger = logging.getLogger(__name__)
 
 
+def _load_user_data(user_id):
+    try:
+        from routes.database import get_db
+        from routes.pages import load_user_chat_context
+        with get_db() as (cur, conn):
+            return load_user_chat_context(cur, user_id)
+    except Exception:
+        return None
+
 def _save_chat(user_id, session_id, message, response, videos, links, topic):
     try:
         from routes.database import get_db
@@ -65,7 +74,8 @@ def chat_websocket(ws):
 
             ws.send(json.dumps({"type": "status", "message": "Processando..."}))
 
-            response = gerar_resposta(message, user_id or 0)
+            user_data = _load_user_data(user_id) if user_id else None
+            response = gerar_resposta(message, user_id or 0, user_data=user_data)
 
             termos = gerar_termos_busca(message)
             videos = []
