@@ -1,7 +1,6 @@
 import os
 
 workers = int(os.getenv("GUNICORN_WORKERS", "1"))
-worker_class = "gevent"
 preload_app = False
 
 timeout = 300
