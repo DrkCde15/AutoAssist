@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def _save_chat(user_id, session_id, message, response, videos, links, topic):
     try:
-        from .routes.database import get_db
+        from routes.database import get_db
         with get_db() as (cur, conn):
             cur.execute(
                 """INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia,
