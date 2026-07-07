@@ -33,4 +33,4 @@ joblib
 spacy>=3.7,<4
 pywebpush>=1.14,<2
 gevent
-urllib3<2.4"
+urllib3<2.4
