@@ -30,9 +30,9 @@ MYSQL_CONFIG = {
 # Inicializa o Pool de Conexões
 pool = PooledDB(
     creator=pymysql,
-    mincached=2,
-    maxcached=10,
-    maxconnections=20,
+    mincached=int(os.getenv("DB_MIN_CACHED", "5")),
+    maxcached=int(os.getenv("DB_MAX_CACHED", "20")),
+    maxconnections=int(os.getenv("DB_MAX_CONNECTIONS", "50")),
     blocking=True,
     **MYSQL_CONFIG
 )

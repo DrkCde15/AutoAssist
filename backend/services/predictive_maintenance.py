@@ -194,6 +194,8 @@ class MaintenancePredictor:
         vehicle_id: int,
         maintenance_type: str = "oil_change",
         kilometers_actual: int | None = None,
+        vehicle_averages: tuple | None = None,
+        record_count: int | None = None,
     ) -> dict | None:
         try:
             if self._params is None:
@@ -214,8 +216,11 @@ class MaintenancePredictor:
                     current_km = vehicle["quilometragem"]
             current_km = int(current_km or 0)
 
-            # Busca histórico recente do veículo para ajuste personalizado
-            vehicle_avg_km, vehicle_avg_days = self._get_vehicle_averages(vehicle_id)
+            # Ajuste personalizado: usa pré-computados (evita N queries em lote)
+            if vehicle_averages is not None:
+                vehicle_avg_km, vehicle_avg_days = vehicle_averages
+            else:
+                vehicle_avg_km, vehicle_avg_days = self._get_vehicle_averages(vehicle_id)
 
             # Estatísticas por tipo de manutenção
             type_stats = self._get_type_stats(maintenance_type)
@@ -233,15 +238,17 @@ class MaintenancePredictor:
             )
 
             # Confiança baseada na quantidade de dados do veículo
-            confidence = _CONFIDENCE_LOW
-            with get_db() as (cursor, conn):
-                cursor.execute(
-                    "SELECT COUNT(*) AS cnt FROM maintenance_history WHERE vehicle_id = %s",
-                    (vehicle_id,),
-                )
-                row = cursor.fetchone()
-                count = row["cnt"] if row else 0
-                confidence = min(0.95, 0.15 + count * 0.05)
+            if record_count is not None:
+                count = record_count
+            else:
+                with get_db() as (cursor, conn):
+                    cursor.execute(
+                        "SELECT COUNT(*) AS cnt FROM maintenance_history WHERE vehicle_id = %s",
+                        (vehicle_id,),
+                    )
+                    row = cursor.fetchone()
+                    count = row["cnt"] if row else 0
+            confidence = min(0.95, 0.15 + count * 0.05)
 
             return {
                 "predicted_next_km": int(current_km + km_interval),

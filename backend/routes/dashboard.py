@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from routes.database import get_db
@@ -51,26 +51,79 @@ def _refresh_fipe_sync(vehicle_id, tipo, marca, modelo, ano):
         pass
 
 
-def _get_next_maintenance_type(vehicle_id):
-    """Retorna o tipo de manutenção mais próximo do vencimento do veículo."""
-    try:
-        with get_db() as (cur, conn):
-            cur.execute(
-                "SELECT maintenance_type FROM maintenance_history "
-                "WHERE vehicle_id=%s AND next_due_date IS NOT NULL "
-                "ORDER BY next_due_date ASC LIMIT 1",
-                (vehicle_id,),
-            )
-            row = cur.fetchone()
-            if row and row.get("maintenance_type"):
-                return row["maintenance_type"]
-    except Exception:
-        pass
-    return "troca_oleo"
+def _compute_health_score(row):
+    current_year = datetime.now().year
+    ano_fab = row.get("ano_fabricacao") or current_year
+    km = row.get("quilometragem") or 0
+    return max(20, min(100, int(
+        100 - (current_year - ano_fab) * 2 - (km // 10000) * 1.5
+    )))
 
 
-def _build_vehicle_dashboard(user_id, row):
-    """Processa os dados de um único veículo para o dashboard."""
+def _is_today(dt):
+    if dt is None:
+        return False
+    d = dt.date() if isinstance(dt, datetime) else dt
+    return d == date.today()
+
+
+def _next_maint_type_from_hist(hist):
+    """Tipo de manutenção com o next_due_date mais próximo (calculado em memória)."""
+    candidates = [h for h in hist if h.get("next_due_date") is not None]
+    if not candidates:
+        return "troca_oleo"
+    candidates.sort(key=lambda h: h["next_due_date"])
+    return candidates[0].get("maintenance_type") or "troca_oleo"
+
+
+def _vehicle_averages_from_hist(hist):
+    """Médias de km/dias entre registros consecutivos (espelha _get_vehicle_averages)."""
+    if len(hist) < 2:
+        return None, None
+    diffs_km, diffs_days = [], []
+    for i in range(1, len(hist)):
+        km1 = hist[i].get("service_km")
+        km0 = hist[i - 1].get("service_km")
+        if km1 is not None and km0 is not None:
+            diffs_km.append(km1 - km0)
+        d1 = hist[i].get("service_date")
+        d0 = hist[i - 1].get("service_date")
+        if d1 is not None and d0 is not None:
+            try:
+                diffs_days.append((d1 - d0).days)
+            except Exception:
+                pass
+    if not diffs_km or not diffs_days:
+        return None, None
+    return float(sum(diffs_km) / len(diffs_km)), float(sum(diffs_days) / len(diffs_days))
+
+
+def _prepare_predictions(rows, hist_por_veiculo):
+    """Predição para todos os veículos de uma vez (sem N queries ao banco)."""
+    result = {}
+    for row in rows:
+        vid = row["id"]
+        hist = hist_por_veiculo.get(vid, [])
+        maint_type = _next_maint_type_from_hist(hist)
+        avg_km, avg_days = _vehicle_averages_from_hist(hist)
+        pred = _predictor().predict_next(
+            vehicle_id=vid,
+            maintenance_type=maint_type,
+            kilometers_actual=row.get("quilometragem"),
+            vehicle_averages=(avg_km, avg_days),
+            record_count=len(hist),
+        ) or {}
+        try:
+            from services.maintenance_service import MAINTENANCE_RULES
+            pred["maintenance_label"] = MAINTENANCE_RULES.get(maint_type, {}).get("label", maint_type)
+        except Exception:
+            pred["maintenance_label"] = maint_type
+        result[vid] = pred
+    return result
+
+
+def _build_vehicle_dashboard(row, health_score, pred):
+    """Processa os dados de um único veículo para o dashboard (sem acesso a banco)."""
     vehicle = {
         "id": row["id"],
         "tipo": row["tipo"],
@@ -98,34 +151,6 @@ def _build_vehicle_dashboard(user_id, row):
     else:
         fipe_info = {"Valor": "Não listado na Tabela FIPE", "MesReferencia": "---"}
 
-    # Predição — usa o tipo de manutenção mais próximo do vencimento
-    maint_type = _get_next_maintenance_type(row["id"])
-    try:
-        pred = _predictor().predict_next(
-            vehicle_id=row["id"],
-            maintenance_type=maint_type,
-            kilometers_actual=row.get("quilometragem"),
-        ) or {}
-    except Exception as e:
-        logger.warning("Prediction unavailable: %s", e)
-        pred = {}
-
-    if pred:
-        try:
-            from services.maintenance_service import MAINTENANCE_RULES
-            pred["maintenance_label"] = MAINTENANCE_RULES.get(maint_type, {}).get("label", maint_type)
-        except Exception:
-            pred["maintenance_label"] = maint_type
-
-    # Health score
-    current_year = datetime.now().year
-    ano_fab = row.get("ano_fabricacao") or current_year
-    km = row.get("quilometragem") or 0
-
-    health_score = max(20, min(100, int(
-        100 - (current_year - ano_fab) * 2 - (km // 10000) * 1.5
-    )))
-
     if health_score < 50:
         alertas = [{"item": "Atenção Geral", "msg": "Seu veículo tem alta quilometragem/idade. Revise com frequência.", "status": "Crítico"}]
     elif health_score < 80:
@@ -136,14 +161,11 @@ def _build_vehicle_dashboard(user_id, row):
     ultima = row.get("ultima_manutencao")
     data_ultima = ultima.strftime('%d/%m/%Y') if ultima else "Nenhuma"
 
-    # Health score mantido no histórico no máximo 1x/dia por veículo
-    _record_health_score(user_id, row["id"], health_score)
-
     return {
         "veiculo": vehicle,
         "fipe": fipe_info,
         "saude": alertas,
-        "predicao": pred,
+        "predicao": pred or {},
         "estatisticas_extras": {
             "manutencoes_realizadas": row.get("qtde_manutencao", 0),
             "data_ultima_manutencao": data_ultima,
@@ -153,20 +175,15 @@ def _build_vehicle_dashboard(user_id, row):
     }
 
 
-def _record_health_score(user_id, vehicle_id, score):
-    """Insere o health score no histórico apenas 1x por dia por veículo."""
+def _bulk_record_health_score(records):
+    """Grava health scores pendentes em uma única query (1x/dia por veículo)."""
+    if not records:
+        return
     try:
         with get_db() as (cur, conn):
-            cur.execute(
-                "SELECT 1 FROM health_score_history "
-                "WHERE user_id=%s AND vehicle_id=%s AND DATE(recorded_at)=CURDATE() LIMIT 1",
-                (user_id, vehicle_id),
-            )
-            if cur.fetchone():
-                return
-            cur.execute(
+            cur.executemany(
                 "INSERT INTO health_score_history (user_id, vehicle_id, score) VALUES (%s, %s, %s)",
-                (user_id, vehicle_id, score),
+                records,
             )
             conn.commit()
     except Exception:
@@ -184,8 +201,8 @@ def get_dashboard_data():
         return jsonify(cached), 200
 
     try:
-        # Todos os veículos do usuário (um registro agregado por veículo)
         with get_db() as (cur, conn):
+            # 1) Veículos agregados (1 query)
             cur.execute(
                 """SELECT v.id, v.tipo, v.marca, v.modelo,
                           v.ano_fabricacao, v.quilometragem,
@@ -202,11 +219,47 @@ def get_dashboard_data():
             )
             rows = cur.fetchall()
 
-        if not rows:
-            _dashboard_cache.set(user_id, [])
-            return jsonify([]), 200
+            if not rows:
+                _dashboard_cache.set(user_id, [])
+                return jsonify([]), 200
 
-        items = [_build_vehicle_dashboard(user_id, row) for row in rows]
+            # 2) Histórico de manutenção do usuário (1 query, todos os veículos)
+            cur.execute(
+                "SELECT vehicle_id, maintenance_type, service_date, service_km, next_due_date "
+                "FROM maintenance_history WHERE user_id=%s ORDER BY vehicle_id, service_date ASC",
+                (user_id,),
+            )
+            hist_rows = cur.fetchall()
+
+            # 3) Último registro de health score por veículo (1 query)
+            cur.execute(
+                "SELECT vehicle_id, MAX(recorded_at) AS last_recorded FROM health_score_history "
+                "WHERE user_id=%s GROUP BY vehicle_id",
+                (user_id,),
+            )
+            health_last = {r["vehicle_id"]: r["last_recorded"] for r in cur.fetchall()}
+
+        # Agrupa histórico por veículo em Python (sem DB)
+        from collections import defaultdict
+        hist_por_veiculo = defaultdict(list)
+        for hr in hist_rows:
+            hist_por_veiculo[hr["vehicle_id"]].append(hr)
+
+        # Predições para todos os veículos (sem N queries)
+        predictions = _prepare_predictions(rows, hist_por_veiculo)
+
+        items = []
+        pending_health = []
+        for row in rows:
+            vid = row["id"]
+            health_score = _compute_health_score(row)
+            items.append(_build_vehicle_dashboard(row, health_score, predictions.get(vid)))
+            if not _is_today(health_last.get(vid)):
+                pending_health.append((user_id, vid, health_score))
+
+        # Grava pendentes em 1 única query
+        _bulk_record_health_score(pending_health)
+
         _dashboard_cache.set(user_id, items)
         return jsonify(items), 200
 
