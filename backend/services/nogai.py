@@ -9,6 +9,7 @@ import json
 import re
 from functools import lru_cache
 from types import SimpleNamespace
+from utils.cache import TTLCache
 from services.web_scraping import WebScraper
 
 load_dotenv()
@@ -18,9 +19,23 @@ logger = logging.getLogger(__name__)
 HTTP_TIMEOUT = (3.05, 8)
 FIPE_BASE_URL = "https://parallelum.com.br/fipe/api/v1"
 FIPE_CACHE_TTL_SECONDS = max(60, int(os.getenv("FIPE_CACHE_TTL_SECONDS", "86400")))
+_fipe_result_cache = TTLCache(default_ttl=FIPE_CACHE_TTL_SECONDS, maxsize=1024)
 
-_ai_response_cache = {}
+_ai_response_cache = {}  # user_id -> TTLCache
 _AI_CACHE_TTL = int(os.getenv("AI_CACHE_TTL_SECONDS", "300"))
+
+
+def _get_ai_cache(user_id):
+    cache = _ai_response_cache.get(user_id)
+    if cache is None:
+        cache = TTLCache(default_ttl=_AI_CACHE_TTL, maxsize=256)
+        _ai_response_cache[user_id] = cache
+    return cache
+
+
+def _invalidate_user_ai_cache(user_id):
+    """Invalida todas as respostas em cache de um usuário (ex.: após editar manutenção)."""
+    _ai_response_cache.pop(user_id, None)
 
 _SIMPLE_GREETINGS = re.compile(
     r"^(oi|ol[áa]|bom dia|boa tarde|boa noite|e a[ií]|hello|hey|opa|iae|blz|be?leza|tudo bem|como vai)$",
@@ -127,6 +142,11 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
     if not marca_query or not modelo_query or not ano_query:
         return None
 
+    fipe_key = (tipo_norm, marca_query, modelo_query, ano_query)
+    cached = _fipe_result_cache.get(fipe_key)
+    if cached is not None:
+        return cached
+
     try:
         marcas = _get_fipe_json(f"{tipo_norm}/marcas")
         marca_obj = next((m for m in marcas if marca_query in m["nome"].lower()), None)
@@ -161,13 +181,15 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
                 result = _get_fipe_json(
                     f"{tipo_norm}/marcas/{marca_obj['codigo']}/modelos/{modelo['codigo']}/anos/{ano_obj['codigo']}"
                 )
-                return _enrich_fipe_result(
+                result = _enrich_fipe_result(
                     result,
                     match_type="exact",
                     requested_year=ano_query,
                     used_year=_extract_fipe_year(ano_obj),
                     used_model=modelo["nome"],
                 )
+                _fipe_result_cache.set(fipe_key, result)
+                return result
 
             if requested_year is None:
                 continue
@@ -208,8 +230,11 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
                     f"FIPE exata para {ano_query} nao encontrada; "
                     f"usado ano {nearest_year_match['year_number']}."
                 )
+            _fipe_result_cache.set(fipe_key, enriched)
             return enriched
-        return None
+        result = None
+        _fipe_result_cache.set(fipe_key, result)
+        return result
     except Exception as e:
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
@@ -278,18 +303,14 @@ def _cache_key(mensagem: str, historico: list | None, user_id=None) -> str:
     history_tail = json.dumps(historico[-2:] if historico else [], ensure_ascii=False)
     return f"{user_id}|{mensagem[:200]}|{hash(history_tail)}"
 
-def _get_cached(key: str):
-    entry = _ai_response_cache.get(key)
-    if entry and time.time() < entry["expires_at"]:
-        return entry["response"]
-    _ai_response_cache.pop(key, None)
-    return None
+def _get_cached(key: str, user_id=None):
+    cache = _ai_response_cache.get(user_id)
+    if cache is None:
+        return None
+    return cache.get(key)
 
-def _set_cache(key: str, response: str):
-    _ai_response_cache[key] = {
-        "response": response,
-        "expires_at": time.time() + _AI_CACHE_TTL,
-    }
+def _set_cache(key: str, response: str, user_id=None):
+    _get_ai_cache(user_id).set(key, response)
 
 def _is_simple_query(mensagem: str) -> bool:
     return bool(_SIMPLE_GREETINGS.match(mensagem.strip()))
@@ -457,12 +478,24 @@ def _send_chat_with_fallback(*, prompt, system_instruction, history, primary_mod
         log_context=log_context,
     )
 
+_maintenance_ctx_cache = TTLCache(default_ttl=180, maxsize=1024)
+
+
+def _invalidate_maintenance_context(user_id):
+    """Invalida o contexto de manutenção em cache de um usuário (após editar manutenções)."""
+    _maintenance_ctx_cache.delete(user_id)
+
+
 def _build_maintenance_context(user_id):
     """Monta um resumo textual do histórico de manutenções do usuário para o contexto da IA."""
     try:
         from datetime import date
         from routes.database import get_db
         from services.maintenance_service import _status_from_remaining
+
+        cached = _maintenance_ctx_cache.get(user_id)
+        if cached is not None:
+            return cached
 
         with get_db() as (cur, conn):
             cur.execute(
@@ -511,7 +544,9 @@ def _build_maintenance_context(user_id):
                 partes.append(f"-> prox. em {due_str} [{status_label}]")
             lines.append(" ".join(partes))
 
-        return "\n".join(lines)
+        context = "\n".join(lines)
+        _maintenance_ctx_cache.set(user_id, context)
+        return context
     except Exception as e:
         logger.warning("Falha ao montar contexto de manutencao: %s", e)
         return ""
@@ -534,7 +569,7 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
         historico_groq = transformar_historico(historico_mysql)
 
         cache_key = _cache_key(msg_clean, historico_groq, user_id)
-        cached = _get_cached(cache_key)
+        cached = _get_cached(cache_key, user_id)
         if cached:
             logger.info(f"Cache hit para usuário {user_id}")
             return cached
@@ -587,7 +622,7 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
                 history=historico_groq,
             )
 
-        _set_cache(cache_key, response)
+        _set_cache(cache_key, response, user_id)
         return response
 
     except Exception as e:
@@ -684,9 +719,14 @@ def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> list[dict]
         logger.error(f"Erro ao gerar links de peças: {e}")
         return []
 
-@lru_cache(maxsize=256)
+_prever_cache = TTLCache(default_ttl=3600, maxsize=512)
+
 def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
     """Preve o intervalo de manutenção com base na descrição."""
+    key = (descricao, veiculo_info)
+    cached = _prever_cache.get(key)
+    if cached is not None:
+        return cached
     try:
         prompt = f"""
         Especialista automotivo: preveja o próximo retorno (dias e km).
@@ -703,8 +743,10 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
             log_context="Previsao manutencao",
         )
         try:
-            return json.loads(response.text)
+            result = json.loads(response.text)
         except json.JSONDecodeError:
-            return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Erro ao processar resposta da IA"}
+            result = {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Erro ao processar resposta da IA"}
     except Exception:
-        return {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}
+        result = {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}
+    _prever_cache.set(key, result)
+    return result

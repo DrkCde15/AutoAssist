@@ -16,7 +16,7 @@ from flask import Blueprint, request, jsonify, current_app, send_from_directory,
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
 from services.maintenance_service import _status_from_remaining, apply_manual_overrides, parse_maintenance_entry, serialize_maintenance_row
-from services.nogai import prever_intervalo_manutencao
+from services.nogai import prever_intervalo_manutencao, _invalidate_maintenance_context, _invalidate_user_ai_cache
 from utils.async_task import _predictor, train_in_background
 import json
 from .database import get_db, is_trial_expired, get_trial_days_remaining, get_mysql_history
@@ -1257,6 +1257,7 @@ def add_veiculo():
             except Exception as email_err:
                 logger.warning(f"Falha no gatilho imediato de email: {email_err}")
 
+            _invalidate_dashboard_cache_for_user(user_id)
             return jsonify(success=True, id=v_id), 201
     except Exception as e:
         logger.error(f"Erro ao adicionar veiculo: {e}")
@@ -1313,6 +1314,7 @@ def edit_veiculo(v_id):
             except Exception as email_err:
                 logger.warning(f"Erro ao iniciar thread de email: {email_err}")
 
+            _invalidate_dashboard_cache_for_user(user_id)
             return jsonify(success=True), 200
     except Exception as e:
         logger.error(f"Erro ao editar veiculo: {e}")
@@ -1332,6 +1334,7 @@ def delete_veiculo(v_id):
             if cursor.fetchone()["count"] == 0:
                 cursor.execute("UPDATE users SET possui_veiculo = FALSE WHERE id = %s", (user_id,))
 
+            _invalidate_dashboard_cache_for_user(user_id)
             return jsonify(success=True), 200
     except Exception as e:
         logger.error(f"Erro ao excluir veiculo: {e}")
@@ -1388,6 +1391,30 @@ def _predict_interval(vehicle_id, maintenance_type, description, veiculo_str, se
         "justificativa": justificativa,
         "ai_enhanced": enhanced,
     }
+
+
+def _invalidate_maintenance_user_caches(user_id):
+    """Limpa os caches afetados por uma mudança de manutenção do usuário."""
+    try:
+        from services.nogai import _invalidate_maintenance_context, _invalidate_user_ai_cache
+        _invalidate_maintenance_context(user_id)
+        _invalidate_user_ai_cache(user_id)
+    except Exception:
+        pass
+    try:
+        from routes.dashboard import _invalidate_dashboard_cache
+        _invalidate_dashboard_cache(user_id)
+    except Exception:
+        pass
+
+
+def _invalidate_dashboard_cache_for_user(user_id):
+    """Limpa o cache de dashboard de um usuário (após mudar veículos)."""
+    try:
+        from routes.dashboard import _invalidate_dashboard_cache
+        _invalidate_dashboard_cache(user_id)
+    except Exception:
+        pass
 
 
 @pages_bp.route("/api/maintenance/history", methods=["POST"])
@@ -1522,6 +1549,7 @@ def register_maintenance_history():
             )
             created_row = cursor.fetchone()
 
+            _invalidate_maintenance_user_caches(user_id)
             return jsonify(
                 success=True,
                 registro=serialize_maintenance_row(created_row),
@@ -1717,6 +1745,7 @@ def update_maintenance_history(maintenance_id):
                 WHERE mh.id = %s AND mh.user_id = %s
             """, (maintenance_id, user_id))
             updated_row = cursor.fetchone()
+            _invalidate_maintenance_user_caches(user_id)
             return jsonify(success=True, registro=serialize_maintenance_row(updated_row)), 200
     except Exception as e:
         logger.error(f"Erro ao atualizar historico de manutencao: {e}")
@@ -1736,6 +1765,7 @@ def delete_maintenance_history(maintenance_id):
             cursor.execute("DELETE FROM maintenance_history WHERE id = %s AND user_id = %s", (maintenance_id, user_id))
             if cursor.rowcount == 0:
                 return jsonify(error="Registro de manutencao nao encontrado"), 404
+            _invalidate_maintenance_user_caches(user_id)
             return jsonify(success=True), 200
     except Exception as e:
         logger.error(f"Erro ao excluir historico de manutencao: {e}")

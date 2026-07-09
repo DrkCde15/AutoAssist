@@ -6,11 +6,20 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from routes.database import get_db
 from services.nogai import get_fipe_value
 from utils.async_task import _predictor
+from utils.cache import TTLCache
 
 logger = logging.getLogger(__name__)
 dashboard_bp = Blueprint('dashboard', __name__)
 
 FIPE_CACHE_HOURS = 24
+
+# Cache do payload do dashboard por usuário (invalidado em writes de manutenção/veículo)
+_dashboard_cache = TTLCache(default_ttl=int(os.getenv("DASHBOARD_CACHE_TTL_SECONDS", "30")), maxsize=512)
+
+
+def _invalidate_dashboard_cache(user_id):
+    """Invalida o dashboard em cache de um usuário (após editar manutenção/veículo)."""
+    _dashboard_cache.delete(user_id)
 
 
 def _refresh_fipe(vehicle_id, tipo, marca, modelo, ano):
@@ -170,6 +179,10 @@ def get_dashboard_data():
     user_id = get_jwt_identity()
     logger.info(f"Dashboard request from user {user_id}")
 
+    cached = _dashboard_cache.get(user_id)
+    if cached is not None:
+        return jsonify(cached), 200
+
     try:
         # Todos os veículos do usuário (um registro agregado por veículo)
         with get_db() as (cur, conn):
@@ -190,9 +203,11 @@ def get_dashboard_data():
             rows = cur.fetchall()
 
         if not rows:
+            _dashboard_cache.set(user_id, [])
             return jsonify([]), 200
 
         items = [_build_vehicle_dashboard(user_id, row) for row in rows]
+        _dashboard_cache.set(user_id, items)
         return jsonify(items), 200
 
     except Exception as e:
