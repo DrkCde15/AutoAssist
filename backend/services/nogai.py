@@ -274,9 +274,9 @@ def _parse_model_list(raw_value, default_models):
 GROQ_PRIMARY_MODEL = (os.getenv("GROQ_PRIMARY_MODEL") or os.getenv("GROQ_MODEL") or DEFAULT_TEXT_MODEL).strip()
 MODELS_TO_TRY = _parse_model_list(os.getenv("GROQ_FALLBACK_MODELS"), DEFAULT_FALLBACK_MODELS)
 
-def _cache_key(mensagem: str, historico: list | None) -> str:
+def _cache_key(mensagem: str, historico: list | None, user_id=None) -> str:
     history_tail = json.dumps(historico[-2:] if historico else [], ensure_ascii=False)
-    return f"{mensagem[:200]}|{hash(history_tail)}"
+    return f"{user_id}|{mensagem[:200]}|{hash(history_tail)}"
 
 def _get_cached(key: str):
     entry = _ai_response_cache.get(key)
@@ -293,6 +293,29 @@ def _set_cache(key: str, response: str):
 
 def _is_simple_query(mensagem: str) -> bool:
     return bool(_SIMPLE_GREETINGS.match(mensagem.strip()))
+
+
+_AUTOMOTIVE_TERMS = (
+    "carro", "veiculo", "veiculo", "automovel", "moto", "motocicleta",
+    "caminhao", "caminhonete", "onibus", "frota",
+    "motor", "motorista", "km", "quilometragem", "quilometro",
+    "manutencao", "revisao", "oleo", "lubrificante",
+    "filtro", "pneu", "pneus", "freio", "freios", "pastilha", "disco",
+    "bateria", "correia", "arrefecimento", "radiador", "suspensao",
+    "amortecedor", "troca", "fipe", "multa", "licenciamento", "documento",
+    "mecanico", "oficina", "peca", "pecas", "vistoria",
+    "airbag", "embreagem", "cambio", "gasolina", "etanol",
+    "diesel", "abastecer", "tanque", "recall", "garantia", "seguro",
+    "automativo", "automovel",
+)
+
+
+def _is_automotive_query(mensagem: str) -> bool:
+    """Verifica se a mensagem tem relacao com assuntos automotivos."""
+    import unicodedata
+    normalized = unicodedata.normalize("NFKD", (mensagem or "").lower())
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return any(term in normalized for term in _AUTOMOTIVE_TERMS)
 
 def transformar_historico(historico_mysql):
     """Converte o histórico do MySQL para o formato OpenAI-compatible, truncando para economizar tokens."""
@@ -434,6 +457,66 @@ def _send_chat_with_fallback(*, prompt, system_instruction, history, primary_mod
         log_context=log_context,
     )
 
+def _build_maintenance_context(user_id):
+    """Monta um resumo textual do histórico de manutenções do usuário para o contexto da IA."""
+    try:
+        from datetime import date
+        from routes.database import get_db
+        from services.maintenance_service import _status_from_remaining
+
+        with get_db() as (cur, conn):
+            cur.execute(
+                """SELECT mh.maintenance_label, mh.maintenance_type,
+                          mh.service_date, mh.service_km, mh.cost, mh.currency,
+                          mh.next_due_date,
+                          v.marca, v.modelo
+                   FROM maintenance_history mh
+                   LEFT JOIN veiculos v ON v.id = mh.vehicle_id
+                   WHERE mh.user_id = %s
+                   ORDER BY mh.service_date DESC, mh.created_at DESC
+                   LIMIT 15""",
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        if not rows:
+            return ""
+
+        lines = []
+        for r in rows:
+            label = r.get("maintenance_label") or r.get("maintenance_type") or "Manutencao"
+            svc = r.get("service_date")
+            svc_str = svc.strftime("%d/%m/%Y") if hasattr(svc, "strftime") else str(svc or "")
+            due = r.get("next_due_date")
+            due_str = due.strftime("%d/%m/%Y") if hasattr(due, "strftime") else (str(due) if due else None)
+            km = r.get("service_km")
+            veh = f"{r.get('marca') or ''} {r.get('modelo') or ''}".strip()
+
+            days_remaining = None
+            if due is not None:
+                try:
+                    due_d = due.date() if hasattr(due, "date") else due
+                    days_remaining = (due_d - date.today()).days
+                except Exception:
+                    days_remaining = None
+            status_label, _ = _status_from_remaining(days_remaining, None)
+
+            partes = [f"- {label}"]
+            if veh:
+                partes.append(f"({veh})")
+            partes.append(f"em {svc_str}")
+            if km is not None:
+                partes.append(f"a {km} km")
+            if due_str:
+                partes.append(f"-> prox. em {due_str} [{status_label}]")
+            lines.append(" ".join(partes))
+
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning("Falha ao montar contexto de manutencao: %s", e)
+        return ""
+
+
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historico: list | None = None) -> str:
     try:
         logger.info(f"NOG Groq: Processando msg do usuário {user_id}")
@@ -450,7 +533,7 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
             historico_mysql = historico
         historico_groq = transformar_historico(historico_mysql)
 
-        cache_key = _cache_key(msg_clean, historico_groq)
+        cache_key = _cache_key(msg_clean, historico_groq, user_id)
         cached = _get_cached(cache_key)
         if cached:
             logger.info(f"Cache hit para usuário {user_id}")
@@ -479,6 +562,13 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
         autoassist_context = (user_data or {}).get("chat_context")
         if autoassist_context:
             user_context += f"\n\n[CONTEXTO AUTOASSIST]\n{autoassist_context}"
+
+        manut_context = _build_maintenance_context(user_id) if _is_automotive_query(msg_clean) else ""
+        if manut_context:
+            user_context += (
+                f"\n\n[CONTEXTO DE MANUTENCAO]: Historico de manutencoes do usuario "
+                f"(mais recentes):\n{manut_context}"
+            )
 
         prompt_final = f"{user_context}\n\nPergunta do usuário: {msg_clean}" if user_context else msg_clean
 
@@ -594,6 +684,7 @@ def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> list[dict]
         logger.error(f"Erro ao gerar links de peças: {e}")
         return []
 
+@lru_cache(maxsize=256)
 def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
     """Preve o intervalo de manutenção com base na descrição."""
     try:

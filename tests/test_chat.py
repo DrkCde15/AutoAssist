@@ -190,7 +190,7 @@ class ChatHelpersTest(unittest.TestCase):
                 }
             })
 
-    @patch("PIL.Image")
+    @patch("PIL.Image", create=True)
     @patch("backend.routes.pages.io.BytesIO")
     def test_parse_chat_attachment_valid_image(self, mock_bytesio, mock_image):
         import base64

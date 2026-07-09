@@ -42,6 +42,128 @@ def _refresh_fipe_sync(vehicle_id, tipo, marca, modelo, ano):
         pass
 
 
+def _get_next_maintenance_type(vehicle_id):
+    """Retorna o tipo de manutenção mais próximo do vencimento do veículo."""
+    try:
+        with get_db() as (cur, conn):
+            cur.execute(
+                "SELECT maintenance_type FROM maintenance_history "
+                "WHERE vehicle_id=%s AND next_due_date IS NOT NULL "
+                "ORDER BY next_due_date ASC LIMIT 1",
+                (vehicle_id,),
+            )
+            row = cur.fetchone()
+            if row and row.get("maintenance_type"):
+                return row["maintenance_type"]
+    except Exception:
+        pass
+    return "troca_oleo"
+
+
+def _build_vehicle_dashboard(user_id, row):
+    """Processa os dados de um único veículo para o dashboard."""
+    vehicle = {
+        "id": row["id"],
+        "tipo": row["tipo"],
+        "marca": row["marca"],
+        "modelo": row["modelo"],
+        "ano_fabricacao": row["ano_fabricacao"],
+        "quilometragem": row["quilometragem"],
+    }
+
+    # FIPE — usa cache se <24h, dispara refresh em background se stale
+    fipe_updated = row.get("fipe_updated_at")
+    fipe_stale = (
+        fipe_updated is None
+        or (datetime.now() - fipe_updated) > timedelta(hours=FIPE_CACHE_HOURS)
+    )
+
+    if fipe_stale:
+        _refresh_fipe(row["id"], row["tipo"], row["marca"], row["modelo"], row["ano_fabricacao"])
+
+    if row.get("fipe_valor"):
+        fipe_info = {
+            "Valor": row["fipe_valor"],
+            "MesReferencia": row.get("fipe_mes_referencia", "---"),
+        }
+    else:
+        fipe_info = {"Valor": "Não listado na Tabela FIPE", "MesReferencia": "---"}
+
+    # Predição — usa o tipo de manutenção mais próximo do vencimento
+    maint_type = _get_next_maintenance_type(row["id"])
+    try:
+        pred = _predictor().predict_next(
+            vehicle_id=row["id"],
+            maintenance_type=maint_type,
+            kilometers_actual=row.get("quilometragem"),
+        ) or {}
+    except Exception as e:
+        logger.warning("Prediction unavailable: %s", e)
+        pred = {}
+
+    if pred:
+        try:
+            from services.maintenance_service import MAINTENANCE_RULES
+            pred["maintenance_label"] = MAINTENANCE_RULES.get(maint_type, {}).get("label", maint_type)
+        except Exception:
+            pred["maintenance_label"] = maint_type
+
+    # Health score
+    current_year = datetime.now().year
+    ano_fab = row.get("ano_fabricacao") or current_year
+    km = row.get("quilometragem") or 0
+
+    health_score = max(20, min(100, int(
+        100 - (current_year - ano_fab) * 2 - (km // 10000) * 1.5
+    )))
+
+    if health_score < 50:
+        alertas = [{"item": "Atenção Geral", "msg": "Seu veículo tem alta quilometragem/idade. Revise com frequência.", "status": "Crítico"}]
+    elif health_score < 80:
+        alertas = [{"item": "Uso Moderado", "msg": "Bom estado, mas fique atento aos prazos de revisão.", "status": "Atenção"}]
+    else:
+        alertas = [{"item": "Ótimo Estado", "msg": "Veículo novo ou pouco rodado. Continue assim!", "status": "OK"}]
+
+    ultima = row.get("ultima_manutencao")
+    data_ultima = ultima.strftime('%d/%m/%Y') if ultima else "Nenhuma"
+
+    # Health score mantido no histórico no máximo 1x/dia por veículo
+    _record_health_score(user_id, row["id"], health_score)
+
+    return {
+        "veiculo": vehicle,
+        "fipe": fipe_info,
+        "saude": alertas,
+        "predicao": pred,
+        "estatisticas_extras": {
+            "manutencoes_realizadas": row.get("qtde_manutencao", 0),
+            "data_ultima_manutencao": data_ultima,
+            "chats_realizados": row.get("qtde_chats", 0),
+            "health_score": health_score,
+        },
+    }
+
+
+def _record_health_score(user_id, vehicle_id, score):
+    """Insere o health score no histórico apenas 1x por dia por veículo."""
+    try:
+        with get_db() as (cur, conn):
+            cur.execute(
+                "SELECT 1 FROM health_score_history "
+                "WHERE user_id=%s AND vehicle_id=%s AND DATE(recorded_at)=CURDATE() LIMIT 1",
+                (user_id, vehicle_id),
+            )
+            if cur.fetchone():
+                return
+            cur.execute(
+                "INSERT INTO health_score_history (user_id, vehicle_id, score) VALUES (%s, %s, %s)",
+                (user_id, vehicle_id, score),
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+
 @dashboard_bp.get('/dashboard')
 @jwt_required()
 def get_dashboard_data():
@@ -49,7 +171,7 @@ def get_dashboard_data():
     logger.info(f"Dashboard request from user {user_id}")
 
     try:
-        # 1️⃣  Tudo em uma única query com JOIN
+        # Todos os veículos do usuário (um registro agregado por veículo)
         with get_db() as (cur, conn):
             cur.execute(
                 """SELECT v.id, v.tipo, v.marca, v.modelo,
@@ -62,95 +184,16 @@ def get_dashboard_data():
                    LEFT JOIN maintenance_history mh ON mh.vehicle_id=v.id
                    WHERE v.user_id=%s
                    GROUP BY v.id
-                   ORDER BY v.id LIMIT 1""",
+                   ORDER BY v.id""",
                 (user_id, user_id),
             )
-            row = cur.fetchone()
+            rows = cur.fetchall()
 
-        if not row:
+        if not rows:
             return jsonify([]), 200
 
-        vehicle = {
-            "id": row["id"],
-            "tipo": row["tipo"],
-            "marca": row["marca"],
-            "modelo": row["modelo"],
-            "ano_fabricacao": row["ano_fabricacao"],
-            "quilometragem": row["quilometragem"],
-        }
-
-        # 2️⃣  FIPE — usa cache se <24h, dispara refresh em background se stale
-        fipe_updated = row.get("fipe_updated_at")
-        fipe_stale = (
-            fipe_updated is None
-            or (datetime.now() - fipe_updated) > timedelta(hours=FIPE_CACHE_HOURS)
-        )
-
-        if fipe_stale:
-            _refresh_fipe(row["id"], row["tipo"], row["marca"], row["modelo"], row["ano_fabricacao"])
-
-        if row.get("fipe_valor"):
-            fipe_info = {
-                "Valor": row["fipe_valor"],
-                "MesReferencia": row.get("fipe_mes_referencia", "---"),
-            }
-        else:
-            fipe_info = {"Valor": "Não listado na Tabela FIPE", "MesReferencia": "---"}
-
-        # 3️⃣  Predição
-        try:
-            pred = _predictor().predict_next(
-                vehicle_id=row["id"],
-                maintenance_type="troca_oleo",
-                kilometers_actual=row.get("quilometragem"),
-            ) or {}
-        except Exception as e:
-            logger.warning("Prediction unavailable: %s", e)
-            pred = {}
-
-        # 4️⃣  Health score e resposta
-        current_year = datetime.now().year
-        ano_fab = row.get("ano_fabricacao") or current_year
-        km = row.get("quilometragem") or 0
-
-        health_score = max(20, min(100, int(
-            100 - (current_year - ano_fab) * 2 - (km // 10000) * 1.5
-        )))
-
-        if health_score < 50:
-            alertas = [{"item": "Atenção Geral", "msg": "Seu veículo tem alta quilometragem/idade. Revise com frequência.", "status": "Crítico"}]
-        elif health_score < 80:
-            alertas = [{"item": "Uso Moderado", "msg": "Bom estado, mas fique atento aos prazos de revisão.", "status": "Atenção"}]
-        else:
-            alertas = [{"item": "Ótimo Estado", "msg": "Veículo novo ou pouco rodado. Continue assim!", "status": "OK"}]
-
-        ultima = row.get("ultima_manutencao")
-        data_ultima = ultima.strftime('%d/%m/%Y') if ultima else "Nenhuma"
-
-        # Salva health score no histórico (async via RQ ou direto)
-        try:
-            from routes.database import get_db as _get_db
-            with _get_db() as (cur, conn):
-                cur.execute(
-                    "INSERT INTO health_score_history (user_id, vehicle_id, score) VALUES (%s, %s, %s)",
-                    (user_id, row["id"], health_score),
-                )
-                conn.commit()
-        except Exception:
-            pass
-
-        return jsonify([{
-            "veiculo": vehicle,
-            "fipe": fipe_info,
-            "saude": alertas,
-            "predicao": pred,
-            "estatisticas_extras": {
-                "manutencoes_realizadas": row.get("qtde_manutencao", 0),
-                "data_ultima_manutencao": data_ultima,
-                "chats_realizados": row.get("qtde_chats", 0),
-                "health_score": health_score,
-            },
-        }]), 200
+        items = [_build_vehicle_dashboard(user_id, row) for row in rows]
+        return jsonify(items), 200
 
     except Exception as e:
         logger.error(f"Erro ao gerar dados do dashboard: {e}", exc_info=True)

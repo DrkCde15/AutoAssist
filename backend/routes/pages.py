@@ -114,19 +114,38 @@ def ensure_premium_user(user):
         return None
     return jsonify(error=PREMIUM_ONLY_ERROR), 403
 
+def _get_fx_rates():
+    """Taxas de câmbio para normalização de custos em BRL (configurável via env)."""
+    return {
+        "BRL": 1.0,
+        "USD": float(os.getenv("USD_BRL_RATE", "5.0")),
+        "EUR": float(os.getenv("EUR_BRL_RATE", "5.5")),
+    }
+
+
+def _normalize_cost_to_brl(cost, currency):
+    if cost is None:
+        return 0.0
+    try:
+        value = float(cost)
+    except (TypeError, ValueError):
+        return 0.0
+    rate = _get_fx_rates().get((currency or "BRL").upper(), 1.0)
+    return value * rate
+
+
 def build_spending_summary(history_rows):
     total_cost = 0.0
     by_type = {}
 
     for row in history_rows:
-        cost = row.get("cost")
-        if cost is None:
+        cost_brl = _normalize_cost_to_brl(row.get("cost"), row.get("currency"))
+        if cost_brl <= 0:
             continue
 
-        value = float(cost)
-        total_cost += value
+        total_cost += cost_brl
         label = row.get("maintenance_label") or "Manutencao geral"
-        by_type[label] = by_type.get(label, 0.0) + value
+        by_type[label] = by_type.get(label, 0.0) + cost_brl
 
     gastos_por_tipo = [
         {"tipo": label, "valor": round(amount, 2)}
@@ -136,6 +155,7 @@ def build_spending_summary(history_rows):
         "total_gastos": round(total_cost, 2),
         "quantidade_registros": len(history_rows),
         "gastos_por_tipo": gastos_por_tipo,
+        "moeda": "BRL",
     }
 
 
@@ -1317,6 +1337,59 @@ def delete_veiculo(v_id):
         logger.error(f"Erro ao excluir veiculo: {e}")
         return jsonify(error="Erro interno"), 500
 
+def _predict_interval(vehicle_id, maintenance_type, description, veiculo_str, service_km):
+    """Estima o próximo intervalo de manutenção.
+
+    Usa o preditor leve (predictive_maintenance) como fonte principal e recorre
+    à IA Groq apenas quando o preditor não consegue gerar um intervalo útil.
+    """
+    interval_days = None
+    interval_km = None
+    justificativa = None
+    enhanced = False
+
+    try:
+        pred = _predictor().predict_next(
+            vehicle_id=vehicle_id,
+            maintenance_type=maintenance_type or "troca_oleo",
+            kilometers_actual=service_km,
+        )
+        if pred:
+            pred_km = pred.get("predicted_next_km")
+            cur_km = int(service_km or 0)
+            km_diff = (pred_km - cur_km) if pred_km is not None else None
+            pred_days = None
+            try:
+                pred_days = (date.fromisoformat(pred["predicted_next_date"]) - date.today()).days
+            except Exception:
+                pred_days = None
+
+            if pred_days and pred_days > 0 and km_diff and km_diff > 0:
+                interval_days = pred_days
+                interval_km = km_diff
+                enhanced = True
+                justificativa = (
+                    f"Previsao do modelo preditivo "
+                    f"(confianca {round((pred.get('confidence') or 0) * 100)}%)."
+                )
+    except Exception as e:
+        logger.warning("Predictor indisponivel para manutencao: %s", e)
+
+    if interval_days is None and interval_km is None:
+        ai = prever_intervalo_manutencao(description, veiculo_str)
+        interval_days = ai.get("intervalo_dias")
+        interval_km = ai.get("intervalo_km")
+        justificativa = ai.get("justificativa")
+        enhanced = True
+
+    return {
+        "intervalo_dias": interval_days,
+        "intervalo_km": interval_km,
+        "justificativa": justificativa,
+        "ai_enhanced": enhanced,
+    }
+
+
 @pages_bp.route("/api/maintenance/history", methods=["POST"])
 @jwt_required()
 def register_maintenance_history():
@@ -1367,7 +1440,7 @@ def register_maintenance_history():
 
             if parsed.get("interval_days") is None and parsed.get("interval_km") is None:
                 veiculo_str = f"{vehicle.get('marca', '')} {vehicle.get('modelo', '')}".strip() if vehicle else ""
-                ai_previsao = prever_intervalo_manutencao(description, veiculo_str)
+                ai_previsao = _predict_interval(vehicle_id, parsed["maintenance_type"], description, veiculo_str, parsed.get("service_km"))
 
                 if ai_previsao.get("intervalo_dias"):
                     parsed["interval_days"] = ai_previsao["intervalo_dias"]
@@ -1378,7 +1451,7 @@ def register_maintenance_history():
                     if parsed.get("service_km") is not None:
                         parsed["next_due_km"] = parsed["service_km"] + ai_previsao["intervalo_km"]
 
-                parsed["parser_metadata"]["ai_enhanced"] = True
+                parsed["parser_metadata"]["ai_enhanced"] = ai_previsao.get("ai_enhanced", False)
                 parsed["parser_metadata"]["ai_justificativa"] = ai_previsao.get("justificativa")
 
             parsed = apply_manual_overrides(parsed, data, fallback_service_km=fallback_vehicle_km)
@@ -1481,6 +1554,22 @@ def list_maintenance_history():
                 vehicle_filter = " AND mh.vehicle_id = %s"
                 params.append(vehicle_id)
 
+            try:
+                limit = max(1, min(int(request.args.get("limit", 50)), 200))
+                offset = max(0, int(request.args.get("offset", 0)))
+            except (TypeError, ValueError):
+                return jsonify(error="limit/offset invalidos"), 400
+
+            cursor.execute(
+                f"""
+                SELECT COUNT(*) AS total
+                FROM maintenance_history mh
+                WHERE mh.user_id = %s {vehicle_filter}
+                """,
+                tuple(params)
+            )
+            total = cursor.fetchone().get("total") or 0
+
             cursor.execute(
                 f"""
                 SELECT mh.*, v.marca AS vehicle_marca, v.modelo AS vehicle_modelo
@@ -1488,14 +1577,18 @@ def list_maintenance_history():
                 LEFT JOIN veiculos v ON v.id = mh.vehicle_id
                 WHERE mh.user_id = %s {vehicle_filter}
                 ORDER BY mh.service_date DESC, mh.created_at DESC
+                LIMIT %s OFFSET %s
                 """,
-                tuple(params)
+                tuple(params + [limit, offset])
             )
             history_rows = cursor.fetchall()
             serialized = [serialize_maintenance_row(row) for row in history_rows]
 
             return jsonify(
                 historico=serialized,
+                total=total,
+                limit=limit,
+                offset=offset,
                 resumo=build_spending_summary(serialized)
             ), 200
     except Exception as e:
@@ -1547,15 +1640,32 @@ def update_maintenance_history(maintenance_id):
 
             parsed = parse_maintenance_entry(new_description)
             if parsed.get("interval_days") is None and parsed.get("interval_km") is None:
-                veiculo_str = f"{vehicle.get('marca', '')} {vehicle.get('modelo', '')}".strip() if vehicle else ""
-                ai_previsao = prever_intervalo_manutencao(new_description, veiculo_str)
-                if ai_previsao.get("intervalo_dias"):
-                    parsed["interval_days"] = ai_previsao["intervalo_dias"]
-                    parsed["next_due_date"] = parsed["service_date"] + timedelta(days=ai_previsao["intervalo_dias"])
-                if ai_previsao.get("intervalo_km"):
-                    parsed["interval_km"] = ai_previsao["intervalo_km"]
-                    if parsed.get("service_km") is not None:
-                        parsed["next_due_km"] = parsed["service_km"] + ai_previsao["intervalo_km"]
+                description_unchanged = (new_description == current_description)
+                can_reuse = existing.get("interval_days") is not None or existing.get("interval_km") is not None
+
+                if description_unchanged and can_reuse:
+                    # Reaproveita os intervalos anteriores sem re-chamar a IA
+                    parsed["interval_days"] = existing.get("interval_days")
+                    parsed["interval_km"] = existing.get("interval_km")
+                    if existing.get("next_due_date"):
+                        parsed["next_due_date"] = existing.get("next_due_date")
+                    elif existing.get("interval_days") and parsed.get("service_date"):
+                        parsed["next_due_date"] = parsed["service_date"] + timedelta(days=existing["interval_days"])
+                    if parsed.get("service_km") is not None and existing.get("interval_km") is not None:
+                        parsed["next_due_km"] = parsed["service_km"] + existing["interval_km"]
+                    parsed.setdefault("parser_metadata", {})["reused_intervals"] = True
+                else:
+                    veiculo_str = f"{vehicle.get('marca', '')} {vehicle.get('modelo', '')}".strip() if vehicle else ""
+                    ai_previsao = _predict_interval(vehicle_id, parsed["maintenance_type"], new_description, veiculo_str, parsed.get("service_km"))
+                    if ai_previsao.get("intervalo_dias"):
+                        parsed["interval_days"] = ai_previsao["intervalo_dias"]
+                        parsed["next_due_date"] = parsed["service_date"] + timedelta(days=ai_previsao["intervalo_dias"])
+                    if ai_previsao.get("intervalo_km"):
+                        parsed["interval_km"] = ai_previsao["intervalo_km"]
+                        if parsed.get("service_km") is not None:
+                            parsed["next_due_km"] = parsed["service_km"] + ai_previsao["intervalo_km"]
+                    parsed["parser_metadata"]["ai_enhanced"] = ai_previsao.get("ai_enhanced", False)
+                    parsed["parser_metadata"]["ai_justificativa"] = ai_previsao.get("justificativa")
 
             parsed = apply_manual_overrides(parsed, data, fallback_service_km=fallback_vehicle_km)
             parser_metadata = dict(parsed.get("parser_metadata") or {})
