@@ -66,7 +66,9 @@ def chat_websocket(ws):
                 break
             data = json.loads(raw)
             message = data.get("message", "").strip()
-            if not message:
+            attachment_raw = data.get("attachment")
+            image_b64 = data.get("image")
+            if not message and not attachment_raw and not image_b64:
                 ws.send(json.dumps({"error": "Mensagem vazia"}))
                 continue
 
@@ -75,38 +77,63 @@ def chat_websocket(ws):
             ws.send(json.dumps({"type": "status", "message": "Processando..."}))
 
             user_data = _load_user_data(user_id) if user_id else None
-            response = gerar_resposta(message, user_id or 0, user_data=user_data)
 
-            termos = gerar_termos_busca(message)
-            videos = []
-            links = []
-            if termos.get("youtube"):
+            attachment = None
+            if attachment_raw:
                 try:
-                    videos = buscar_videos_youtube(termos["youtube"])
+                    from routes.pages import parse_chat_attachment
+                    attachment = parse_chat_attachment({"attachment": attachment_raw})
+                except ValueError as exc:
+                    ws.send(json.dumps({"error": str(exc)}))
+                    continue
                 except Exception:
-                    pass
-            if termos.get("loja"):
-                try:
-                    scraper = WebScraper()
-                    lojas = scraper.search_car_stores(termos["loja"])
-                    for loja in lojas:
-                        loja.setdefault("tipo", "veiculo")
-                        loja.setdefault("icon", "fas fa-car")
-                    links.extend(lojas)
-                except Exception:
-                    pass
-            if termos.get("pecas"):
-                try:
-                    scraper = WebScraper()
-                    pecas = scraper.search_car_parts(termos["pecas"])
-                    for peca in pecas:
-                        peca.setdefault("tipo", "peca")
-                        peca.setdefault("icon", "fas fa-tools")
-                    links.extend(pecas)
-                except Exception:
-                    pass
+                    ws.send(json.dumps({"error": "Arquivo anexado inválido."}))
+                    continue
 
-            topic = termos.get("youtube") or termos.get("loja") or termos.get("pecas") or "Consultoria Geral"
+            if attachment or image_b64:
+                # Reutiliza o mesmo caminho da rota HTTP /api/chat (visão/attachment).
+                from routes.pages import generate_assistant_payload
+                response, videos, links, topic = generate_assistant_payload(
+                    message,
+                    user_id or 0,
+                    user_data or {},
+                    [],
+                    image_b64=image_b64,
+                    attachment=attachment,
+                )
+            else:
+                response = gerar_resposta(message, user_id or 0, user_data=user_data)
+
+                termos = gerar_termos_busca(message)
+                videos = []
+                links = []
+                if termos.get("youtube"):
+                    try:
+                        videos = buscar_videos_youtube(termos["youtube"])
+                    except Exception:
+                        pass
+                if termos.get("loja"):
+                    try:
+                        scraper = WebScraper()
+                        lojas = scraper.search_car_stores(termos["loja"])
+                        for loja in lojas:
+                            loja.setdefault("tipo", "veiculo")
+                            loja.setdefault("icon", "fas fa-car")
+                        links.extend(lojas)
+                    except Exception:
+                        pass
+                if termos.get("pecas"):
+                    try:
+                        scraper = WebScraper()
+                        pecas = scraper.search_car_parts(termos["pecas"])
+                        for peca in pecas:
+                            peca.setdefault("tipo", "peca")
+                            peca.setdefault("icon", "fas fa-tools")
+                        links.extend(pecas)
+                    except Exception:
+                        pass
+
+                topic = termos.get("youtube") or termos.get("loja") or termos.get("pecas") or "Consultoria Geral"
             now_iso = datetime.now().isoformat()
 
             chat_id = _save_chat(user_id, sess, message, response, videos, links, topic)

@@ -239,7 +239,7 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         logger.error(f"Erro ao buscar FIPE: {e}")
         return None
 
-from services.groq_client import build_chat_messages, chat_completion, utility_model
+from services.groq_client import build_chat_messages, chat_completion, utility_model, utility_fallback_models
 
 DEFAULT_TEXT_MODEL = "groq/compound-mini"
 DEFAULT_FALLBACK_MODELS = ("groq/compound",)
@@ -667,7 +667,7 @@ def gerar_termos_busca(mensagem: str, historico: list = None) -> dict:
         response = _generate_content_with_fallback(
             contents=prompt,
             primary_model=utility_model(),
-            fallback_models=(),
+            fallback_models=utility_fallback_models(),
             response_format={"type": "json_object"},
             temperature=0.2,
             log_context="Extracao de termos",
@@ -737,7 +737,7 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
         response = _generate_content_with_fallback(
             contents=prompt,
             primary_model=utility_model(),
-            fallback_models=(),
+            fallback_models=utility_fallback_models(),
             response_format={"type": "json_object"},
             temperature=0.2,
             log_context="Previsao manutencao",

@@ -60,3 +60,4 @@ frontend/test-results/
 
 .openclaude-profile.json
 *.pem
+secure_reports/

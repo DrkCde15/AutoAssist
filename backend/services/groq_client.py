@@ -10,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_PRIMARY_MODEL = "groq/compound-mini"
-DEFAULT_UTILITY_MODEL = "gpt-oss-20b"
+DEFAULT_UTILITY_MODEL = "openai/gpt-oss-20b"
 DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 DEFAULT_FALLBACK_MODELS = ("groq/compound",)
+DEFAULT_UTILITY_FALLBACK_MODELS = ("groq/compound",)
 DEFAULT_VISION_FALLBACK_MODELS = ()
 TEXT_ONLY_MODELS = {"groq/compound", "groq/compound-mini"}
 RETRYABLE_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504}
@@ -118,6 +119,13 @@ def vision_model():
 
 def utility_model():
     return _settings()["utility_model"]
+
+
+def utility_fallback_models():
+    return _parse_model_list(
+        os.getenv("GROQ_UTILITY_FALLBACK_MODELS"),
+        DEFAULT_UTILITY_FALLBACK_MODELS,
+    )
 
 
 def vision_fallback_models():

@@ -309,15 +309,20 @@ def parse_chat_attachment(data):
     data_url_type, file_data = decode_attachment_data(raw_attachment.get("data") or "")
     mime_type = infer_attachment_mime_type(filename, raw_attachment.get("type"), data_url_type)
 
-    # Validacao MIME contra extensao
-    mime_to_ext = {
-        "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
-        "image/gif": "gif", "application/pdf": "pdf",
-        "text/plain": "txt", "text/csv": "csv", "text/markdown": "md",
-        "application/json": "json",
+    # Validacao MIME contra extensao (um MIME pode ter varias extensoes validas)
+    mime_to_exts = {
+        "image/jpeg": {"jpg", "jpeg"},
+        "image/png": {"png"},
+        "image/webp": {"webp"},
+        "image/gif": {"gif"},
+        "application/pdf": {"pdf"},
+        "text/plain": {"txt"},
+        "text/csv": {"csv"},
+        "text/markdown": {"md", "markdown"},
+        "application/json": {"json"},
     }
-    expected_ext = mime_to_ext.get(mime_type)
-    if expected_ext and ext and ext != expected_ext:
+    expected_exts = mime_to_exts.get(mime_type)
+    if expected_exts and ext and ext not in expected_exts:
         logger.warning(f"MIME mismatch: {mime_type} vs extensao .{ext}")
 
     if len(file_data) > MAX_ATTACHMENT_BYTES:
