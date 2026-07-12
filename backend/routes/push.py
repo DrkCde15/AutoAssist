@@ -36,7 +36,7 @@ def get_vapid_public_raw() -> str | None:
 
 def get_vapid_claims():
     return {
-        "sub": "mailto:autoassist45@gmail.com",
+        "sub": f"mailto:{os.getenv('EMAIL_REMETENTE', 'autoassist@example.com')}",
     }
 
 

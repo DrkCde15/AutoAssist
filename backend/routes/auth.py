@@ -36,8 +36,10 @@ def _get_frontend_base_url_for_email() -> str:
         frontend_env = (
             os.getenv("URL_PROD")
             or os.getenv("URL_DEV")
-            or "https://autoassist-l9lr.onrender.com/"
+            or ""
         ).strip()
+    if not frontend_env:
+        return "/"
     return frontend_env if frontend_env.endswith("/") else f"{frontend_env}/"
 
 def _build_reset_password_email_html(reset_link: str) -> str:
@@ -447,6 +449,9 @@ def cadastro():
 @limiter.limit("10 per minute")
 def login():
     if request.args.get("demo") == "1":
+        _demo_enabled = os.getenv("DEMO_LOGIN_ENABLED", "0")
+        if _demo_enabled.strip().lower() not in {"1", "true", "yes", "on"}:
+            return jsonify(error="Modo demo desativado"), 403
         from services.demo_mode import demo_user, demo_vehicle
         user_data = demo_user()
         vehicle_data = demo_vehicle()

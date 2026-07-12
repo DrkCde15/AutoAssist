@@ -1,0 +1,76 @@
+# Blueprint de infraestrutura para o Render.
+# Deploy: conecte o repo no Render e selecione este arquivo, ou use:
+#   render blueprint launch
+#
+# O docker-compose.yml e' apenas para desenvolvimento local.
+
+services:
+  # 1) Web API (Flask + gunicorn)
+  - type: web
+    name: autoassist-backend
+    runtime: python
+    plan: starter
+    region: virginia
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: REDIS_URL
+        sync: false
+      - key: RATELIMIT_STORAGE_URI
+        sync: false
+      - key: HEALTHCHECK_EXTERNAL_CHECKS
+        value: "1"
+      - key: GROQ_CACHE_TTL_SECONDS
+        value: "3600"
+      - key: GROQ_VISION_CACHE_TTL_SECONDS
+        value: "86400"
+      - key: GROQ_PDF_CACHE_TTL_SECONDS
+        value: "86400"
+      # Demais variaveis sensiveis (DB_*, API_GROQ, JWT_SECRET_KEY, etc.)
+      # configure no dashboard ou via um Environment Group e referencie aqui.
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: API_GROQ
+        sync: false
+
+  # 2) Worker RQ (processa filas em background)
+  - type: worker
+    name: autoassist-worker
+    runtime: python
+    plan: starter
+    region: virginia
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python worker.py
+    envVars:
+      - key: REDIS_URL
+        sync: false
+      - key: RATELIMIT_STORAGE_URI
+        sync: false
+      - key: HEALTHCHECK_EXTERNAL_CHECKS
+        value: "1"
+      - key: GROQ_CACHE_TTL_SECONDS
+        value: "3600"
+      - key: GROQ_VISION_CACHE_TTL_SECONDS
+        value: "86400"
+      - key: GROQ_PDF_CACHE_TTL_SECONDS
+        value: "86400"
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+
+# 3) Redis: utiliza o Upstash (externo, free) via REDIS_URL.
+#    Nao ha add-on de Redis do Render neste blueprint.
+#    Defina REDIS_URL (ex.: rediss://default:<senha>@<host>.upstash.io:6379)
+#    e RATELIMIT_STORAGE_URI com o mesmo valor no dashboard do Render.

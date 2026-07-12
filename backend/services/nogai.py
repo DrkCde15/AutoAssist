@@ -9,7 +9,7 @@ import json
 import re
 from functools import lru_cache
 from types import SimpleNamespace
-from utils.cache import TTLCache
+from utils.cache import TTLCache, cache_get_json, cache_set_json, make_cache_key
 from services.web_scraping import WebScraper
 
 load_dotenv()
@@ -460,6 +460,20 @@ def _generate_content_with_fallback(
     response_format=None,
     temperature=None,
 ):
+    cache_key = make_cache_key(
+        "groq:gen",
+        contents,
+        primary_model or "",
+        fallback_models or "",
+        response_format or "",
+        "" if temperature is None else temperature,
+    )
+    cached = cache_get_json(cache_key)
+    if cached is not None:
+        logger.info("CACHE HIT groq:gen %s", cache_key)
+        return SimpleNamespace(text=cached)
+    logger.info("CACHE MISS groq:gen %s", cache_key)
+
     text = chat_completion(
         build_chat_messages("", contents, []),
         primary_model=primary_model,
@@ -468,6 +482,7 @@ def _generate_content_with_fallback(
         temperature=temperature,
         log_context=log_context,
     )
+    cache_set_json(cache_key, text, ttl=int(os.getenv("GROQ_CACHE_TTL_SECONDS", "3600")))
     return SimpleNamespace(text=text)
 
 
@@ -719,14 +734,8 @@ def gerar_termo_busca_pecas(mensagem: str, historico: list = None) -> list[dict]
         logger.error(f"Erro ao gerar links de peças: {e}")
         return []
 
-_prever_cache = TTLCache(default_ttl=3600, maxsize=512)
-
 def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
     """Preve o intervalo de manutenção com base na descrição."""
-    key = (descricao, veiculo_info)
-    cached = _prever_cache.get(key)
-    if cached is not None:
-        return cached
     try:
         prompt = f"""
         Especialista automotivo: preveja o próximo retorno (dias e km).
@@ -748,5 +757,4 @@ def prever_intervalo_manutencao(descricao: str, veiculo_info: str = "") -> dict:
             result = {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Erro ao processar resposta da IA"}
     except Exception:
         result = {"intervalo_dias": None, "intervalo_km": None, "justificativa": "Falha na análise"}
-    _prever_cache.set(key, result)
     return result

@@ -1,9 +1,11 @@
 import base64
 import logging
+import os
 
 from dotenv import load_dotenv
 
 from services.groq_client import chat_completion, vision_fallback_models, vision_model
+from utils.cache import cache_get_json, cache_set_json, make_cache_key
 
 load_dotenv()
 
@@ -28,16 +30,29 @@ Seja didático, use negrito para termos técnicos e proteja o comprador.
 
 def analisar_imagem(image_b64: str, pergunta: str | None = None) -> str:
     try:
-        logger.info("Groq Vision: analisando imagem.")
         data_url = _normalize_image_data_url(image_b64)
 
-        return chat_completion(
+        cache_key = make_cache_key("groq:vision", image_b64, pergunta or "", vision_model())
+        cached = cache_get_json(cache_key)
+        if cached is not None:
+            logger.info("CACHE HIT groq:vision %s", cache_key)
+            return cached
+        logger.info("Groq Vision: analisando imagem.")
+        logger.info("CACHE MISS groq:vision %s", cache_key)
+
+        result = chat_completion(
             build_vision_messages(data_url, pergunta),
             primary_model=vision_model(),
             fallback_models=vision_fallback_models(),
             temperature=0.2,
             log_context="Groq Vision",
         )
+        cache_set_json(
+            cache_key,
+            result,
+            ttl=int(os.getenv("GROQ_VISION_CACHE_TTL_SECONDS", "86400")),
+        )
+        return result
     except Exception as exc:
         logger.error("Erro na análise de visão Groq: %s", exc, exc_info=True)
         return "❌ O NOG não conseguiu analisar esta imagem no momento."

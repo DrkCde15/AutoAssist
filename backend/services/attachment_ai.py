@@ -6,6 +6,7 @@ import re
 
 from services.groq_client import GroqHTTPError, build_chat_messages, chat_completion, utility_model
 from services.vision_ai import analisar_imagem
+from utils.cache import cache_get_json, cache_set_json, make_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +36,29 @@ def analisar_pdf(file_data: bytes, filename: str, pergunta: str | None = None) -
     if not text:
         return "Não consegui extrair texto deste PDF. Tente enviar um PDF com texto selecionável ou um arquivo TXT."
 
+    cache_key = make_cache_key("groq:pdf", filename, text, pergunta or "")
+    cached = cache_get_json(cache_key)
+    if cached is not None:
+        logger.info("CACHE HIT groq:pdf %s", cache_key)
+        return cached
+    logger.info("CACHE MISS groq:pdf %s", cache_key)
+
     for text_limit in PDF_TEXT_LIMITS:
         prompt = build_pdf_prompt(filename, text[:text_limit], pergunta, was_truncated=len(text) > text_limit)
         try:
-            return chat_completion(
+            result = chat_completion(
                 build_chat_messages("Você é o NOG, especialista automotivo do AutoAssist.", prompt, []),
                 primary_model=utility_model(),
                 fallback_models=(),
                 temperature=0.2,
                 log_context=f"Groq PDF ({text_limit} chars)",
             )
+            cache_set_json(
+                cache_key,
+                result,
+                ttl=int(os.getenv("GROQ_PDF_CACHE_TTL_SECONDS", "86400")),
+            )
+            return result
         except GroqHTTPError as exc:
             if exc.status_code == 413:
                 logger.warning("PDF excedeu o limite da Groq com %s caracteres. Reduzindo trecho.", text_limit)

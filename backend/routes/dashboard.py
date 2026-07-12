@@ -6,15 +6,16 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from routes.database import get_db
 from services.nogai import get_fipe_value
 from utils.async_task import _predictor
-from utils.cache import TTLCache
+from utils.cache import SharedCache
 
 logger = logging.getLogger(__name__)
 dashboard_bp = Blueprint('dashboard', __name__)
 
 FIPE_CACHE_HOURS = 24
 
-# Cache do payload do dashboard por usuário (invalidado em writes de manutenção/veículo)
-_dashboard_cache = TTLCache(default_ttl=int(os.getenv("DASHBOARD_CACHE_TTL_SECONDS", "30")), maxsize=512)
+# Cache do payload do dashboard por usuário (invalidado em writes de manutenção/veículo).
+# Usa Redis quando disponível, com fallback para cache em memória por processo.
+_dashboard_cache = SharedCache("dashboard", ttl=int(os.getenv("DASHBOARD_CACHE_TTL_SECONDS", "30")), maxsize=512)
 
 
 def _invalidate_dashboard_cache(user_id):
@@ -51,13 +52,28 @@ def _refresh_fipe_sync(vehicle_id, tipo, marca, modelo, ano):
         pass
 
 
-def _compute_health_score(row):
+def _compute_health_score(row, pred=None):
     current_year = datetime.now().year
     ano_fab = row.get("ano_fabricacao") or current_year
     km = row.get("quilometragem") or 0
-    return max(20, min(100, int(
+    score = max(20, min(100, int(
         100 - (current_year - ano_fab) * 2 - (km // 10000) * 1.5
     )))
+    # Ajuste preditivo: penaliza se a próxima manutenção prevista está próxima/atrasada
+    if pred:
+        pred_date = pred.get("predicted_next_date")
+        if pred_date:
+            try:
+                due = datetime.strptime(pred_date, "%Y-%m-%d").date()
+                days = (due - date.today()).days
+                if days < 0:
+                    score -= 20
+                elif days <= 30:
+                    score -= int(15 * (1 - days / 30))
+                score = max(1, min(100, score))
+            except Exception:
+                pass
+    return score
 
 
 def _is_today(dt):
@@ -252,7 +268,7 @@ def get_dashboard_data():
         pending_health = []
         for row in rows:
             vid = row["id"]
-            health_score = _compute_health_score(row)
+            health_score = _compute_health_score(row, predictions.get(vid))
             items.append(_build_vehicle_dashboard(row, health_score, predictions.get(vid)))
             if not _is_today(health_last.get(vid)):
                 pending_health.append((user_id, vid, health_score))

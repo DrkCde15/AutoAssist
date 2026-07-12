@@ -57,7 +57,7 @@ def _frontend_base_url() -> str:
         os.getenv(env_key)
         or os.getenv("URL_PROD")
         or os.getenv("URL_DEV")
-        or "https://autoassist-l9lr.onrender.com/"
+        or ""
     ).strip()
     return base if base.endswith("/") else f"{base}/"
 

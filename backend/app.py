@@ -85,6 +85,22 @@ def is_localhost():
     except Exception:
         return False
 
+
+def _env_frontend_origin() -> str:
+    """Origem do frontend conforme ambiente (sem barra final)."""
+    raw = (os.getenv("URL_PROD") or os.getenv("URL_DEV") or "").strip().rstrip("/")
+    return raw
+
+
+def _env_ws_origin() -> str | None:
+    """Origem WebSocket derivada de URL_PROD/URL_DEV (wss:// ou ws://)."""
+    url = _env_frontend_origin()
+    if url.startswith("https://"):
+        return "wss://" + url[len("https://"):]
+    if url.startswith("http://"):
+        return "ws://" + url[len("http://"):]
+    return None
+
 csp = {
     'default-src': "'self'",
     'script-src': [
@@ -92,8 +108,7 @@ csp = {
         "https://cdnjs.cloudflare.com",
         "https://cdn.jsdelivr.net",
         "'unsafe-inline'",
-        "'unsafe-eval'" 
-    ],
+    ] + (["'unsafe-eval'"] if os.getenv("CSP_ALLOW_UNSAFE_EVAL", "0").strip().lower() in {"1", "true", "yes", "on"} else []),
     'style-src': [
         "'self'",
         "https://cdnjs.cloudflare.com",
@@ -128,8 +143,8 @@ csp = {
         "http://localhost:5000",
         "http://127.0.0.1:5000",
         "ws://localhost:5000",
-        "wss://autoassist-l9lr.onrender.com"
-    ]
+        "ws://127.0.0.1:5000",
+    ] + ([_env_ws_origin()] if _env_ws_origin() else [])
 }
 
 # Configuração dinâmica para não forçar HTTPS em localhost
@@ -180,13 +195,15 @@ jwt = JWTManager(app)
 
 # [SEGURANCA] CORS
 base_allowed_origins = [
-    "https://autoassist-l9lr.onrender.com",
     "http://localhost:5000",
     "http://127.0.0.1:5000",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:8501",
 ]
+env_frontend = _env_frontend_origin()
+if env_frontend:
+    base_allowed_origins.append(env_frontend)
 
 extra_origins_raw = (os.getenv("CORS_ALLOW_ORIGINS") or "").strip()
 extra_allowed_origins = [item.strip() for item in extra_origins_raw.split(",") if item.strip()]
@@ -198,7 +215,6 @@ allowed_headers = [
     "Authorization",
     "X-Requested-With",
     "X-AutoAssist-Guest-Id",
-    "X-Cron-Secret",
     "X-CSRF-TOKEN",
     "X-CSRF-Token",
 ]
@@ -332,7 +348,7 @@ SWAGGER_SPEC = {
         "description": "API do AutoAssist - Ecossistema automotivo com IA. Consulte os endpoints para chat, manutenção preditiva, FIPE, pagamentos e mais.",
     },
     "servers": [
-        {"url": "https://autoassist-l9lr.onrender.com", "description": "Producao"},
+        {"url": _env_frontend_origin() or "http://localhost:5000", "description": "Producao"},
         {"url": "http://localhost:5000", "description": "Desenvolvimento"},
     ],
     "components": {
