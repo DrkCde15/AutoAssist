@@ -739,8 +739,6 @@
     <script type="module" src="static/js/car-scrollytelling.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const authLinks = document.getElementById('authLinks');
-            
             if (typeof Auth !== 'undefined' && Auth.ensurePremiumModal) {
                 Auth.ensurePremiumModal();
             }
@@ -749,36 +747,43 @@
                 return;
             }
 
-            // Tenta carregar do cache para resposta instantânea
-            const cachedUser = Auth.getUser();
-            const cachedAlerts = Auth.Cache.get('autoassist_alerts_cache');
-            if (cachedUser) renderDashboard(cachedUser, cachedAlerts || []);
-
-            // Busca dados atualizados sem tirar visitantes da home quando a sessao expirou.
-            try {
-                const userData = await Auth.syncUser({ redirectOnInvalid: false, force: true });
-                if (!userData) {
-                    return;
-                }
-
-                let maintenanceAlerts = [];
-                if (userData.is_premium) {
-                    const alertsRes = await Auth.authenticatedFetch('/api/maintenance/alerts', {
-                        redirectOnInvalid: false
-                    });
-                    if (alertsRes.ok) {
-                        const alertsData = await alertsRes.json();
-                        maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
-                        Auth.Cache.set('autoassist_alerts_cache', maintenanceAlerts);
+            // Não confia em cache para definir o estado de login: valida com o servidor.
+            // Enquanto o backend está em cold start (Render free), mostra aviso e tenta de novo.
+            async function atualizarDashboard() {
+                try {
+                    const userData = await Auth.syncUser({ redirectOnInvalid: false, force: true });
+                    if (!userData) {
+                        // Sessão realmente inválida: mantém a UI de visitante.
+                        return;
                     }
-                } else {
-                    Auth.Cache.set('autoassist_alerts_cache', []);
-                }
 
-                renderDashboard(userData, maintenanceAlerts);
-            } catch (error) {
-                console.warn('Erro ao atualizar dashboard:', error);
+                    let maintenanceAlerts = [];
+                    if (userData.is_premium) {
+                        const alertsRes = await Auth.authenticatedFetch('/api/maintenance/alerts', {
+                            redirectOnInvalid: false
+                        });
+                        if (alertsRes.ok) {
+                            const alertsData = await alertsRes.json();
+                            maintenanceAlerts = Array.isArray(alertsData.alertas) ? alertsData.alertas : [];
+                            Auth.Cache.set('autoassist_alerts_cache', maintenanceAlerts);
+                        }
+                    } else {
+                        Auth.Cache.set('autoassist_alerts_cache', []);
+                    }
+
+                    renderDashboard(userData, maintenanceAlerts);
+                } catch (error) {
+                    if (error && Auth.isNetworkError && Auth.isNetworkError(error)) {
+                        Auth.showBackendBanner();
+                        // Backend ainda inicializando: tenta novamente em alguns segundos.
+                        setTimeout(atualizarDashboard, 5000);
+                        return;
+                    }
+                    console.warn('Erro ao atualizar dashboard:', error);
+                }
             }
+
+            atualizarDashboard();
         });
 
         function renderDashboard(userData, maintenanceAlerts) {

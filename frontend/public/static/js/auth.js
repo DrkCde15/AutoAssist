@@ -34,6 +34,72 @@ const Auth = (() => {
   let refreshPromise = null;
   let invalidSessionHandled = false;
 
+  // ─── Erro de rede / backend indisponível ──────────────────────────────────
+  class AuthNetworkError extends Error {
+    constructor(message) {
+      super(message || "Erro de conexao com o servidor.");
+      this.name = "AuthNetworkError";
+      this.isNetworkError = true;
+    }
+  }
+
+  function isNetworkError(err) {
+    return !!(err && (err.isNetworkError || err.name === "AuthNetworkError"));
+  }
+
+  // ─── Banner de "serviço inicializando" ────────────────────────────────────
+  function showBackendBanner(message) {
+    if (typeof document === "undefined") return;
+    const root = document.body || document.documentElement;
+    if (!root) return;
+    let el = document.getElementById("autoassist-backend-banner");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "autoassist-backend-banner";
+      el.setAttribute("role", "status");
+      el.style.cssText =
+        "position:fixed;top:0;left:0;right:0;z-index:10001;" +
+        "background:linear-gradient(135deg,#f59e0b,#b45309);color:#1a1206;" +
+        "font:600 13px/1.4 Inter,system-ui,sans-serif;text-align:center;" +
+        "padding:10px 16px;box-shadow:0 4px 18px rgba(0,0,0,.35);";
+      root.appendChild(el);
+    }
+    el.textContent = message || "Servico inicializando, aguarde alguns instantes...";
+    el.style.display = "block";
+    ensureRecovery();
+  }
+
+  let _recoveryTimer = null;
+
+  function hideBackendBanner() {
+    const el = document.getElementById("autoassist-backend-banner");
+    if (el) el.style.display = "none";
+    if (_recoveryTimer) {
+      clearInterval(_recoveryTimer);
+      _recoveryTimer = null;
+    }
+  }
+
+  // Quando o backend está em cold start, sonda /health e recarrega a página
+  // automaticamente assim que o serviço voltar, evitando que o usuário fique
+  // preso em uma tela que "não funciona".
+  function ensureRecovery() {
+    if (_recoveryTimer) return;
+    _recoveryTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`${CONFIG.API_URL}/health`, { credentials: "include" });
+        if (res) {
+          clearInterval(_recoveryTimer);
+          _recoveryTimer = null;
+          hideBackendBanner();
+          window.location.reload();
+        }
+      } catch {
+        // Ainda indisponível: continua sondando.
+      }
+    }, 5000);
+  }
+
   // ─── Persistência ─────────────────────────────────────────────────────────
 
   function saveSession(accessToken, refreshToken, user, options = {}) {
@@ -201,10 +267,15 @@ const Auth = (() => {
         localStorage.setItem(KEYS.COOKIE_SESSION, "1");
         localStorage.setItem(KEYS.USER, JSON.stringify(data));
         Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data });
+        hideBackendBanner();
         await syncGuestHistory();
         return data;
       }
     } catch (e) {
+      if (isNetworkError(e)) {
+        showBackendBanner();
+        throw e;
+      }
       console.warn("Falha ao sincronizar usuário:", e);
     }
     return getUser();
@@ -238,7 +309,7 @@ const Auth = (() => {
           await new Promise((r) => setTimeout(r, delay));
           return doRefresh(attempt + 1);
         }
-        throw netErr;
+        throw new AuthNetworkError(netErr && netErr.message ? netErr.message : "Erro de conexao com o servidor.");
       }
 
       if (!res.ok) {
@@ -267,7 +338,8 @@ const Auth = (() => {
 
     try {
       return await refreshPromise;
-    } catch {
+    } catch (err) {
+      if (isNetworkError(err)) throw err;
       handleInvalidSession({ redirect: redirectOnFailure });
       throw new Error("Sessao expirada. Faca login novamente.");
     }
@@ -309,10 +381,12 @@ const Auth = (() => {
     let res;
     try {
       res = await fetch(url, { ...fetchOptions, credentials: "include", headers: baseHeaders });
-    } catch {
-      handleInvalidSession({ redirect: redirectOnInvalid });
-      throw new Error("Erro de conexao. Verifique sua internet.");
+    } catch (netErr) {
+      // Falha de rede (ex.: backend em cold start no Render) — NÃO desloga o usuário.
+      showBackendBanner();
+      throw new AuthNetworkError(netErr && netErr.message ? netErr.message : "Erro de conexao com o servidor.");
     }
+    hideBackendBanner();
 
     // Tenta renovar o token se expirado
     if (res.status === 401) {
@@ -342,6 +416,7 @@ const Auth = (() => {
       Cache.remove(KEYS.USER_SYNC);
     }
 
+    hideBackendBanner();
     return res;
   }
 
@@ -824,6 +899,9 @@ const Auth = (() => {
     bindPremiumLinkGuards,
     ensurePremiumModal,
     openPremiumCheckout,
+    showBackendBanner,
+    hideBackendBanner,
+    isNetworkError,
     Cache,
     KEYS
   };
@@ -840,5 +918,5 @@ const autoassistPublicPages = new Set([
   "redefinir-senha.html",
 ]);
 if (Auth.isAuthenticated() && !autoassistPublicPages.has(autoassistCurrentPage)) {
-  Auth.syncUser();
+  Auth.syncUser().catch(() => {});
 }
