@@ -1,4 +1,4 @@
-const CACHE = "autoassist-v4";
+const CACHE = "autoassist-v5";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
