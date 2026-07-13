@@ -89,14 +89,40 @@ self.addEventListener("fetch", (event) => {
 
   if (request.method !== "GET") return;
 
+  const path = url.pathname.toLowerCase();
+  const isAppShell =
+    request.mode === "navigate" ||
+    path === "/" ||
+    path.endsWith(".html") ||
+    path.endsWith(".js");
+
+  if (isAppShell) {
+    // Network-first para o app shell (HTML/JS): sempre busca a versão viva do
+    // servidor quando houver rede. Evita servir uma UI obsoleta/quebrada enquanto
+    // o backend está em cold start no Render. Só cai no cache se o servidor
+    // estiver realmente fora do ar (PWA ainda abre offline).
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === "basic") {
+            const clone = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
+  // Demais assets estáticos (CSS, imagens, fontes): cache-first com atualização
+  // em background. Não afetam a lógica de autenticação/estado do app.
   event.respondWith(
     caches.match(request).then((cached) => {
       const fetchPromise = fetch(request).then((response) => {
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && response.type === "basic") {
           const clone = response.clone();
-          caches.open(CACHE).then((cache) => {
-            cache.put(request, clone);
-          });
+          caches.open(CACHE).then((cache) => cache.put(request, clone));
         }
         return response;
       }).catch(() => cached);
