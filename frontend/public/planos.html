@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Planos e Preços • AutoAssist IA</title>
+    <meta name="description" content="Escolha o plano AutoAssist ideal: diagnóstico automotivo com IA grátis ou o plano Completo com relatórios PDF, alertas preventivos e tabela FIPE ilimitada. Comece grátis.">
+    <meta name="theme-color" content="#09090b">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="AutoAssist IA">
+    <meta property="og:title" content="Planos e Preços • AutoAssist IA">
+    <meta property="og:description" content="Diagnóstico automotivo com IA grátis ou o plano Completo com relatórios PDF, alertas preventivos e tabela FIPE ilimitada.">
+    <meta property="og:image" content="static/logo2.png?v=20260608">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
+    <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
+
+    <style>
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        margin: 0;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 70% 40% at 50% -10%, rgba(59, 130, 246, 0.16), transparent),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(59, 130, 246, 0.07), transparent);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .page {
+        position: relative;
+      }
+
+      /* Navbar */
+      .navbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 84px;
+        padding: 12px 24px;
+        background: rgba(9, 9, 11, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .nav-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .nav-logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.4px;
+      }
+      .nav-logo img { height: 72px; width: auto; display: block; }
+      .nav-links { display: flex; align-items: center; gap: 12px; }
+      .nav-link, .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        background: transparent;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+      }
+      .nav-link:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.06); }
+      .nav-btn {
+        background: var(--accent);
+        color: #fff;
+        border-color: transparent;
+      }
+      .nav-btn:hover { background: var(--accent-hover); color: #fff; }
+      .nav-btn-outline { background: transparent; border-color: rgba(255, 255, 255, 0.16); color: var(--text-primary); }
+      .nav-btn-outline:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.28); }
+
+      /* Garante que o painel de notificações fique acima do conteúdo da página */
+      .notif-panel, .notification-panel { z-index: 2000 !important; }
+
+      /* Hero / header */
+      .plans-header {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 72px 24px 24px;
+        text-align: center;
+      }
+      .plans-eyebrow {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 16px;
+      }
+      .plans-header h1 {
+        font-size: clamp(34px, 5vw, 52px);
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        line-height: 1.08;
+        margin: 0 0 18px;
+        background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .plans-header p {
+        font-size: 17px;
+        line-height: 1.7;
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      /* Cards */
+      .plans-grid {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 48px 24px 8px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        align-items: stretch;
+      }
+      .plan-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
+        padding: 32px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+        transition: transform 0.25s ease, border-color 0.25s ease;
+      }
+      .plan-card:hover { transform: translateY(-4px); }
+      .plan-card--premium {
+        border-color: rgba(59, 130, 246, 0.45);
+        background:
+          linear-gradient(180deg, rgba(59, 130, 246, 0.12), transparent 40%),
+          var(--bg-card);
+        box-shadow: 0 18px 50px rgba(37, 99, 235, 0.25);
+      }
+      .plan-badge {
+        position: absolute;
+        top: -13px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent), #1d4ed8);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        white-space: nowrap;
+        box-shadow: 0 6px 18px rgba(59, 130, 246, 0.45);
+      }
+      .plan-name {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+      }
+      .plan-card--premium .plan-name { color: var(--accent); }
+      .plan-price {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        margin-bottom: 6px;
+      }
+      .plan-price .amount {
+        font-size: 40px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        color: var(--text-primary);
+      }
+      .plan-price .period { font-size: 15px; color: var(--text-secondary); font-weight: 600; }
+      .plan-note { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; min-height: 18px; }
+      .plan-features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        flex: 1;
+      }
+      .plan-features li {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 14.5px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+      .plan-features li i {
+        flex: 0 0 auto;
+        margin-top: 3px;
+        color: var(--success);
+        font-size: 14px;
+      }
+      .plan-features li.muted { color: var(--text-muted); }
+      .plan-features li.muted i { color: var(--text-muted); }
+      .plan-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 15px 24px;
+        border: 0;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .plan-cta--free {
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+      }
+      .plan-cta--free:hover { background: var(--border-color); color: var(--text-primary); }
+      .plan-cta--premium {
+        background: linear-gradient(135deg, var(--accent), #1d4ed8);
+        color: #fff;
+        box-shadow: 0 4px 24px rgba(59, 130, 246, 0.4);
+      }
+      .plan-cta--premium:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(59, 130, 246, 0.55); }
+      .plan-cta:disabled { opacity: 0.7; cursor: progress; }
+
+      /* Guarantee */
+      .plans-guarantee {
+        max-width: 760px;
+        margin: 8px auto 0;
+        padding: 28px 24px 8px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+        width: 100%;
+      }
+      .plans-guarantee i { color: var(--success); }
+
+      /* FAQ */
+      .plans-faq {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 56px 24px 16px;
+      }
+      .plans-faq h2 {
+        text-align: center;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin: 0 0 32px;
+      }
+      .faq-item {
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        background: var(--bg-card);
+        padding: 20px 24px;
+        margin-bottom: 14px;
+      }
+      .faq-item h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .faq-item h3 i { color: var(--accent); }
+      .faq-item p { margin: 0; font-size: 14px; line-height: 1.65; color: var(--text-secondary); }
+
+      /* Footer */
+      footer {
+        padding: 32px clamp(16px, 4vw, 24px);
+        border-top: 1px solid var(--border-color);
+        text-align: center;
+        margin-top: 40px;
+      }
+      .footer-links {
+        max-width: 720px;
+        margin: 0 auto 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px 20px;
+        flex-wrap: wrap;
+      }
+      .footer-link {
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 6px 4px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        transition: color 0.2s;
+      }
+      .footer-link:hover { color: var(--text-primary); }
+      footer p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
+      @media (max-width: 760px) {
+        .nav-links { display: none; }
+        .plans-grid { grid-template-columns: 1fr; padding-top: 32px; }
+        .plan-card--premium { order: -1; }
+        .plans-header { padding-top: 48px; }
+      }
+    </style>
+    <link rel="stylesheet" href="static/css/responsive.css">
+    <link rel="stylesheet" href="static/css/shared.css">
+    <link rel="stylesheet" href="static/css/notifications.css">
+  </head>
+  <body class="plans-page">
+    <div class="page">
+      <nav class="navbar">
+        <div class="nav-container">
+          <a href="index.html" class="nav-logo">
+            <img src="logo.png?v=20260608" alt="AutoAssist IA">
+            <span>AutoAssist</span>
+          </a>
+          <div class="nav-links" id="authLinks">
+            <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+            <a href="login.html" class="nav-btn nav-btn-outline">Entrar</a>
+            <a href="cadastro.html" class="nav-btn">Criar Conta</a>
+          </div>
+        </div>
+      </nav>
+
+      <header class="plans-header">
+        <span class="plans-eyebrow">Planos e Preços</span>
+        <h1>Cuide do seu carro por muito menos do que custa uma oficina</h1>
+        <p>Comece grátis com o diagnóstico por IA. Evolua para o plano Completo e tenha relatórios, alertas e tabela FIPE ilimitados.</p>
+      </header>
+
+      <section class="plans-grid" aria-label="Comparativo de planos">
+        <article class="plan-card plan-card--free">
+          <div class="plan-name">AutoAssist Grátis</div>
+          <div class="plan-price">
+            <span class="amount">R$ 0</span>
+            <span class="period">/ sempre</span>
+          </div>
+          <p class="plan-note">Para começar a diagnosticar agora</p>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> Chat com IA para dúvidas e diagnóstico</li>
+            <li><i class="fas fa-check"></i> Análise de fotos e documentos do veículo</li>
+            <li><i class="fas fa-check"></i> Indicações de lojas e vídeos recomendados</li>
+            <li><i class="fas fa-check"></i> Cadastro de veículos ilimitado</li>
+            <li class="muted"><i class="fas fa-xmark"></i> Relatórios PDF e alertas preventivos</li>
+            <li class="muted"><i class="fas fa-xmark"></i> Dashboard para análise de mercado FIPE ilimitada</li>
+            <li class="muted"><i class="fas fa-xmark"></i> Biblioteca de vídeos e links recomendados</li>
+          </ul>
+          <a href="cadastro.html" class="plan-cta plan-cta--free">Criar conta grátis</a>
+        </article>
+
+        <article class="plan-card plan-card--premium">
+          <span class="plan-badge">Mais popular</span>
+          <div class="plan-name">AutoAssist Completo</div>
+          <div class="plan-price">
+            <span class="amount">R$ 29,90</span>
+            <span class="period">/ pagamento único</span>
+          </div>
+          <p class="plan-note">Pagamento único · 7 dias de garantia</p>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> Tudo do plano Grátis</li>
+            <li><i class="fas fa-check"></i> Relatórios PDF ilimitados do seu carro</li>
+            <li><i class="fas fa-check"></i> Alertas preventivos de revisão e trocas</li>
+            <li><i class="fas fa-check"></i> Dashboard para análise de mercado FIPE em tempo real</li>
+            <li><i class="fas fa-check"></i> Previsão de manutenção por IA</li>
+            <li><i class="fas fa-check"></i> Veículos e anotações ilimitados</li>
+            <li><i class="fas fa-check"></i> Biblioteca de vídeos e links recomendados</li>
+          </ul>
+          <button type="button" id="btnPlanPremium" class="plan-cta plan-cta--premium">
+            <i class="fas fa-crown"></i> Adquirir AutoAssist Completo
+          </button>
+        </article>
+      </section>
+
+      <p class="plans-guarantee">
+        <i class="fas fa-shield-halved"></i>
+        Dados protegidos e criptografados &middot; Conforme a LGPD &middot; 7 dias de garantia ou seu dinheiro de volta
+      </p>
+
+      <section class="plans-faq" aria-label="Perguntas frequentes">
+        <h2>Perguntas frequentes</h2>
+        <div class="faq-item">
+          <h3><i class="fas fa-circle-question"></i> O plano grátis tem limite de uso?</h3>
+          <p>O chat com IA e a análise de fotos estão disponíveis no plano grátis para o seu dia a dia. O plano Completo libera relatórios PDF, alertas e a tabela FIPE ilimitada.</p>
+        </div>
+        <div class="faq-item">
+          <h3><i class="fas fa-circle-question"></i> É assinatura ou pagamento único?</h3>
+          <p>É um pagamento único de R$ 29,90. Você libera o plano Completo para sempre, sem mensalidades.</p>
+        </div>
+        <div class="faq-item">
+          <h3><i class="fas fa-circle-question"></i> Meus dados ficam seguros?</h3>
+          <p>Sim. Seguimos a LGPD, com criptografia e autenticação em duas etapas para proteger suas informações.</p>
+        </div>
+        <div class="faq-item">
+          <h3><i class="fas fa-circle-question"></i> Como funciona a garantia de 7 dias?</h3>
+          <p>Se não ficar satisfeito na primeira semana, devolvemos o valor pago — sem perguntas.</p>
+        </div>
+      </section>
+
+      <footer>
+        <nav class="footer-links" aria-label="Links do rodape">
+          <a href="index.html" class="footer-link">Início</a>
+          <a href="chat.html" class="footer-link">Chat</a>
+          <a href="planos.html" class="footer-link">Planos</a>
+          <a href="termos.html" class="footer-link">Termos</a>
+          <a href="privacidade.html" class="footer-link">Privacidade</a>
+          <a href="lgpd.html" class="footer-link">LGPD</a>
+        </nav>
+        <p>&copy; 2026 AutoAssist IA. Todos os direitos reservados.</p>
+      </footer>
+    </div>
+
+    <script src="static/js/config.js"></script>
+    <script src="static/js/auth.js"></script>
+    <script src="static/js/notifications.js" defer></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Preenche a navbar conforme o estado de login (visitante x logado).
+        if (typeof Auth !== 'undefined' && Auth.isAuthenticated && Auth.isAuthenticated()) {
+          const authLinks = document.getElementById('authLinks');
+          if (authLinks) {
+            authLinks.innerHTML = `
+              <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+              <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
+              <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anota&ccedil;&otilde;es</a>
+              <a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>
+              <a href="planos.html" class="nav-link">Planos</a>
+              <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
+              <div id="notif-bell-container"></div>
+              <button id="btnLogout" class="nav-link"><i class="fas fa-sign-out-alt"></i> Sair</button>
+            `;
+            const btnLogout = document.getElementById('btnLogout');
+            if (btnLogout) btnLogout.addEventListener('click', () => Auth.logout());
+            if (typeof Notifications !== 'undefined') Notifications.init();
+          }
+        }
+
+        const btnPlanPremium = document.getElementById('btnPlanPremium');
+        if (btnPlanPremium && typeof Auth !== 'undefined') {
+          btnPlanPremium.addEventListener('click', async () => {
+            if (!Auth.isAuthenticated()) {
+              window.location.href = 'cadastro.html';
+              return;
+            }
+            const originalHtml = btnPlanPremium.innerHTML;
+            btnPlanPremium.disabled = true;
+            btnPlanPremium.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Redirecionando...';
+            try {
+              await Auth.openPremiumCheckout();
+            } catch (err) {
+              btnPlanPremium.disabled = false;
+              btnPlanPremium.innerHTML = originalHtml;
+              if (typeof Auth.showPremiumPaywall === 'function') {
+                Auth.showPremiumPaywall();
+              } else {
+                alert('Não foi possível iniciar o checkout no momento.');
+              }
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

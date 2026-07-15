@@ -308,6 +308,30 @@
     background: rgba(15, 23, 42, 0.72);
 }
 
+.brand-hero__trust {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: 18px auto 0;
+    padding: 7px 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    background: rgba(8, 13, 24, 0.5);
+    backdrop-filter: blur(8px);
+    color: #cbd5e1;
+    font-size: clamp(11px, 1.1vw, 13px);
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-shadow: 0 2px 12px rgba(8, 13, 24, 0.9);
+}
+
+.brand-hero__trust i {
+    color: #34d399;
+    font-size: 12px;
+}
+
 .car-scroll__hud {
     position: absolute;
     right: 40px;

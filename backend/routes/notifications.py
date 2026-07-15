@@ -37,7 +37,7 @@ def list_notifications():
 
 @notifications_bp.route("/api/notifications/unread-count", methods=["GET"])
 @jwt_required()
-def unread_count():
+def unread_count():    
     user_id = get_jwt_identity()
     try:
         with get_db() as (cur, conn):
