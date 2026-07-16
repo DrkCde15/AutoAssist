@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   train:
@@ -36,19 +36,14 @@ jobs:
       - name: Run model training
         run: python backend/scripts/train.py
 
-      - name: Upload models as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: predictive-models
-          path: |
-            backend/models/predictive/model_km.pkl
-            backend/models/predictive/model_date.pkl
-            backend/models/predictive/model_anomaly.pkl
-            backend/models/predictive/label_encoder.pkl
-            backend/models/predictive/scaler.pkl
-            backend/models/predictive/params.json
-            backend/models/predictive/classes.npy
-            backend/models/predictive/scaler_mean.npy
-            backend/models/predictive/scaler_std.npy
-          retention-days: 90
-          if-no-files-found: warn
+      - name: Commit updated models
+        run: |
+          git config user.name "AutoAssist ML Bot"
+          git config user.email "ml-bot@autoassist.app"
+          git add backend/models/predictive/
+          if git diff --staged --quiet; then
+            echo "Nenhuma alteracao nos modelos."
+          else
+            git commit -m "chore: atualiza modelos preditivos"
+            git push
+          fi
