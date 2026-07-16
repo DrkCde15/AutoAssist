@@ -24,8 +24,18 @@ MYSQL_CONFIG = {
     'cursorclass': DictCursor,
     'autocommit': True,
     'connect_timeout': 10,
-    'ssl': {'ssl_disabled': False}
 }
+
+# SSL: suporta Aiven (certificado obrigatorio) e MySQL local (sem ssl).
+_ssl_ca = os.getenv('DB_SSL_CA', '').strip()
+_ssl_verify = os.getenv('DB_SSL_VERIFY', 'true').strip().lower() == 'true'
+if _ssl_ca:
+    MYSQL_CONFIG['ssl'] = {'ca': _ssl_ca, 'ssl_verify_cert': _ssl_verify}
+elif os.getenv('DB_SSL', 'false').strip().lower() == 'true' or \
+        os.getenv('DB_HOST', '').strip().endswith('aivencloud.com'):
+    MYSQL_CONFIG['ssl'] = {'ssl_verify_cert': _ssl_verify}
+else:
+    MYSQL_CONFIG['ssl'] = {'ssl_disabled': True}
 
 # Inicializa o Pool de Conexões
 pool = PooledDB(
