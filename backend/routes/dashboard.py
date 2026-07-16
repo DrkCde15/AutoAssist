@@ -292,7 +292,7 @@ def health_trend():
         with get_db() as (cur, conn):
             cur.execute(
                 "SELECT vehicle_id, score, recorded_at FROM health_score_history "
-                "WHERE user_id = %s ORDER BY recorded_at DESC LIMIT 30",
+                "WHERE user_id = %s ORDER BY recorded_at DESC LIMIT 150",
                 (user_id,),
             )
             rows = cur.fetchall()

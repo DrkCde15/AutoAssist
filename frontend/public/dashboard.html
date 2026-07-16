@@ -481,7 +481,7 @@
                 </div>
 
                 <div class="stats-grid">
-                    <div class="stat-card">
+                    <div class="stat-card" data-vehicle-id="${item.veiculo.id}">
                         <div class="stat-card-header">
                             <div class="stat-card-icon" style="color: ${healthColor};"><i class="fas fa-heartbeat"></i></div>
                             <div class="stat-card-title">Health Score</div>
@@ -568,14 +568,26 @@ ${pred.predicted_next_km ? `
                 const res = await Auth.authenticatedFetch('/api/dashboard/health-trend', { redirectOnInvalid: false });
                 if (!res.ok) return;
                 const data = await res.json();
-                if (data.length < 2) return;
-                renderHealthTrend(data);
+                if (!data || data.length === 0) return;
+                
+                const grouped = {};
+                for (const row of data) {
+                    if (!grouped[row.vehicle_id]) grouped[row.vehicle_id] = [];
+                    grouped[row.vehicle_id].push(row);
+                }
+
+                for (const vid in grouped) {
+                    if (grouped[vid].length >= 2) {
+                        renderHealthTrend(vid, grouped[vid]);
+                    }
+                }
             } catch {}
         }
 
-        function renderHealthTrend(data) {
-            const container = document.querySelector('.stats-grid');
-            if (!container) return;
+        function renderHealthTrend(vehicleId, data) {
+            const statCard = document.querySelector(`.stat-card[data-vehicle-id="${vehicleId}"]`);
+            if (!statCard) return;
+            
             const scores = data.map(d => d.score);
             const labels = data.map(d => {
                 const date = new Date(d.recorded_at);
@@ -617,10 +629,7 @@ ${pred.predicted_next_km ? `
                     </svg>
                 </div>
             `;
-            const statCard = container.querySelector('.stat-card');
-            if (statCard) {
-                statCard.insertAdjacentHTML('beforeend', svg);
-            }
+            statCard.insertAdjacentHTML('beforeend', svg);
         }
 
         if ('serviceWorker' in navigator) {
