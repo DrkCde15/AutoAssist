@@ -83,99 +83,6 @@ body.aa-menu-lock {
   overflow: hidden;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .nav-link[data-nav-tooltip],
-  .nav-btn[data-nav-tooltip],
-  .nav-bell-btn[data-nav-tooltip] {
-    position: relative;
-  }
-
-  .nav-link[data-nav-tooltip]::before,
-  .nav-btn[data-nav-tooltip]::before,
-  .nav-bell-btn[data-nav-tooltip]::before {
-    content: "";
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    border-right: 6px solid transparent;
-    border-bottom: 6px solid rgba(15, 23, 42, 0.96);
-    border-left: 6px solid transparent;
-    opacity: 0;
-    visibility: hidden;
-    transform: translate(-50%, -4px);
-    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
-    pointer-events: none;
-    z-index: 260;
-  }
-
-  .nav-link[data-nav-tooltip]::after,
-  .nav-btn[data-nav-tooltip]::after,
-  .nav-bell-btn[data-nav-tooltip]::after {
-    content: attr(data-nav-tooltip);
-    position: absolute;
-    top: calc(100% + 14px);
-    left: 50%;
-    width: max-content;
-    max-width: min(320px, calc(100vw - 32px));
-    padding: 10px 14px;
-    border: 1px solid rgba(148, 163, 184, 0.24);
-    border-radius: 8px;
-    background: rgba(15, 23, 42, 0.96);
-    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
-    color: #f8fafc;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.45;
-    text-align: left;
-    white-space: normal;
-    opacity: 0;
-    visibility: hidden;
-    transform: translate(-50%, -4px);
-    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
-    pointer-events: none;
-    z-index: 260;
-  }
-
-  .nav-link[data-nav-tooltip]:hover::before,
-  .nav-link[data-nav-tooltip]:focus-visible::before,
-  .nav-btn[data-nav-tooltip]:hover::before,
-  .nav-btn[data-nav-tooltip]:focus-visible::before,
-  .nav-bell-btn[data-nav-tooltip]:hover::before,
-  .nav-bell-btn[data-nav-tooltip]:focus-visible::before,
-  .nav-link[data-nav-tooltip]:hover::after,
-  .nav-link[data-nav-tooltip]:focus-visible::after,
-  .nav-btn[data-nav-tooltip]:hover::after,
-  .nav-btn[data-nav-tooltip]:focus-visible::after,
-  .nav-bell-btn[data-nav-tooltip]:hover::after,
-  .nav-bell-btn[data-nav-tooltip]:focus-visible::after {
-    opacity: 1;
-    visibility: visible;
-    width: max-content;
-    height: auto;
-    transform: translate(-50%, 0);
-  }
-
-  /* Right-align the tooltip for the PDF button to prevent it from getting cut off at the right edge of the screen */
-  #btnReport[data-nav-tooltip]::before {
-    left: auto;
-    right: 50%;
-    transform: translate(50%, -4px);
-  }
-  #btnReport[data-nav-tooltip]::after {
-    left: auto;
-    right: 0;
-    transform: translate(0, -4px);
-  }
-  #btnReport[data-nav-tooltip]:hover::before,
-  #btnReport[data-nav-tooltip]:focus-visible::before {
-    transform: translate(50%, 0);
-  }
-  #btnReport[data-nav-tooltip]:hover::after,
-  #btnReport[data-nav-tooltip]:focus-visible::after {
-    transform: translate(0, 0);
-  }
-}
-
 /* Telas de login/cadastro/recuperacao: foco em centralizacao e toque confortavel. */
 .auth-page {
   min-height: 100dvh;
@@ -481,6 +388,18 @@ body.aa-menu-lock {
     left: 14px !important;
     right: 14px !important;
     bottom: 14px !important;
+  }
+
+  .notification-panel,
+  .notif-panel {
+    position: fixed;
+    top: auto;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px;
+    width: auto;
+    max-width: none;
+    max-height: min(60vh, 420px);
   }
 }
 

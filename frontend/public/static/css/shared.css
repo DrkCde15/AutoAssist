@@ -208,10 +208,4 @@ header {
   .header-nav {
     gap: 8px;
   }
-
-  .nav-link span,
-  .nav-btn span,
-  .header-nav .nav-btn span {
-    display: none;
-  }
 }

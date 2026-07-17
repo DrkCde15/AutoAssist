@@ -75,12 +75,7 @@
   }
 
   function applyNavTooltips(root) {
-    findNavTooltipItems(root).forEach((item) => {
-      if (item.closest(".notification-panel") || item.dataset.navTooltip) return;
-
-      const tooltip = getTooltipForItem(item);
-      if (tooltip) item.dataset.navTooltip = tooltip;
-    });
+    return;
   }
 
   function observeNavTooltipChanges() {
