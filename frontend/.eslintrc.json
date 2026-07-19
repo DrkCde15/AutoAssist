@@ -6,17 +6,21 @@
   "extends": ["eslint:recommended"],
   "parserOptions": {
     "ecmaVersion": "latest",
-    "sourceType": "script"
+    "sourceType": "module"
   },
   "rules": {
     "no-unused-vars": "warn",
     "no-console": "off",
-    "prefer-const": "warn"
+    "prefer-const": "warn",
+    "no-empty": ["error", { "allowEmptyCatch": true }]
   },
   "globals": {
     "Auth": "readonly",
     "CONFIG": "readonly",
     "DOMPurify": "readonly",
-    "marked": "readonly"
+    "marked": "readonly",
+    "SecurityUtils": "readonly",
+    "module": "readonly",
+    "require": "readonly"
   }
 }
