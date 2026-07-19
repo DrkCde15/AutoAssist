@@ -8,11 +8,13 @@
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="manifest" href="/manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleusercontent.com https://images.unsplash.com https://www.gstatic.com; frame-src 'self' https://www.youtube.com https://youtube.com; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'self'" />
     <link rel="stylesheet" href="static/css/notifications.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" referrerpolicy="no-referrer" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" crossorigin="anonymous"></script>
+    <script src="static/vendor/marked.min.js?v=12.0.2"></script>
+    <script src="static/vendor/dompurify.min.js?v=3.0.8"></script>
+    <script src="static/js/security-utils.js?v=1"></script>
 
     <style>
 
@@ -1442,15 +1444,15 @@
         if (!CHAT_USE_WEBSOCKET) return;
 
         function connectWebSocket() {
-          const token = typeof Auth !== "undefined" && Auth.getAccessToken ? Auth.getAccessToken() : null;
           const gid = isAuthenticated ? null : guestId;
           const params = new URLSearchParams();
-          if (token) params.set("token", token);
           if (gid) params.set("guest_id", gid);
 
           const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
           const wsUrl = `${protocol}//${window.location.host}/ws/chat?${params}`;
 
+          // O token JWT e enviado automaticamente via cookie de sessao (credentials:include),
+          // evitando vazamento do token em logs de servidor/Referer via query string.
           wsChat = new WebSocket(wsUrl);
 
           wsChat.onopen = () => {
@@ -1466,7 +1468,11 @@
             } else if (data.error) {
               const typingDiv = document.getElementById("typing");
               if (typingDiv) {
-                typingDiv.innerHTML = `<strong>Erro:</strong> ${data.error}`;
+                if (typeof SecurityUtils !== "undefined" && SecurityUtils.setSafeText) {
+                  SecurityUtils.setSafeText(typingDiv, data.error || "", "Erro: ");
+                } else {
+                  typingDiv.textContent = "Erro: " + (data.error || "");
+                }
                 typingDiv.id = "";
               }
             }
@@ -1973,7 +1979,11 @@
             });
           }
         } catch (err) {
-          typingDiv.innerHTML = `<strong>Erro:</strong> ${err.message || "Falha na conexão."}`;
+          if (typeof SecurityUtils !== "undefined" && SecurityUtils.setSafeText) {
+            SecurityUtils.setSafeText(typingDiv, err.message || "Falha na conexão.", "Erro: ");
+          } else {
+            typingDiv.textContent = "Erro: " + (err.message || "Falha na conexão.");
+          }
         }
         scrollToBottom();
       };

@@ -1,21 +1,21 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>AutoAssist - Consultoria Automotiva com IA</title>
-    <meta name="description" content="Diagnóstico automotivo com IA: tire dúvidas, envie fotos do seu carro e receba um diagnóstico em segundos. Organize revisões e pare de gastar com surpresas na mecânica. Comece grátis.">
+    <meta name="description" content="DiagnÃ³stico automotivo com IA: tire dÃºvidas, envie fotos do seu carro e receba um diagnÃ³stico em segundos. Organize revisÃµes e pare de gastar com surpresas na mecÃ¢nica. Comece grÃ¡tis.">
     <meta name="theme-color" content="#09090b">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="AutoAssist IA">
-    <meta property="og:title" content="AutoAssist IA - Seu mecânico particular com IA">
-    <meta property="og:description" content="Tire dúvidas, envie fotos do problema e receba um diagnóstico em segundos. Organize revisões e pare de gastar com surpresas na mecânica.">
+    <meta property="og:title" content="AutoAssist IA - Seu mecÃ¢nico particular com IA">
+    <meta property="og:description" content="Tire dÃºvidas, envie fotos do problema e receba um diagnÃ³stico em segundos. Organize revisÃµes e pare de gastar com surpresas na mecÃ¢nica.">
     <meta property="og:image" content="static/logo2.png?v=20260608">
     <meta property="og:url" content="https://autoassist.com.br">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AutoAssist IA - Seu mecânico particular com IA">
-    <meta name="twitter:description" content="Diagnóstico automotivo com IA em segundos. Comece grátis.">
+    <meta name="twitter:title" content="AutoAssist IA - Seu mecÃ¢nico particular com IA">
+    <meta name="twitter:description" content="DiagnÃ³stico automotivo com IA em segundos. Comece grÃ¡tis.">
     <meta name="twitter:image" content="static/logo2.png?v=20260608">
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
@@ -781,9 +781,9 @@
             <div class="feature-deck__header">
                 <div>
                     <span class="feature-deck__eyebrow">Recursos</span>
-                    <h2>Tudo o que o seu carro precisa, em um só lugar</h2>
+                    <h2>Tudo o que o seu carro precisa, em um sÃ³ lugar</h2>
                 </div>
-                <p>Da dúvida no barulho do motor ao alerta de revisão, o AutoAssist cuida de todo o ciclo do seu veículo com IA.</p>
+                <p>Da dÃºvida no barulho do motor ao alerta de revisÃ£o, o AutoAssist cuida de todo o ciclo do seu veÃ­culo com IA.</p>
             </div>
 
             <div class="feature-deck__grid">
@@ -873,6 +873,7 @@
     <script src="static/js/config.js"></script>
     <script src="static/js/analytics-consent.js"></script>
     <script src="static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
     <script src="static/js/notifications.js" defer></script>
     <script src="static/js/responsive.js" defer></script>
     <script type="module" src="static/js/car-scrollytelling.js"></script>
@@ -901,7 +902,7 @@
                         if (typeof Auth.showPremiumPaywall === 'function') {
                             Auth.showPremiumPaywall();
                         } else {
-                            alert('Não foi possível iniciar o checkout no momento.');
+                            alert('NÃ£o foi possÃ­vel iniciar o checkout no momento.');
                         }
                     }
                 });
@@ -911,13 +912,13 @@
                 return;
             }
 
-            // Não confia em cache para definir o estado de login: valida com o servidor.
-            // Enquanto o backend está em cold start (Render free), mostra aviso e tenta de novo.
+            // NÃ£o confia em cache para definir o estado de login: valida com o servidor.
+            // Enquanto o backend estÃ¡ em cold start (Render free), mostra aviso e tenta de novo.
             async function atualizarDashboard() {
                 try {
                     const userData = await Auth.syncUser({ redirectOnInvalid: false, force: true });
                     if (!userData) {
-                        // Sessão realmente inválida: mantém a UI de visitante.
+                        // SessÃ£o realmente invÃ¡lida: mantÃ©m a UI de visitante.
                         return;
                     }
 
@@ -990,7 +991,7 @@
                     authLinks.innerHTML = `
                         <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                         <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-                        <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
+                        <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> AnotaÃ§Ãµes</a>
                         <a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>
                         <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
                         <div id="notif-bell-container"></div>
@@ -1023,8 +1024,8 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            // Quando uma nova versão do SW assume o controle, recarrega para
-            // garantir que os arquivos (auth.js, index.html) não fiquem obsoletos.
+            // Quando uma nova versÃ£o do SW assume o controle, recarrega para
+            // garantir que os arquivos (auth.js, index.html) nÃ£o fiquem obsoletos.
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 window.location.reload();
             });

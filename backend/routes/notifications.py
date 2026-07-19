@@ -1,7 +1,9 @@
 import logging
+import os
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from .database import get_db
+from utils.cron_auth import require_cron_secret
 
 notifications_bp = Blueprint("notifications", __name__)
 logger = logging.getLogger(__name__)
@@ -114,3 +116,34 @@ def create_notification(user_id, title, body=None, type="info", action_url=None)
     except Exception as e:
         logger.warning("Erro ao criar notificação: %s", e)
         return False
+
+
+@notifications_bp.route("/api/cron/maintenance-emails", methods=["POST"])
+@require_cron_secret()
+def cron_dispatch_maintenance_emails():
+    """Endpoint agendado (cron externo) para disparar e-mails de manutenção.
+
+    Protegido por MAINTENANCE_EMAIL_CRON_SECRET via header X-Cron-Secret.
+    O processamento real roda no worker RQ em background.
+    """
+    try:
+        from tasks import dispatch_maintenance_emails
+        try:
+            from rq import Queue
+            from redis import Redis
+            redis_url = os.getenv("REDIS_URL") or os.getenv("RATELIMIT_STORAGE_URI")
+            if redis_url and redis_url != "memory://":
+                conn = Redis.from_url(redis_url)
+                Queue("default", connection=conn).enqueue(
+                    dispatch_maintenance_emails, timeout=600
+                )
+                return jsonify(scheduled=True, via="rq"), 202
+        except Exception:
+            pass
+        # Fallback (sem Redis): executa em thread para nao bloquear o cron.
+        import threading
+        threading.Thread(target=dispatch_maintenance_emails, daemon=True).start()
+        return jsonify(scheduled=True, via="thread"), 202
+    except Exception as e:
+        logger.error("Falha ao agendar dispatch de e-mails de manutenção: %s", e)
+        return jsonify(error="Erro interno ao agendar envio."), 500

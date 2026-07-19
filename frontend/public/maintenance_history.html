@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>Anotações - AutoAssist</title>
+    <title>AnotaÃ§Ãµes - AutoAssist</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="manifest" href="/manifest.json">
@@ -437,7 +437,7 @@
         <div class="nav-links">
             <a href="dashboard.html" id="navDashboard" class="nav-link" style="display: none;"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-            <a href="maintenance_history.html" class="nav-link active"><i class="fas fa-history"></i> Anotações</a>
+            <a href="maintenance_history.html" class="nav-link active"><i class="fas fa-history"></i> AnotaÃ§Ãµes</a>
             <a href="library.html" id="btnMyVideos" class="nav-link" style="display: none;"><i class="fas fa-book"></i> Biblioteca</a>
             <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
             <div id="notif-bell-container"></div>
@@ -448,7 +448,7 @@
 
 <main class="container">
     <header class="page-header">
-        <h1 class="page-title">Anotações</h1>
+        <h1 class="page-title">AnotaÃ§Ãµes</h1>
         <p class="page-subtitle">Registre servicos em texto livre, acompanhe gastos e veja retornos automaticos.</p>
     </header>
 
@@ -507,7 +507,7 @@
             <div class="form-actions">
                 <button class="btn btn-primary" id="btnSalvarRegistro">
                     <i class="fas fa-plus"></i>
-                    Salvar Anotação
+                    Salvar AnotaÃ§Ã£o
                 </button>
                 <button class="btn btn-ghost" id="btnCancelarEdicao" style="display:none;">
                     <i class="fas fa-xmark"></i>
@@ -552,6 +552,7 @@
 
 <script src="static/js/config.js"></script>
 <script src="static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
 <script src="static/js/notifications.js" defer></script>
 <script src="static/js/responsive.js" defer></script>
 <script>
@@ -631,7 +632,7 @@
         const data = await res.json();
         state.history = Array.isArray(data.historico) ? data.historico : [];
         state.resumo = data.resumo || { total_gastos: 0, quantidade_registros: 0 };
-        // Salva no cache se não houver filtro de veículo selecionado
+        // Salva no cache se nÃ£o houver filtro de veÃ­culo selecionado
         if (!document.getElementById("vehicleFilter").value) {
             Auth.Cache.set('autoassist_history_cache', state.history);
         }
@@ -915,7 +916,7 @@
         document.getElementById("intervaloDias").value = "";
         document.getElementById("intervaloKm").value = "";
         document.getElementById("veiculoSelect").value = "";
-        document.getElementById("btnSalvarRegistro").innerHTML = '<i class="fas fa-plus"></i> Salvar Anotação';
+        document.getElementById("btnSalvarRegistro").innerHTML = '<i class="fas fa-plus"></i> Salvar AnotaÃ§Ã£o';
         document.getElementById("btnCancelarEdicao").style.display = "none";
     }
 
@@ -979,8 +980,8 @@
         if (!user) return;
 
         if (!Auth.requirePremiumPage({
-            title: "Anotações Premium",
-            message: "Para acessar suas anotações de manutenção, ative o plano Premium.",
+            title: "AnotaÃ§Ãµes Premium",
+            message: "Para acessar suas anotaÃ§Ãµes de manutenÃ§Ã£o, ative o plano Premium.",
             backHref: "index.html"
         })) {
             return;
@@ -991,7 +992,7 @@
             document.getElementById('btnMyVideos').style.display = 'inline-flex';
         }
 
-        // Carregamento instantâneo via Cache
+        // Carregamento instantÃ¢neo via Cache
         const cachedVehicles = Auth.Cache.get('autoassist_veiculos_cache');
         const cachedHistory = Auth.Cache.get('autoassist_history_cache');
         
@@ -1011,7 +1012,7 @@
             await refreshData();
         } catch (err) {
             console.error(err);
-            if (!cachedHistory) alert("Nao foi possivel carregar suas anotações.");
+            if (!cachedHistory) alert("Nao foi possivel carregar suas anotaÃ§Ãµes.");
         }
     }
 

@@ -1,8 +1,8 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>AutoAssist • Recuperar Senha</title>
+    <title>AutoAssist â€¢ Recuperar Senha</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -228,7 +228,7 @@
           <img src="logo.png?v=20260511" alt="AutoAssist IA" style="height:72px;width:auto;">
         </div>
         <h1>AutoAssist</h1>
-        <p>Recuperar acesso à sua conta</p>
+        <p>Recuperar acesso Ã  sua conta</p>
       </div>
 
       <div id="alertError" class="alert alert-error"></div>
@@ -243,7 +243,7 @@
       </div>
 
       <button class="btn btn-primary" id="btnEnviar">
-        Enviar Link de Recuperação
+        Enviar Link de RecuperaÃ§Ã£o
         <i class="fas fa-paper-plane"></i>
       </button>
 
@@ -254,6 +254,7 @@
 
     <script src="./static/js/config.js"></script>
     <script src="./static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
 
     <script>
       const btn = document.getElementById("btnEnviar");
@@ -291,14 +292,14 @@
             await Auth.forgotPassword(email);
           }
 
-          showSuccess("Se este e-mail existir no sistema, um link de recuperação será enviado.");
+          showSuccess("Se este e-mail existir no sistema, um link de recuperaÃ§Ã£o serÃ¡ enviado.");
 
         } catch (err) {
-          showError(err.message || "Erro ao solicitar recuperação.");
+          showError(err.message || "Erro ao solicitar recuperaÃ§Ã£o.");
         }
 
         btn.disabled = false;
-        btn.innerHTML = 'Enviar Link de Recuperação <i class="fas fa-paper-plane"></i>';
+        btn.innerHTML = 'Enviar Link de RecuperaÃ§Ã£o <i class="fas fa-paper-plane"></i>';
       });
     </script>
   </body>

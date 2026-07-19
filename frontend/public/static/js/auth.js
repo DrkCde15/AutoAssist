@@ -13,7 +13,6 @@ const Auth = (() => {
     ACCESS: "autoassist_access_token",
     REFRESH: "autoassist_refresh_token",
     USER: "autoassist_user",
-    COOKIE_SESSION: "autoassist_cookie_session",
     VEHICLES: "autoassist_veiculos_cache",
     USER_SYNC: "autoassist_user_sync_cache",
   };
@@ -104,7 +103,6 @@ const Auth = (() => {
 
   function saveSession(accessToken, refreshToken, user, options = {}) {
     invalidSessionHandled = false;
-    localStorage.setItem(KEYS.COOKIE_SESSION, "1");
     if (accessToken) localStorage.setItem(KEYS.ACCESS, accessToken);
     if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
     if (user) {
@@ -186,10 +184,6 @@ const Auth = (() => {
     return localStorage.getItem(KEYS.REFRESH);
   }
 
-  function hasCookieSession() {
-    return localStorage.getItem(KEYS.COOKIE_SESSION) === "1";
-  }
-
   function getCookie(name) {
     const encoded = `${encodeURIComponent(name)}=`;
     return document.cookie
@@ -212,10 +206,16 @@ const Auth = (() => {
   }
 
   function isAuthenticated() {
-    return !!getAccessToken() || hasCookieSession() || !!getCookie("csrf_access_token") || !!getCookie("csrf_refresh_token");
+    // Apenas o token JWT (localStorage) ou o cookie CSRF definido pelo backend
+    // (HttpOnly + SameSite) sao fontes de verdade. A flag COOKIE_SESSION em
+    // localStorage e totalmente controlavel pelo cliente e nao prova autenticacao.
+    return !!getAccessToken() || !!getCookie("csrf_access_token") || !!getCookie("csrf_refresh_token");
   }
 
   function escapeHTML(value) {
+    if (typeof SecurityUtils !== "undefined" && SecurityUtils.escapeHTML) {
+      return SecurityUtils.escapeHTML(value);
+    }
     return String(value || "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -264,7 +264,6 @@ const Auth = (() => {
       if (res.ok) {
         const data = await res.json();
         // Atualiza o localStorage com os dados frescos do banco
-        localStorage.setItem(KEYS.COOKIE_SESSION, "1");
         localStorage.setItem(KEYS.USER, JSON.stringify(data));
         Cache.set(KEYS.USER_SYNC, { ts: Date.now(), data });
         hideBackendBanner();
@@ -285,7 +284,7 @@ const Auth = (() => {
 
   async function refreshAccessToken({ redirectOnFailure = true } = {}) {
     const refreshToken = getRefreshToken();
-    if (!refreshToken && !hasCookieSession()) {
+    if (!refreshToken && !getCookie("csrf_refresh_token")) {
       handleInvalidSession({ redirect: redirectOnFailure });
       throw new Error("Sem refresh token.");
     }
@@ -325,7 +324,6 @@ const Auth = (() => {
       if (refreshToken && data.access_token) {
         localStorage.setItem(KEYS.ACCESS, data.access_token);
       }
-      localStorage.setItem(KEYS.COOKIE_SESSION, "1");
       invalidSessionHandled = false;
       return data.access_token;
     };
@@ -533,7 +531,6 @@ const Auth = (() => {
     const userRaw = params.get("user");
 
     if (oauthSuccess) {
-      localStorage.setItem(KEYS.COOKIE_SESSION, "1");
       window.history.replaceState({}, document.title, window.location.pathname);
       const userData = await syncUser({ redirectOnInvalid: false, force: true });
       if (userData) {

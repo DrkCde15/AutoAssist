@@ -3,6 +3,9 @@ const Notifications = (() => {
   let pollInterval = null;
 
   function escapeHTML(str) {
+    if (typeof SecurityUtils !== "undefined" && SecurityUtils.escapeHTML) {
+      return SecurityUtils.escapeHTML(str);
+    }
     if (!str) return "";
     return str.toString()
       .replace(/&/g, "&amp;")

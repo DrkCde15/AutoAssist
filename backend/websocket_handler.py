@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from flask import Blueprint, request
 from flask_sock import Sock
-from flask_jwt_extended import decode_token
+from flask_jwt_extended import decode_token, get_jwt_identity
 from services.nogai import gerar_resposta, gerar_termos_busca
 from services.web_scraping import WebScraper
 from services.youtube_service import buscar_videos_youtube
@@ -50,7 +50,16 @@ def chat_websocket(ws):
     session_id = request.args.get("session_id", "")
     user_id = None
 
-    if token:
+    # Preferencialmente autentica via cookie de sessao JWT (CSRF-protected,
+    # enviado automaticamente com credentials:include) em vez de token na URL.
+    try:
+        cookie_identity = get_jwt_identity()
+        if cookie_identity:
+            user_id = cookie_identity
+    except Exception:
+        pass
+
+    if not user_id and token:
         try:
             decoded = decode_token(token)
             user_id = decoded.get("sub")

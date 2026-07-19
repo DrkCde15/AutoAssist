@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -191,13 +191,14 @@
     </div>
 
     <div class="actions">
-      <a class="button" id="primary-action" href="index.html">Ir para o início</a>
+      <a class="button" id="primary-action" href="index.html">Ir para o inÃ­cio</a>
       <button class="secondary" id="retry-button" type="button">Atualizar status</button>
     </div>
   </main>
 
   <script src="static/js/config.js"></script>
   <script src="static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
   <script>
     const statusBox = document.getElementById("payment-status");
     const retryButton = document.getElementById("retry-button");
@@ -228,7 +229,7 @@
       statusBox.innerHTML = '<span class="spinner" aria-hidden="true"></span> Verificando sua assinatura...';
 
       if (!Auth.isAuthenticated()) {
-        setStatus("Entre com a mesma conta usada na compra para finalizar a liberação.", "warn");
+        setStatus("Entre com a mesma conta usada na compra para finalizar a liberaÃ§Ã£o.", "warn");
         primaryAction.textContent = "Entrar na conta";
         primaryAction.href = "login.html";
         retryButton.disabled = false;

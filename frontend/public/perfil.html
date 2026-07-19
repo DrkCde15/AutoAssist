@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -536,7 +536,7 @@
         <div class="nav-links">
             <a href="dashboard.html" id="navDashboard" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
+            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> AnotaÃ§Ãµes</a>
             <a href="library.html" id="btnMyVideos" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>
             <a href="perfil.html" class="nav-link active"><i class="fas fa-user"></i> Perfil</a>
             <div id="notif-bell-container"></div>
@@ -660,10 +660,10 @@
             <!-- Vehicles Section -->
             <div class="field-card">
                 <div class="vehicle-section-header">
-                    <div class="field-label" style="margin-bottom: 0;">Meus Veículos</div>
+                    <div class="field-label" style="margin-bottom: 0;">Meus VeÃ­culos</div>
                     <button id="btnAddNewVehicle" class="btn-secondary">
                         <i class="fas fa-plus"></i>
-                        Novo Veículo
+                        Novo VeÃ­culo
                     </button>
                 </div>
                 
@@ -671,11 +671,11 @@
                 
                 <div id="sectionVeiculo" class="new-vehicle-form">
                     <div class="form-group">
-                        <label>Tipo do Veículo</label>
+                        <label>Tipo do VeÃ­culo</label>
                         <select id="infoVeiculoTipo">
                             <option value="carro">Carro</option>
                             <option value="moto">Moto</option>
-                            <option value="caminhao">Caminhão</option>
+                            <option value="caminhao">CaminhÃ£o</option>
                             <option value="outro">Outro</option>
                         </select>
                     </div>
@@ -693,7 +693,7 @@
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Ano de Fabricação</label>
+                            <label>Ano de FabricaÃ§Ã£o</label>
                             <input type="number" id="infoVeiculoAnoFab" placeholder="2022">
                         </div>
                         <div class="form-group">
@@ -710,7 +710,7 @@
                     <div class="form-actions">
                         <button class="btn-save" id="btnSaveVehicle">
                             <i class="fas fa-save"></i>
-                            Salvar Veículo
+                            Salvar VeÃ­culo
                         </button>
                         <button class="btn-cancel" id="btnCancelVehicle">Cancelar</button>
                     </div>
@@ -720,7 +720,7 @@
             <div style="margin-top: 8px;">
                 <button class="btn-primary" id="btnSaveProfile">
                     <i class="fas fa-save"></i>
-                    Salvar Alterações
+                    Salvar AlteraÃ§Ãµes
                 </button>
             </div>
         </div>
@@ -729,6 +729,7 @@
 
 <script src="static/js/config.js"></script>
 <script src="static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
 <script src="static/js/notifications.js" defer></script>
 <script src="static/js/responsive.js" defer></script>
 <script>
@@ -740,12 +741,12 @@
             return;
         }
 
-        // Tenta carregar do cache para resposta instantânea
+        // Tenta carregar do cache para resposta instantÃ¢nea
         const cachedUser = Auth.getUser();
         const cachedVehicles = Auth.Cache.get('autoassist_veiculos_cache');
         
         if (cachedUser) {
-            // Se tiver cache de veículos, injeta no objeto user para o renderProfile
+            // Se tiver cache de veÃ­culos, injeta no objeto user para o renderProfile
             if (cachedVehicles) cachedUser.veiculos = cachedVehicles;
             renderProfile(cachedUser);
 
@@ -795,7 +796,7 @@
     function renderProfile(user) {
         const initials = user.nome ? user.nome.split(' ').map(n => n[0]).join('').substring(0, 2) : 'U';
         document.getElementById('profileAvatar').textContent = initials;
-        document.getElementById('profileName').textContent = user.nome || 'Usuário';
+        document.getElementById('profileName').textContent = user.nome || 'UsuÃ¡rio';
         document.getElementById('profileEmail').textContent = user.email || '';
         document.getElementById('infoName').value = user.nome || '';
         document.getElementById('infoEmail').value = user.email || '';
@@ -854,7 +855,7 @@
         const container = document.getElementById('veiculosListContainer');
         
         if (!veiculos || veiculos.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; padding: 16px 0;">Nenhum veículo cadastrado</p>';
+            container.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; padding: 16px 0;">Nenhum veÃ­culo cadastrado</p>';
             return;
         }
 
@@ -879,10 +880,10 @@
                         </div>
                         <div>
                             <div class="vehicle-item-name">${safeMarca} ${safeModelo}</div>
-                            <div class="vehicle-item-year">${safeAno} • ${safeKm} km</div>
+                            <div class="vehicle-item-year">${safeAno} â€¢ ${safeKm} km</div>
                         </div>
                     </div>
-                    <button class="btn-delete-vehicle" onclick="deleteVehicle(${v.id})" title="Remover veículo">
+                    <button class="btn-delete-vehicle" onclick="deleteVehicle(${v.id})" title="Remover veÃ­culo">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1011,7 +1012,7 @@
         };
 
         if (!veiculo.marca || !veiculo.modelo) {
-            alert('Preencha a marca e o modelo do veículo.');
+            alert('Preencha a marca e o modelo do veÃ­culo.');
             return;
         }
 
@@ -1023,21 +1024,21 @@
             });
 
             if (res.ok) {
-                alert('Veículo adicionado com sucesso!');
+                alert('VeÃ­culo adicionado com sucesso!');
                 document.getElementById('sectionVeiculo').style.display = 'none';
                 clearVehicleForm();
                 loadProfile();
             } else {
-                alert('Erro ao adicionar veículo.');
+                alert('Erro ao adicionar veÃ­culo.');
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao adicionar veículo.');
+            alert('Erro ao adicionar veÃ­culo.');
         }
     });
 
     async function deleteVehicle(id) {
-        if (!confirm('Deseja realmente remover este veículo?')) return;
+        if (!confirm('Deseja realmente remover este veÃ­culo?')) return;
 
         try {
             const res = await Auth.authenticatedFetch(`/api/veiculos/${id}`, {
@@ -1047,11 +1048,11 @@
             if (res.ok) {
                 loadProfile();
             } else {
-                alert('Erro ao remover veículo.');
+                alert('Erro ao remover veÃ­culo.');
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao remover veículo.');
+            alert('Erro ao remover veÃ­culo.');
         }
     }
 
@@ -1084,7 +1085,7 @@
     });
 
     document.getElementById('btnDelete').addEventListener('click', async () => {
-        if (!confirm('Tem certeza que deseja excluir sua conta? Esta ação é irreversível.')) return;
+        if (!confirm('Tem certeza que deseja excluir sua conta? Esta aÃ§Ã£o Ã© irreversÃ­vel.')) return;
 
         try {
             const res = await Auth.authenticatedFetch('/api/user', {
@@ -1092,7 +1093,7 @@
             });
 
             if (res.ok) {
-                alert('Conta excluída com sucesso.');
+                alert('Conta excluÃ­da com sucesso.');
                 logout();
             } else {
                 alert('Erro ao excluir conta.');

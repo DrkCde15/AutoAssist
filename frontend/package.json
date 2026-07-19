@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx playwright test",
     "test:auth": "npx playwright test --grep \"auth\"",
+    "test:unit": "node tests/unit/security-utils.test.js",
     "lint": "npx eslint static/js/",
     "typecheck": "npx tsc --noEmit --allowJs --checkJs static/js/*.js",
     "build": "echo \"No build step needed - vanilla HTML/JS/CSS\""

@@ -1,8 +1,8 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>AutoAssist • Redefinir Senha</title>
+    <title>AutoAssist â€¢ Redefinir Senha</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -169,7 +169,7 @@
         <label>Nova senha</label>
         <div class="input-wrapper">
           <i class="fas fa-lock"></i>
-          <input id="password" type="password" placeholder="Mínimo de 6 caracteres" autocomplete="new-password">
+          <input id="password" type="password" placeholder="MÃ­nimo de 6 caracteres" autocomplete="new-password">
         </div>
       </div>
 
@@ -193,6 +193,7 @@
 
     <script src="./static/js/config.js"></script>
     <script src="./static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
     <script>
       const params = new URLSearchParams(window.location.search);
       const token = (params.get("token") || "").trim();
@@ -214,7 +215,7 @@
       }
 
       if (!token) {
-        showError("Token inválido ou ausente no link de redefinição.");
+        showError("Token invÃ¡lido ou ausente no link de redefiniÃ§Ã£o.");
         btn.disabled = true;
       }
 
@@ -226,15 +227,15 @@
         const password2 = document.getElementById("password2").value;
 
         if (!token) {
-          showError("Token inválido ou ausente.");
+          showError("Token invÃ¡lido ou ausente.");
           return;
         }
         if (!password || password.length < 6) {
-          showError("A senha deve ter no mínimo 6 caracteres.");
+          showError("A senha deve ter no mÃ­nimo 6 caracteres.");
           return;
         }
         if (password !== password2) {
-          showError("As senhas não coincidem.");
+          showError("As senhas nÃ£o coincidem.");
           return;
         }
 
@@ -243,7 +244,7 @@
 
         try {
           if (typeof Auth === "undefined" || !Auth.resetPassword) {
-            throw new Error("Módulo de autenticação não carregado.");
+            throw new Error("MÃ³dulo de autenticaÃ§Ã£o nÃ£o carregado.");
           }
           await Auth.resetPassword(token, password);
           showSuccess("Senha redefinida com sucesso! Redirecionando para o login...");

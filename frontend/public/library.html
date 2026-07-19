@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -304,7 +304,7 @@
             <div class="nav-links">
                 <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                 <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-                <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
+                <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> AnotaÃ§Ãµes</a>
                 <a href="library.html" class="nav-link active"><i class="fas fa-book"></i> Biblioteca</a>
                 <a href="perfil.html" class="nav-link"><i class="fas fa-user-circle"></i> Perfil</a>
                 <div id="notif-bell-container"></div>
@@ -316,7 +316,7 @@
     <div class="container">
         <div class="header-section">
             <h1>Minha <span>Biblioteca</span> Automotiva</h1>
-            <p>Seu acervo personalizado de vídeos e links sugeridos pela nossa IA durante suas conversas.</p>
+            <p>Seu acervo personalizado de vÃ­deos e links sugeridos pela nossa IA durante suas conversas.</p>
         </div>
 
         <div id="libraryContent">
@@ -329,6 +329,7 @@
 
     <script src="static/js/config.js"></script>
 <script src="static/js/auth.js"></script>
+    <script src="static/js/security-utils.js"></script>
 <script src="static/js/notifications.js" defer></script>
 <script src="static/js/responsive.js" defer></script>
     <script>
@@ -365,8 +366,8 @@
                     content.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-book-open"></i>
-                            <h2>Sua biblioteca ainda está vazia.</h2>
-                            <p style="color:var(--text-gray); margin-top:10px;">Interaja com o NOG no Chat para receber dicas, vídeos e recomendações personalizadas.</p>
+                            <h2>Sua biblioteca ainda estÃ¡ vazia.</h2>
+                            <p style="color:var(--text-gray); margin-top:10px;">Interaja com o NOG no Chat para receber dicas, vÃ­deos e recomendaÃ§Ãµes personalizadas.</p>
                             <a href="chat.html" style="display:inline-block; margin-top:25px; color:var(--accent-blue); text-decoration:none; font-weight:600;">Ir para o Chat <i class="fas fa-arrow-right"></i></a>
                         </div>
                     `;
@@ -378,7 +379,7 @@
                     
                     const mediaItems = [];
                     
-                    // Adicionar vídeos
+                    // Adicionar vÃ­deos
                     topic.videos.forEach(v => {
                         
                         mediaItems.push(`
@@ -404,7 +405,7 @@
                                 </div>
                                 <div class="link-content">
                                     <h3>${l.titulo}</h3>
-                                    <p>${l.tipo === 'peca' ? 'Sugestão de Peças/Ferramentas' : 'Ofertas de Veículos'}</p>
+                                    <p>${l.tipo === 'peca' ? 'SugestÃ£o de PeÃ§as/Ferramentas' : 'Ofertas de VeÃ­culos'}</p>
                                 </div>
                                 <div class="link-btn">
                                     Acessar <i class="fas fa-chevron-right"></i>
