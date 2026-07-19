@@ -8,7 +8,7 @@
     "test:auth": "npx playwright test --grep \"auth\"",
     "test:unit": "node tests/unit/security-utils.test.js",
     "lint": "eslint public/static/js/",
-    "typecheck": "npx tsc --noEmit --allowJs --checkJs public/static/js/*.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "echo \"No build step needed - vanilla HTML/JS/CSS\""
   },
   "devDependencies": {

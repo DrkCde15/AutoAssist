@@ -14,6 +14,6 @@
     },
     "skipLibCheck": true
   },
-  "include": ["public/static/js/**/*.js"],
+  "include": ["public/static/js/**/*.js", "public/static/js/**/*.d.ts"],
   "exclude": ["node_modules", "**/*.spec.js", "**/*.test.js"]
 }

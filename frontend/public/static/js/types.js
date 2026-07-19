@@ -152,7 +152,7 @@
 /** @type {Config} */
 var CONFIG;
 
-/** @type {typeof import('./auth.js')} */
+/** @type {unknown} */
 var Auth;
 
 export {};

@@ -37,7 +37,11 @@
   }
 
   const api = { escapeHTML: escapeHTML, setSafeText: setSafeText };
-  global.SecurityUtils = api;
+  // Expoe no escopo global (window no browser, globalThis em node) sem
+  // depender de tipos estritos de globalThis.
+  /** @type {any} */
+  const g = global;
+  g.SecurityUtils = api;
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   }
