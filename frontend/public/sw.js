@@ -14,6 +14,8 @@ const STATIC_ASSETS = [
   "/static/js/responsive.js",
   "/static/js/notifications.js",
   "/static/css/notifications.css",
+  "/static/css/app-select.css",
+  "/static/js/app-select.js",
 ];
 
 self.addEventListener("install", (event) => {
