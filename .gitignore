@@ -50,10 +50,6 @@ htmlcov/
 .env.key
 .env.encrypted
 
-# --- Modelos treinados (gerados por scripts/train.py) ---
-*.pkl
-backend/models/predictive/
-
 # --- Frontend (Node.js) ---
 frontend/node_modules/
 frontend/package-lock.json
