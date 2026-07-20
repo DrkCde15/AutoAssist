@@ -169,7 +169,7 @@
         <label>Nova senha</label>
         <div class="input-wrapper">
           <i class="fas fa-lock"></i>
-          <input id="password" type="password" placeholder="MÃ­nimo de 6 caracteres" autocomplete="new-password">
+          <input id="password" type="password" placeholder="Mínimo de 6 caracteres" autocomplete="new-password">
         </div>
       </div>
 
@@ -215,7 +215,7 @@
       }
 
       if (!token) {
-        showError("Token invÃ¡lido ou ausente no link de redefiniÃ§Ã£o.");
+        showError("Token inválido ou ausente no link de redefinição.");
         btn.disabled = true;
       }
 
@@ -227,15 +227,15 @@
         const password2 = document.getElementById("password2").value;
 
         if (!token) {
-          showError("Token invÃ¡lido ou ausente.");
+          showError("Token inválido ou ausente.");
           return;
         }
         if (!password || password.length < 6) {
-          showError("A senha deve ter no mÃ­nimo 6 caracteres.");
+          showError("A senha deve ter no mínimo 6 caracteres.");
           return;
         }
         if (password !== password2) {
-          showError("As senhas nÃ£o coincidem.");
+          showError("As senhas não coincidem.");
           return;
         }
 
@@ -244,7 +244,7 @@
 
         try {
           if (typeof Auth === "undefined" || !Auth.resetPassword) {
-            throw new Error("MÃ³dulo de autenticaÃ§Ã£o nÃ£o carregado.");
+            throw new Error("Módulo de autenticação não carregado.");
           }
           await Auth.resetPassword(token, password);
           showSuccess("Senha redefinida com sucesso! Redirecionando para o login...");

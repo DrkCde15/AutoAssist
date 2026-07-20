@@ -191,7 +191,7 @@
     </div>
 
     <div class="actions">
-      <a class="button" id="primary-action" href="index.html">Ir para o inÃ­cio</a>
+      <a class="button" id="primary-action" href="index.html">Ir para o início</a>
       <button class="secondary" id="retry-button" type="button">Atualizar status</button>
     </div>
   </main>
@@ -229,7 +229,7 @@
       statusBox.innerHTML = '<span class="spinner" aria-hidden="true"></span> Verificando sua assinatura...';
 
       if (!Auth.isAuthenticated()) {
-        setStatus("Entre com a mesma conta usada na compra para finalizar a liberaÃ§Ã£o.", "warn");
+        setStatus("Entre com a mesma conta usada na compra para finalizar a liberação.", "warn");
         primaryAction.textContent = "Entrar na conta";
         primaryAction.href = "login.html";
         retryButton.disabled = false;

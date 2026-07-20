@@ -439,7 +439,7 @@
         <label for="senha">Senha</label>
         <div class="input-wrapper">
           <i class="fas fa-lock icon"></i>
-          <input id="senha" name="senha" type="password" autocomplete="new-password" placeholder="MÃ­nimo 6 caracteres" style="padding-right: 44px;" />
+          <input id="senha" name="senha" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres" style="padding-right: 44px;" />
           <i class="fas fa-eye password-toggle" id="toggleSenha"></i>
         </div>
       </div>
@@ -455,13 +455,13 @@
 
       <div class="checkbox-wrapper" id="checkContainer">
         <input type="checkbox" id="possuiVeiculo" />
-        <label for="possuiVeiculo">Possuo um veÃ­culo para consultar</label>
+        <label for="possuiVeiculo">Possuo um veículo para consultar</label>
       </div>
 
       <div id="vehiclesContainer"></div>
       
       <button type="button" id="btnAddVehicle" class="btn btn-add" style="display: none;">
-        <i class="fas fa-plus"></i> Adicionar outro veÃ­culo
+        <i class="fas fa-plus"></i> Adicionar outro veículo
       </button>
 
       <button class="btn btn-primary" id="btnCadastrar">
@@ -474,7 +474,7 @@
       </div>
 
       <div class="links">
-        JÃ¡ possui conta? <a href="login.html">Fazer Login</a>
+        Já possui conta? <a href="login.html">Fazer Login</a>
       </div>
     </div>
 
@@ -501,19 +501,19 @@
           <div class="vehicle-header">
             <div class="vehicle-title">
               <i class="fas fa-car-side"></i>
-              VeÃ­culo ${vehicleCount}
+              Veículo ${vehicleCount}
             </div>
             ${vehicleCount > 1 ? `<button type="button" class="btn-remove" onclick="this.closest('.vehicle-section').remove()"><i class="fas fa-trash"></i> Remover</button>` : ''}
           </div>
 
           <div class="form-group">
-            <label for="v-tipo-${vehicleId}">Tipo de VeÃ­culo</label>
+            <label for="v-tipo-${vehicleId}">Tipo de Veículo</label>
             <div class="input-wrapper">
               <i class="fas fa-list icon"></i>
               <select id="v-tipo-${vehicleId}" name="v-tipo-${vehicleId}" class="v-tipo" autocomplete="off">
                 <option value="carro">Carro</option>
                 <option value="moto">Moto</option>
-                <option value="caminhao">CaminhÃ£o</option>
+                <option value="caminhao">Caminhão</option>
                 <option value="outro">Outro</option>
               </select>
             </div>
@@ -538,7 +538,7 @@
 
           <div class="grid-2">
             <div class="form-group">
-              <label for="v-ano-fab-${vehicleId}">Ano FabricaÃ§Ã£o</label>
+              <label for="v-ano-fab-${vehicleId}">Ano Fabricação</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon"></i>
                 <input id="v-ano-fab-${vehicleId}" name="v-ano-fab-${vehicleId}" type="number" class="v-ano-fab" autocomplete="bday-year" placeholder="2022" />
@@ -639,7 +639,7 @@
         }
 
         if (!isValidEmail(email)) {
-          showError("Informe um e-mail vÃ¡lido, como nome@dominio.com.");
+          showError("Informe um e-mail válido, como nome@dominio.com.");
           return;
         }
 
@@ -648,7 +648,7 @@
         }
 
         if (email !== confirmEmail) {
-          showError("Os e-mails informados nÃ£o conferem.");
+          showError("Os e-mails informados não conferem.");
           return;
         }
 
@@ -666,7 +666,7 @@
         }
 
         if (senha !== confirmSenha) {
-          showError("As senhas informadas nÃ£o conferem.");
+          showError("As senhas informadas não conferem.");
           return;
         }
 
@@ -689,7 +689,7 @@
           });
 
           if (veiculos.length === 0 || !veiculos[0].marca || !veiculos[0].modelo) {
-            showError("Preencha a marca e o modelo de pelo menos um veÃ­culo.");
+            showError("Preencha a marca e o modelo de pelo menos um veículo.");
             return;
           }
         }
@@ -702,7 +702,7 @@
           alert("Conta criada com sucesso! Bem-vindo ao AutoAssist.");
           window.location.href = "login.html";
         } catch (err) {
-          showError(err.message || "Erro de conexÃ£o com o servidor.");
+          showError(err.message || "Erro de conexão com o servidor.");
           btn.disabled = false;
           btn.innerHTML = 'Criar Minha Conta <i class="fas fa-arrow-right"></i>';
         }

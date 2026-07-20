@@ -236,8 +236,8 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-        .badge-crÃ­tico, .badge-atencao { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
-        .badge-atenÃ§Ã£o, .badge-aviso { background: rgba(255, 204, 0, 0.15); color: var(--warning); }
+        .badge-crítico, .badge-atencao { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
+        .badge-atenção, .badge-aviso { background: rgba(255, 204, 0, 0.15); color: var(--warning); }
         .badge-ok { background: rgba(52, 199, 89, 0.15); color: var(--success); }
         .btn-action {
             background: var(--accent);
@@ -318,7 +318,7 @@
                 </a>
                 <a href="maintenance_history.html" class="nav-link">
                     <i class="fas fa-history"></i>
-                    <span>AnotaÃ§Ãµes</span>
+                    <span>Anotações</span>
                 </a>
                 <a href="chat.html" class="nav-link">
                     <i class="fas fa-comments"></i>
@@ -344,7 +344,7 @@
     <div class="dashboard-content" id="dashboardContent">
         <div id="loadingDash" class="loading">
             <i class="fas fa-circle-notch fa-spin"></i>
-            <p>Carregando dados do veÃ­culo...</p>
+            <p>Carregando dados do veículo...</p>
         </div>
     </div>
 
@@ -375,7 +375,7 @@
 
             const content = document.getElementById('dashboardContent');
             
-            // ExibiÃ§Ã£o instantÃ¢nea via Cache
+            // Exibição instantânea via Cache
             const cachedDash = Auth.Cache.get('autoassist_dashboard_cache');
             if (cachedDash) renderDashboard(cachedDash, {});
 
@@ -386,13 +386,13 @@
                 ]);
 
                 if (dashRes.status === 404) {
-                    content.innerHTML = `<div class="no-vehicle"><div class="no-vehicle-icon"><i class="fas fa-car-crash"></i></div><h2>Nenhum veÃ­culo cadastrado</h2><p>VÃ¡ ao perfil para cadastrar seu veÃ­culo.</p></div>`;
+                    content.innerHTML = `<div class="no-vehicle"><div class="no-vehicle-icon"><i class="fas fa-car-crash"></i></div><h2>Nenhum veículo cadastrado</h2><p>Vá ao perfil para cadastrar seu veículo.</p></div>`;
                     return;
                 }
 
                 if (!dashRes.ok) {
                     if (!cachedDash) {
-                        content.innerHTML = '<div class="no-vehicle"><h2>Erro de conexÃ£o</h2><p>Tente novamente mais tarde.</p></div>';
+                        content.innerHTML = '<div class="no-vehicle"><h2>Erro de conexão</h2><p>Tente novamente mais tarde.</p></div>';
                     }
                     return;
                 }
@@ -400,11 +400,11 @@
                 const data = await dashRes.json();
 
                 if (!Array.isArray(data) || data.length === 0) {
-                    content.innerHTML = `<div class="no-vehicle"><div class="no-vehicle-icon"><i class="fas fa-car-crash"></i></div><h2>Nenhum veÃ­culo cadastrado</h2><p>VÃ¡ ao perfil para cadastrar seu veÃ­culo.</p></div>`;
+                    content.innerHTML = `<div class="no-vehicle"><div class="no-vehicle-icon"><i class="fas fa-car-crash"></i></div><h2>Nenhum veículo cadastrado</h2><p>Vá ao perfil para cadastrar seu veículo.</p></div>`;
                     return;
                 }
 
-                // Consome /api/maintenance/alerts e agrupa por veÃ­culo
+                // Consome /api/maintenance/alerts e agrupa por veículo
                 const alertsByVehicle = {};
                 if (alertsRes.ok) {
                     const alertsData = await alertsRes.json();
@@ -420,7 +420,7 @@
             } catch (error) {
                 console.warn('Erro ao atualizar dashboard:', error);
                 if (!cachedDash) {
-                    content.innerHTML = '<div class="no-vehicle"><h2>Erro de conexÃ£o</h2><p>Tente novamente mais tarde.</p></div>';
+                    content.innerHTML = '<div class="no-vehicle"><h2>Erro de conexão</h2><p>Tente novamente mais tarde.</p></div>';
                 }
             }
         });
@@ -439,7 +439,7 @@
             const content = document.getElementById('dashboardContent');
             const icons = {'moto': 'fa-motorcycle', 'caminhao': 'fa-truck', 'aviao': 'fa-plane', 'navio': 'fa-ship', 'geral': 'fa-car'};
 
-            let htmlBuilder = `<div class="dashboard-header"><h1>Seu <span>Dashboard</span></h1><p>Acompanhe a saÃºde e o valor do seu patrimÃ´nio em tempo real.</p></div>`;
+            let htmlBuilder = `<div class="dashboard-header"><h1>Seu <span>Dashboard</span></h1><p>Acompanhe a saúde e o valor do seu patrimônio em tempo real.</p></div>`;
 
             data.forEach((item, index) => {
                 const iconClass = icons[item.veiculo.tipo] || 'fa-car';
@@ -455,7 +455,7 @@
                 const fipeAnoUsado = fipeData ? (fipeData.AnoFipeUsado || fipeData.AnoModelo || '') : '';
                 const fipeAnoConsultado = fipeData ? (fipeData.AnoConsultado || '') : '';
                 const fipeAproximado = fipeData && fipeData.fipe_match_type === 'nearest_year' && fipeAnoUsado;
-                const fipeRefLabel = fipeAproximado ? 'ReferÃªncia aproximada' : 'ReferÃªncia';
+                const fipeRefLabel = fipeAproximado ? 'Referência aproximada' : 'Referência';
                 const fipeAnoInfo = fipeAproximado
                     ? ` - ano FIPE ${escapeHTML(fipeAnoUsado)}${fipeAnoConsultado ? ` (cadastro ${escapeHTML(fipeAnoConsultado)})` : ''}`
                     : '';
@@ -465,7 +465,7 @@
                 if(healthScore < 50) healthColor = "var(--danger)";
                 else if(healthScore < 80) healthColor = "var(--warning)";
 
-                // Alertas reais de manutenÃ§Ã£o (por veÃ­culo), com fallback genÃ©rico
+                // Alertas reais de manutenção (por veículo), com fallback genérico
                 const realAlerts = (alertsByVehicle && alertsByVehicle[item.veiculo.id]) || item.saude || [];
 
                 htmlBuilder += `
@@ -496,7 +496,7 @@
                                 <text x="50" y="50" class="percentage">${healthScore}</text>
                             </svg>
                             <div class="health-score-text">
-                                <p>PontuaÃ§Ã£o geral baseada na idade e quilometragem do seu veÃ­culo.</p>
+                                <p>Pontuação geral baseada na idade e quilometragem do seu veículo.</p>
                             </div>
                         </div>
                         <div id="alertsList">
@@ -529,10 +529,10 @@
                         <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
                             <div class="stat-card-header" style="margin-bottom: 0.5rem;">
                                 <div class="stat-card-icon" style="width:30px; height:30px; font-size:0.8rem;"><i class="fas fa-wrench"></i></div>
-                                <div class="stat-card-title">HistÃ³rico de ManutenÃ§Ãµes</div>
+                                <div class="stat-card-title">Histórico de Manutenções</div>
                             </div>
                             <p style="font-size: 1.2rem; font-weight: 600;">${extras.manutencoes_realizadas} registros</p>
-                            <p class="stat-subtitle">Ãšltima revisÃ£o: ${extras.data_ultima_manutencao}</p>
+                            <p class="stat-subtitle">Última revisão: ${extras.data_ultima_manutencao}</p>
                         </div>
                         
                         <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
@@ -540,8 +540,8 @@
                                 <div class="stat-card-icon" style="width:30px; height:30px; font-size:0.8rem; background: rgba(10,132,255,0.1); color: #0a84ff;"><i class="fas fa-comments"></i></div>
                                 <div class="stat-card-title">Consultas com o NOG</div>
                             </div>
-                            <p style="font-size: 1.2rem; font-weight: 600;">${extras.chats_realizados} interaÃ§Ãµes</p>
-                            <p class="stat-subtitle">Tire mais dÃºvidas pelo chat!</p>
+                            <p style="font-size: 1.2rem; font-weight: 600;">${extras.chats_realizados} interações</p>
+                            <p class="stat-subtitle">Tire mais dúvidas pelo chat!</p>
                         </div>
                     </div>
                     
@@ -549,10 +549,10 @@ ${pred.predicted_next_km ? `
 <div class="stat-card prediction">
     <div class="stat-card-header">
         <div class="stat-card-icon"><i class="fas fa-tools"></i></div>
-        <div class="stat-card-title">PrÃ³xima ManutenÃ§Ã£o Prevista</div>
+        <div class="stat-card-title">Próxima Manutenção Prevista</div>
     </div>
     <div class="stat-value">${pred.predicted_next_km.toLocaleString()} km</div>
-    <p class="stat-subtitle">${escapeHTML(pred.maintenance_label || 'ManutenÃ§Ã£o')} Â· Data: ${pred.predicted_next_date} (confianÃ§a ${Math.round(pred.confidence*100)}%)</p>
+    <p class="stat-subtitle">${escapeHTML(pred.maintenance_label || 'Manutenção')} · Data: ${pred.predicted_next_date} (confiança ${Math.round(pred.confidence*100)}%)</p>
 </div>` : ''}
                 </div>
                 <a href="chat.html" class="btn-action"><i class="fas fa-robot"></i> Analisar dados com o NOG</a>
@@ -616,7 +616,7 @@ ${pred.predicted_next_km ? `
                         <div class="stat-card-icon" style="width:30px;height:30px;font-size:0.8rem;color:var(--accent);background:rgba(59,130,246,0.1);">
                             <i class="fas fa-chart-line"></i>
                         </div>
-                        <div class="stat-card-title" style="font-size:13px;font-weight:600;color:var(--text-secondary)">TendÃªncia do Health Score</div>
+                        <div class="stat-card-title" style="font-size:13px;font-weight:600;color:var(--text-secondary)">Tendência do Health Score</div>
                     </div>
                     <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${w}px;display:block">
                         <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>

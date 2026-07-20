@@ -314,7 +314,7 @@
             AutoAssist
         </a>
         <div class="nav-links" id="navLinks">
-            <a href="index.html" class="nav-link"><i class="fas fa-home"></i> InÃ­cio</a>
+            <a href="index.html" class="nav-link"><i class="fas fa-home"></i> Início</a>
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
             <a href="feedback.html" class="nav-link active"><i class="fas fa-star"></i> Feedbacks</a>
             <a href="login.html" class="nav-link"><i class="fas fa-sign-in-alt"></i> Entrar</a>
@@ -326,8 +326,8 @@
 
 <main class="container">
     <header class="header">
-        <h1>Sua opiniÃ£o Ã© <span>fundamental</span></h1>
-        <p>Ajude-nos a construir o futuro da assistÃªncia automotiva inteligente.</p>
+        <h1>Sua opinião é <span>fundamental</span></h1>
+        <p>Ajude-nos a construir o futuro da assistência automotiva inteligente.</p>
     </header>
 
     <div class="layout">
@@ -336,7 +336,7 @@
             <h2 class="card-title"><i class="fas fa-pen-nib"></i> Deixe seu Feedback</h2>
             <form id="feedbackForm">
                 <div class="form-group">
-                    <label>Como vocÃª avalia sua experiÃªncia?</label>
+                    <label>Como você avalia sua experiência?</label>
                     <div class="rating" id="starRating">
                         <i class="fas fa-star star active" data-value="1"></i>
                         <i class="fas fa-star star active" data-value="2"></i>
@@ -348,7 +348,7 @@
 
                 <div class="form-group">
                     <label for="userName">Seu Nome (Opcional)</label>
-                    <input type="text" id="userName" class="form-control" placeholder="Ex: JÃºlio CÃ©sar">
+                    <input type="text" id="userName" class="form-control" placeholder="Ex: Júlio César">
                 </div>
 
                 <div class="form-group">
@@ -357,8 +357,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="comment">Seu ComentÃ¡rio</label>
-                    <textarea id="comment" class="form-control" placeholder="Conte-nos o que vocÃª achou, sugestÃµes ou crÃ­ticas..." required></textarea>
+                    <label for="comment">Seu Comentário</label>
+                    <textarea id="comment" class="form-control" placeholder="Conte-nos o que você achou, sugestões ou críticas..." required></textarea>
                 </div>
 
                 <button type="submit" class="btn-submit" id="btnSubmit">
@@ -370,7 +370,7 @@
 
         <!-- Feedback List -->
         <section>
-            <h2 class="card-title"><i class="fas fa-comments"></i> O que dizem nossos usuÃ¡rios</h2>
+            <h2 class="card-title"><i class="fas fa-comments"></i> O que dizem nossos usuários</h2>
             <div class="feedback-list" id="feedbackList">
                 <div style="text-align: center; color: var(--text-muted); padding: 40px;">
                     <i class="fas fa-spinner fa-spin"></i> Carregando feedbacks...
@@ -415,7 +415,7 @@
         navLinks.innerHTML = `
             ${user?.is_premium ? '<a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>' : ''}
             <a href="chat.html" class="nav-link"><i class="fas fa-comments"></i> Chat</a>
-            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> AnotaÃ§Ãµes</a>
+            <a href="maintenance_history.html" class="nav-link"><i class="fas fa-history"></i> Anotações</a>
             ${user?.is_premium ? '<a href="library.html" class="nav-link"><i class="fas fa-book"></i> Biblioteca</a>' : ''}
             <a href="feedback.html" class="nav-link active"><i class="fas fa-star"></i> Feedbacks</a>
             <a href="perfil.html" class="nav-link"><i class="fas fa-user"></i> Perfil</a>
@@ -560,10 +560,10 @@
                 loadFeedbacks();
             } else {
                 const err = await res.json();
-                alert(err.error || 'Erro ao salvar alteraÃ§Ãµes');
+                alert(err.error || 'Erro ao salvar alterações');
             }
         } catch (err) {
-            alert('Erro de conexÃ£o');
+            alert('Erro de conexão');
         }
     }
 
@@ -582,7 +582,7 @@
                 alert(err.error || 'Erro ao excluir feedback');
             }
         } catch (err) {
-            alert('Erro de conexÃ£o');
+            alert('Erro de conexão');
         }
     }
 

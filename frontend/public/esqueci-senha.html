@@ -228,7 +228,7 @@
           <img src="logo.png?v=20260511" alt="AutoAssist IA" style="height:72px;width:auto;">
         </div>
         <h1>AutoAssist</h1>
-        <p>Recuperar acesso Ã  sua conta</p>
+        <p>Recuperar acesso à sua conta</p>
       </div>
 
       <div id="alertError" class="alert alert-error"></div>
@@ -243,7 +243,7 @@
       </div>
 
       <button class="btn btn-primary" id="btnEnviar">
-        Enviar Link de RecuperaÃ§Ã£o
+        Enviar Link de Recuperação
         <i class="fas fa-paper-plane"></i>
       </button>
 
@@ -292,14 +292,14 @@
             await Auth.forgotPassword(email);
           }
 
-          showSuccess("Se este e-mail existir no sistema, um link de recuperaÃ§Ã£o serÃ¡ enviado.");
+          showSuccess("Se este e-mail existir no sistema, um link de recuperação será enviado.");
 
         } catch (err) {
-          showError(err.message || "Erro ao solicitar recuperaÃ§Ã£o.");
+          showError(err.message || "Erro ao solicitar recuperação.");
         }
 
         btn.disabled = false;
-        btn.innerHTML = 'Enviar Link de RecuperaÃ§Ã£o <i class="fas fa-paper-plane"></i>';
+        btn.innerHTML = 'Enviar Link de Recuperação <i class="fas fa-paper-plane"></i>';
       });
     </script>
   </body>
