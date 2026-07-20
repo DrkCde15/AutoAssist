@@ -21,6 +21,10 @@
     "marked": "readonly",
     "SecurityUtils": "readonly",
     "module": "readonly",
-    "require": "readonly"
+    "require": "readonly",
+    "clients": "readonly",
+    "caches": "readonly",
+    "registration": "readonly",
+    "skipWaiting": "readonly"
   }
 }

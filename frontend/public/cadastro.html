@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>AutoAssist â€¢ Cadastro</title>
+    <title>AutoAssist • Cadastro</title>
     <link rel="icon" type="image/png" href="static/logo2.png?v=20260506">
     <link rel="shortcut icon" type="image/png" href="static/logo2.png?v=20260506">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -389,12 +389,13 @@
 </style>
     <link rel="stylesheet" href="static/css/responsive.css">
     <link rel="stylesheet" href="static/css/shared.css">
+    <link rel="stylesheet" href="static/css/app-select.css">
 </head>
   <body class="auth-page">
     <div class="container">
       <div class="logo">
         <div class="logo-mark">
-          <img src="logo.png?v=20260511" alt="AutoAssist IA" style="height:72px;width:auto;">
+          <a href="index.html"><img src="logo.png?v=20260511" alt="AutoAssist IA" style="height:72px;width:auto;"></a>
         </div>
         <h1>AutoAssist</h1>
       </div>
@@ -481,6 +482,7 @@
     <script src="./static/js/config.js"></script>
     <script src="./static/js/auth.js"></script>
     <script src="static/js/security-utils.js"></script>
+    <script src="./static/js/app-select.js"></script>
     <script>
       const btn = document.getElementById("btnCadastrar");
       const alertError = document.getElementById("alertError");
@@ -508,15 +510,7 @@
 
           <div class="form-group">
             <label for="v-tipo-${vehicleId}">Tipo de Veículo</label>
-            <div class="input-wrapper">
-              <i class="fas fa-list icon"></i>
-              <select id="v-tipo-${vehicleId}" name="v-tipo-${vehicleId}" class="v-tipo" autocomplete="off">
-                <option value="carro">Carro</option>
-                <option value="moto">Moto</option>
-                <option value="caminhao">Caminhão</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
+            <div id="v-tipo-${vehicleId}" class="app-select app-select--no-search v-tipo" data-placeholder="Carro" aria-label="Tipo de Veículo"></div>
           </div>
 
           <div class="grid-2">
@@ -562,6 +556,22 @@
           </div>
         `;
         vehiclesContainer.appendChild(div);
+
+        div.querySelectorAll('.v-tipo').forEach(function (el) {
+          if (el && window.AppSelect && !el._appSelect) {
+            AppSelect.mount(el, {
+              searchable: false,
+              placeholder: "Carro",
+              ariaLabel: "Tipo de Veículo"
+            });
+            el._appSelect.setOptions([
+              { value: "carro", label: "Carro" },
+              { value: "moto", label: "Moto" },
+              { value: "caminhao", label: "Caminhão" },
+              { value: "outro", label: "Outro" }
+            ]);
+          }
+        });
       }
       
       btnAddVehicle.addEventListener('click', createVehicleForm);

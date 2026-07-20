@@ -11,6 +11,14 @@ from .push import send_push_notification
 payment_bp = Blueprint("payment", __name__)
 logger = logging.getLogger(__name__)
 
+# Planos esperados (fonte unica de verdade para valor/plano no backend).
+# Evita fraudes de valor/plano: o upgrade so e confirmado se o pedido interno
+# confere com o que foi efetivamente pago.
+PREMIUM_PLANS = {
+    "completo": {"amount": 29.90, "currency": "BRL"},
+}
+DEFAULT_PLAN = "completo"
+
 _svc = None
 
 
@@ -19,6 +27,13 @@ def get_service() -> CaktoService:
     if _svc is None:
         _svc = CaktoService()
     return _svc
+
+
+def _normalize_decimal(value):
+    try:
+        return round(float(value), 2)
+    except (TypeError, ValueError):
+        return None
 
 
 def _get_service_or_error():
@@ -89,6 +104,12 @@ def create_preference():
     if error_response:
         return error_response
 
+    # Plano/valor esperados: validados contra o catalogo interno (PREMIUM_PLANS).
+    requested_plan = (body.get("plan") or DEFAULT_PLAN)
+    plan_cfg = PREMIUM_PLANS.get(requested_plan)
+    if not plan_cfg:
+        return jsonify(success=False, error="Plano invalido."), 400
+
     user_email = _get_user_email(user_id)
     order_id = str(uuid.uuid4())
 
@@ -96,8 +117,10 @@ def create_preference():
         # Criar pedido pendente no banco antes de gerar o checkout
         with get_db() as (cursor, conn):
             cursor.execute(
-                "INSERT INTO payments_orders (id, user_id, status, provider) VALUES (%s, %s, 'pending', 'cakto')",
-                (order_id, user_id)
+                """INSERT INTO payments_orders
+                   (id, user_id, status, plan, amount, currency, provider)
+                   VALUES (%s, %s, 'pending', %s, %s, %s, 'cakto')""",
+                (order_id, user_id, requested_plan, plan_cfg["amount"], plan_cfg["currency"]),
             )
             conn.commit()
 
@@ -116,7 +139,13 @@ def create_preference():
         success=True,
         message="Checkout Cakto gerado com sucesso.",
         checkout_url=checkout_url,
-        data={"checkout_url": checkout_url, "order_id": order_id},
+        data={
+            "checkout_url": checkout_url,
+            "order_id": order_id,
+            "plan": requested_plan,
+            "amount": plan_cfg["amount"],
+            "currency": plan_cfg["currency"],
+        },
     ), 201
 
 
@@ -185,17 +214,38 @@ def cakto_webhook():
     if not should_activate and not should_deactivate:
         return jsonify(success=True, message="Evento recebido sem acao de premium."), 200
 
+    # Carrega o pedido interno antes da validacao ativa para conferir valor/plano.
+    order = None
+    if internal_order_id:
+        with get_db() as (cursor, conn):
+            cursor.execute(
+                "SELECT user_id, status, plan, amount, currency FROM payments_orders WHERE id = %s",
+                (internal_order_id,),
+            )
+            order = cursor.fetchone()
+
     if should_activate:
         transaction_id = data.get("id")
         if not transaction_id:
             logger.warning("Hardening Cakto: Nenhum ID de transacao no webhook para validacao ativa.")
             return jsonify(success=False, error="ID de transacao ausente no payload."), 400
-            
+
         try:
-            is_really_paid = service.verify_transaction_status(transaction_id)
+            is_really_paid, paid_amount = service.verify_transaction_status(transaction_id)
             if not is_really_paid:
                 logger.warning("Hardening Cakto: Transacao %s divergente (nao paga na API).", transaction_id)
                 return jsonify(success=False, error="Pagamento nao confirmado na consulta a API."), 400
+
+            # Confere o valor pago contra o pedido interno (defesa contra fraude de valor).
+            expected_amount = _normalize_decimal(order.get("amount")) if order else None
+            if expected_amount is not None and paid_amount is not None:
+                if abs(round(float(paid_amount), 2) - expected_amount) > 0.01:
+                    logger.warning(
+                        "Hardening Cakto: valor divergente pedido=%s pago=%s",
+                        expected_amount,
+                        paid_amount,
+                    )
+                    return jsonify(success=False, error="Valor pago diverge do pedido."), 400
         except ValueError as e:
             logger.error("Credenciais invalidas/ausentes na verificacao Cakto: %s", e)
             return jsonify(success=False, error="Erro de configuracao na API de pagamentos."), 500
@@ -205,23 +255,27 @@ def cakto_webhook():
 
     target_state = True if should_activate else False
     user_id = None
-    
-    if internal_order_id:
+    api_amount = _normalize_decimal(data.get("amount"))
+
+    if order:
+        user_id = order["user_id"]
+        new_status = "approved" if should_activate else "revoked"
         with get_db() as (cursor, conn):
-            cursor.execute("SELECT user_id, status FROM payments_orders WHERE id = %s", (internal_order_id,))
-            order = cursor.fetchone()
-            
-            if order:
-                user_id = order["user_id"]
-                # Atualizar status do pedido interno
-                new_status = "approved" if should_activate else "revoked"
+            if api_amount is not None and should_activate:
+                cursor.execute(
+                    """UPDATE payments_orders
+                       SET status = %s, provider_order_id = %s, amount = %s
+                       WHERE id = %s""",
+                    (new_status, data.get("id"), api_amount, internal_order_id),
+                )
+            else:
                 cursor.execute(
                     "UPDATE payments_orders SET status = %s, provider_order_id = %s WHERE id = %s",
-                    (new_status, data.get("id"), internal_order_id)
+                    (new_status, data.get("id"), internal_order_id),
                 )
-                conn.commit()
-            else:
-                logger.warning(f"Webhook Cakto: Pedido interno {internal_order_id} nao encontrado.")
+            conn.commit()
+    elif internal_order_id:
+        logger.warning(f"Webhook Cakto: Pedido interno {internal_order_id} nao encontrado.")
 
     updated = 0
     if user_id:

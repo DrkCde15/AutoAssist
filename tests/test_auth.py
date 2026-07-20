@@ -58,7 +58,8 @@ class AuthHelpersTest(unittest.TestCase):
 
         from backend.routes.auth import _get_frontend_base_url_for_email
         url = _get_frontend_base_url_for_email()
-        self.assertIn("autoassist", url)
+        # Sem URL_PROD/URL_DEV configuradas, o fallback da implementacao e "/".
+        self.assertEqual(url, "/")
 
     # ─────────────── get_google_oauth_hosts ───────────────
 

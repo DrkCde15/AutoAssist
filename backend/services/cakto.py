@@ -113,10 +113,13 @@ class CaktoService:
             logger.error("Falha ao obter access token da Cakto: %s", e)
             raise ValueError("Erro ao autenticar na API da Cakto.")
 
-    def verify_transaction_status(self, transaction_id: str) -> bool:
-        """Faz a consulta ativa do pedido na Cakto para confirmar o status."""
+    def verify_transaction_status(self, transaction_id: str) -> tuple[bool, float | None]:
+        """Faz a consulta ativa do pedido na Cakto para confirmar o status.
+
+        Retorna (pago?, valor_pago) onde valor_pago pode ser None se indisponivel.
+        """
         if not transaction_id:
-            return False
+            return False, None
 
         try:
             token = self.get_access_token()
@@ -130,7 +133,7 @@ class CaktoService:
             
             if response.status_code == 404:
                 logger.warning("Pedido %s nao encontrado na API Cakto.", transaction_id)
-                return False
+                return False, None
                 
             response.raise_for_status()
             data = response.json()
@@ -139,11 +142,21 @@ class CaktoService:
             
             # Ajuste dependendo da estrutura real de retorno, tipicamente retorna o obj do pedido
             status = str(data.get("status") or "").strip().lower()
-            return status in {"paid", "approved"}
+            paid = status in {"paid", "approved"}
+
+            amount = None
+            raw_amount = data.get("amount")
+            if raw_amount is not None:
+                try:
+                    amount = round(float(raw_amount), 2)
+                except (TypeError, ValueError):
+                    amount = None
+
+            return paid, amount
             
         except Exception as e:
             logger.error("Erro ao validar transacao %s na Cakto: %s", transaction_id, e)
-            return False
+            return False, None
 
     @staticmethod
     def extract_event(payload: dict) -> str:
@@ -196,11 +209,13 @@ class CaktoService:
     def extract_reference_user_id(payload: dict) -> str | None:
         data = CaktoService.extract_data(payload)
         candidates = (
+            data.get("refId"),
             data.get("user_ref"),
             data.get("user_id"),
             data.get("external_reference"),
             data.get("sck"),
             data.get("utm_content"),
+            payload.get("refId"),
             payload.get("user_ref"),
             payload.get("user_id"),
             payload.get("external_reference"),

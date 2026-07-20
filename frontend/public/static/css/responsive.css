@@ -204,13 +204,8 @@ body.aa-menu-lock {
     justify-content: center;
   }
 
-  .aa-mobile-menu-ready .notification-panel {
-    position: static !important;
-    width: 100% !important;
-    max-width: none;
-    max-height: 45vh;
-    margin-top: 8px;
-  }
+  /* O .notif-panel é movido para o <body> e posicionado via JS (fixed),
+     então NÃO é mais forçado a position:static dentro do drawer. */
 
   .aa-mobile-menu-ready .nav-bell-btn {
     width: 100%;
@@ -390,17 +385,9 @@ body.aa-menu-lock {
     bottom: 14px !important;
   }
 
-  .notification-panel,
-  .notif-panel {
-    position: fixed;
-    top: auto;
-    left: 12px !important;
-    right: 12px !important;
-    bottom: 12px;
-    width: auto;
-    max-width: none;
-    max-height: min(60vh, 420px);
-  }
+  /* .notif-panel é posicionado via JS (position: fixed + getBoundingClientRect)
+     em TODOS os tamanhos de tela; nenhuma geometria fixa aqui para não
+     conflitar com o posicionamento dinâmico. */
 }
 
 @media (max-width: 420px) {

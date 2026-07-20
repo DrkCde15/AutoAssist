@@ -1,4 +1,21 @@
 /* Notifications styles */
+
+/* Portal/root global dedicado a overlays da navbar (sino de notificacoes).
+   ELE cria um unico stacking context com z-index acima da navbar, isolando
+   o popover do layout/conteudo da pagina. O popover deixa de competir
+   diretamente com a navbar (z-index:1000 + backdrop-filter) e passa a ser
+   sempre desenhado por cima de qualquer conteudo, inclusive page-header,
+   cards, tabelas e modais secundarios. */
+#navbar-overlay-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 1100;
+  pointer-events: none;
+}
+
 .notif-bell-btn {
   position: relative;
   display: inline-flex;
@@ -41,16 +58,23 @@
   display: none;
 }
 .notif-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 360px;
   max-height: 480px;
+  margin: 0;
+  box-sizing: border-box;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  z-index: 200;
+  /* O stacking/prioridade e controlado por #navbar-overlay-root (z-index:1100),
+     que ja fica acima da navbar (z-index:1000 + backdrop-filter). Aqui basta
+     z-index:1 dentro desse contexto. pointer-events:auto reativa cliques, ja
+     que o root global desliga pointer-events para nao bloquear a pagina. */
+  z-index: 1;
+  pointer-events: auto;
   display: none;
   flex-direction: column;
   overflow: hidden;
@@ -181,8 +205,18 @@
   background: rgba(239, 68, 68, 0.1);
 }
 .notif-empty {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: 32px 16px;
   color: var(--text-muted);
   font-size: 13px;
+  min-height: 180px;
 }
+
+/* O .notif-panel é movido para o <body> e posicionado via JS
+   (position: fixed + getBoundingClientRect) em TODOS os tamanhos de tela,
+   garantindo que ele flutue livremente e nunca seja limitado pela largura
+   de menus/drawers ancestrais. Nenhum ajuste de mídia é necessário aqui. */

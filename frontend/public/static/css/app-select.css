@@ -1,0 +1,184 @@
+/* AppSelect — componente de seleção customizado (usa as variaveis do tema) */
+
+.app-select {
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+/* Gatilho (visual idêntico aos inputs) */
+.app-select__trigger {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 11px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: left;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.app-select__trigger:hover {
+  border-color: #3f3f46;
+}
+.app-select.is-open .app-select__trigger,
+.app-select__trigger:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.app-select__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-select__caret {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+.app-select.is-open .app-select__caret {
+  transform: rotate(180deg);
+}
+.app-select.is-disabled {
+  opacity: 0.7;
+}
+.app-select.is-disabled .app-select__trigger {
+  cursor: progress;
+}
+
+/* Popup (largura exata do componente, nunca ultrapassa o viewport) */
+.app-select__popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: calc(100vw - 16px);
+  z-index: 60;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: appSelectIn 0.14s ease;
+}
+.app-select__popup--above {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom center;
+}
+@keyframes appSelectIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Campo de pesquisa */
+.app-select__search-wrap {
+  position: relative;
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+.app-select__search-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+.app-select__search {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 9px 12px 9px 32px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  outline: none;
+}
+.app-select__search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Lista de opções */
+.app-select__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+.app-select__option {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-select__option.is-active {
+  background: rgba(59, 130, 246, 0.16);
+}
+.app-select__option.is-selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+.app-select__option[aria-selected="true"]::after {
+  content: "\f00c";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  float: right;
+  color: var(--accent);
+}
+
+.app-select__empty {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Scrollbar personalizada (WebKit) */
+.app-select__list::-webkit-scrollbar { width: 10px; }
+.app-select__list::-webkit-scrollbar-track { background: transparent; }
+.app-select__list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  border: 2px solid var(--bg-card);
+}
+.app-select__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+}
+
+/* Alvo de toque maior em telas pequenas */
+@media (max-width: 680px) {
+  .app-select__trigger { min-height: 44px; }
+}
+
+/* Modo sem pesquisa (mantém o popup apenas com a lista) */
+.app-select--no-search .app-select__search-wrap { display: none; }
+.app-select__list:focus { outline: none; }

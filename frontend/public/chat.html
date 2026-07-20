@@ -1444,15 +1444,20 @@
         if (!CHAT_USE_WEBSOCKET) return;
 
         function connectWebSocket() {
-          const gid = isAuthenticated ? null : guestId;
           const params = new URLSearchParams();
-          if (gid) params.set("guest_id", gid);
+          if (isAuthenticated) {
+            // O cookie de sessao JWT exige CSRF no handshake do WebSocket, o que o
+            // browser nao envia; portanto enviamos o access token (localStorage) via
+            // query string para que o backend identifique o usuario e associe os
+            // veiculos e o historico de conversas ao perfil/dashboard.
+            const accessToken = (typeof Auth !== "undefined" && Auth.getAccessToken) ? Auth.getAccessToken() : null;
+            if (accessToken) params.set("token", accessToken);
+          } else if (guestId) {
+            params.set("guest_id", guestId);
+          }
 
           const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
           const wsUrl = `${protocol}//${window.location.host}/ws/chat?${params}`;
-
-          // O token JWT e enviado automaticamente via cookie de sessao (credentials:include),
-          // evitando vazamento do token em logs de servidor/Referer via query string.
           wsChat = new WebSocket(wsUrl);
 
           wsChat.onopen = () => {

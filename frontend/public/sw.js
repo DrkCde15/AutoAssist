@@ -1,9 +1,11 @@
-const CACHE = "autoassist-v5";
+const CACHE = "autoassist-v6";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/login.html",
   "/cadastro.html",
+  "/logo.png",
+  "/static/logo2.png",
   "/static/css/dark-theme.css",
   "/static/css/shared.css",
   "/static/css/responsive.css",

@@ -62,6 +62,43 @@ const Notifications = (() => {
     const list = document.getElementById("notifList");
     const markAllBtn = document.getElementById("notifMarkAllRead");
 
+    // The panel is rendered inside a dedicated global overlay root
+    // (#navbar-overlay-root) appended to <body> on first use. This isolates the
+    // popover from every stacking context created by page content (navbar with
+    // backdrop-filter + z-index:1000, cards, transforms, etc.) and guarantees it
+    // is always painted above the page header and navbar. Its position is
+    // computed in JS from the bell button via getBoundingClientRect() and
+    // clamped to the viewport.
+    let overlayRoot = document.getElementById("navbar-overlay-root");
+    if (!overlayRoot) {
+      overlayRoot = document.createElement("div");
+      overlayRoot.id = "navbar-overlay-root";
+      document.body.appendChild(overlayRoot);
+    }
+    overlayRoot.appendChild(panel);
+
+    function positionPanel() {
+      if (!panel.classList.contains("is-open")) return;
+      const rect = btn.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const margin = 8;
+      const gap = 8;
+      panel.style.maxWidth = (vw - margin * 2) + "px";
+      panel.style.maxHeight = (vh - margin * 2) + "px";
+      const pw = panel.offsetWidth;
+      const ph = panel.offsetHeight;
+      let left = rect.right - pw;
+      left = Math.max(margin, Math.min(left, vw - pw - margin));
+      let top = rect.bottom + gap;
+      if (top + ph > vh - margin) {
+        const above = rect.top - gap - ph;
+        top = above >= margin ? above : Math.max(margin, vh - ph - margin);
+      }
+      panel.style.left = Math.round(left) + "px";
+      panel.style.top = Math.round(top) + "px";
+    }
+
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const shouldOpen = !panel.classList.contains("is-open");
@@ -69,15 +106,19 @@ const Notifications = (() => {
       panel.classList.toggle("open", shouldOpen);
       if (shouldOpen) {
         fetchNotifications();
+        requestAnimationFrame(positionPanel);
       }
     });
 
     document.addEventListener("click", (e) => {
-      if (!container.contains(e.target)) {
+      if (!container.contains(e.target) && !panel.contains(e.target)) {
         panel.classList.remove("is-open");
         panel.classList.remove("open");
       }
     });
+
+    window.addEventListener("scroll", positionPanel, true);
+    window.addEventListener("resize", positionPanel);
 
     markAllBtn.addEventListener("click", async () => {
       try {

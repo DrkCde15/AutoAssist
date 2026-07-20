@@ -524,6 +524,7 @@
     <link rel="stylesheet" href="static/css/responsive.css">
   <link rel="stylesheet" href="static/css/shared.css">
   <link rel="stylesheet" href="static/css/notifications.css">
+  <link rel="stylesheet" href="static/css/app-select.css">
 </head>
 <body>
 
@@ -672,12 +673,7 @@
                 <div id="sectionVeiculo" class="new-vehicle-form">
                     <div class="form-group">
                         <label>Tipo do Veículo</label>
-                        <select id="infoVeiculoTipo">
-                            <option value="carro">Carro</option>
-                            <option value="moto">Moto</option>
-                            <option value="caminhao">Caminhão</option>
-                            <option value="outro">Outro</option>
-                        </select>
+                        <div id="infoVeiculoTipo" class="app-select app-select--no-search" data-placeholder="Carro" aria-label="Tipo do Veículo"></div>
                     </div>
                     
                     <div class="form-row">
@@ -732,8 +728,27 @@
     <script src="static/js/security-utils.js"></script>
 <script src="static/js/notifications.js" defer></script>
 <script src="static/js/responsive.js" defer></script>
+<script src="static/js/app-select.js"></script>
 <script>
     let currentUser = null;
+
+    function mountSelects() {
+        const tipoEl = document.getElementById("infoVeiculoTipo");
+        if (tipoEl && window.AppSelect && !tipoEl._appSelect) {
+            AppSelect.mount(tipoEl, {
+                searchable: false,
+                placeholder: "Carro",
+                ariaLabel: "Tipo do Veículo"
+            });
+            tipoEl._appSelect.setOptions([
+                { value: "carro", label: "Carro" },
+                { value: "moto", label: "Moto" },
+                { value: "caminhao", label: "Caminhão" },
+                { value: "outro", label: "Outro" }
+            ]);
+        }
+    }
+    mountSelects();
 
     async function loadProfile() {
         if (typeof Auth === 'undefined' || !Auth.isAuthenticated()) {
@@ -880,7 +895,7 @@
                         </div>
                         <div>
                             <div class="vehicle-item-name">${safeMarca} ${safeModelo}</div>
-                            <div class="vehicle-item-year">${safeAno} â€¢ ${safeKm} km</div>
+                            <div class="vehicle-item-year">${safeAno} • ${safeKm} km</div>
                         </div>
                     </div>
                     <button class="btn-delete-vehicle" onclick="deleteVehicle(${v.id})" title="Remover veículo">

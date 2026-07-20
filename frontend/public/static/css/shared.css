@@ -162,10 +162,12 @@ header {
 
 .notification-panel,
 .notif-panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  margin: 0;
   display: none;
   flex-direction: column;
   background: var(--bg-card, #1c1c1f);

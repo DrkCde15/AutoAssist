@@ -102,7 +102,7 @@
         }
         .layout-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 16px;
             margin-bottom: 16px;
         }
@@ -111,6 +111,7 @@
             border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
             padding: 20px;
+            min-width: 0;
         }
         .card-title {
             font-size: 16px;
@@ -134,6 +135,7 @@
         input,
         select {
             width: 100%;
+            min-width: 0;
             border: 1px solid var(--border-color);
             background: var(--bg-input);
             color: var(--text-primary);
@@ -143,6 +145,7 @@
             font-size: 14px;
             outline: none;
             transition: var(--transition);
+            box-sizing: border-box;
         }
         textarea {
             min-height: 110px;
@@ -156,12 +159,12 @@
         }
         .field-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 10px;
         }
         .field-row-3 {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
             gap: 10px;
         }
         .btn {
@@ -329,15 +332,19 @@
             justify-content: space-between;
             gap: 10px;
             margin-bottom: 14px;
+            flex-wrap: wrap;
         }
         .card-head-controls {
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
+            min-width: 0;
         }
         .small-select {
             width: 230px;
             max-width: 100%;
+            min-width: 0;
         }
         .actions-inline {
             display: inline-flex;
@@ -379,13 +386,29 @@
         }
         @media (max-width: 960px) {
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .layout-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .field-row-3 {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .history-card .card-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .card-head-controls {
+                width: 100%;
+                flex-direction: column;
+            }
+            .small-select,
+            #veiculoSelect,
+            #vehicleFilter {
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+                flex: 1 1 auto;
             }
         }
         @media (max-width: 680px) {
@@ -396,7 +419,7 @@
                 font-size: 24px;
             }
             .field-row {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
             .history-card .card-head {
                 flex-direction: column;
@@ -408,6 +431,7 @@
             }
             .small-select {
                 width: 100%;
+                flex: 1 1 auto;
             }
             .card-head-controls select {
                 width: 100%;
@@ -416,6 +440,9 @@
             #veiculoSelect,
             #vehicleFilter,
             #sortFilter {
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
                 min-height: 44px;
             }
             .form-actions {
@@ -426,6 +453,7 @@
     <link rel="stylesheet" href="static/css/responsive.css">
   <link rel="stylesheet" href="static/css/shared.css">
   <link rel="stylesheet" href="static/css/notifications.css">
+  <link rel="stylesheet" href="static/css/app-select.css">
 </head>
 <body>
 <nav class="navbar">
@@ -476,9 +504,7 @@
             </div>
             <div class="field">
                 <label for="veiculoSelect">Veiculo (opcional)</label>
-                <select id="veiculoSelect" disabled>
-                    <option value="">Carregando veiculos...</option>
-                </select>
+                <div id="veiculoSelect" class="app-select" data-placeholder="Carregando veiculos..." aria-label="Veiculo (opcional)"></div>
             </div>
             <div class="field-row">
                 <div class="field">
@@ -536,14 +562,8 @@
         <div class="card-head">
             <h2 class="card-title" style="margin:0;"><i class="fas fa-clock-rotate-left"></i> Registros salvos</h2>
             <div class="card-head-controls">
-                <select id="sortFilter" class="small-select">
-                    <option value="recent">Mais recentes</option>
-                    <option value="cost_desc">Maior gasto</option>
-                    <option value="urgency">Mais urgente</option>
-                </select>
-                <select id="vehicleFilter" class="small-select" disabled>
-                    <option value="">Carregando veiculos...</option>
-                </select>
+                <div id="sortFilter" class="app-select small-select" data-placeholder="Mais recentes" aria-label="Ordenar registros"></div>
+                <div id="vehicleFilter" class="app-select small-select" data-placeholder="Carregando veiculos..." aria-label="Filtrar por veiculo"></div>
             </div>
         </div>
         <div class="history-list" id="historyList"></div>
@@ -555,6 +575,7 @@
     <script src="static/js/security-utils.js"></script>
 <script src="static/js/notifications.js" defer></script>
 <script src="static/js/responsive.js" defer></script>
+<script src="static/js/app-select.js"></script>
 <script>
     const state = {
         vehicles: [],
@@ -657,24 +678,55 @@
     }
 
     function renderVehicleSelects() {
-        const options = ['<option value="">Sem vinculo de veiculo</option>']
-            .concat(state.vehicles.map((v) => {
-                const label = escapeHtml(([v.marca, v.modelo].filter(Boolean).join(" ") || ("Veiculo #" + v.id)));
-                return `<option value="${v.id}">${label}</option>`;
-            }))
-            .join("");
+        const labelFor = (v) => ([v.marca, v.modelo].filter(Boolean).join(" ") || ("Veiculo #" + v.id));
 
-        document.getElementById("veiculoSelect").innerHTML = options;
-        document.getElementById("veiculoSelect").disabled = false;
+        const formItems = [{ value: "", label: "Sem vinculo de veiculo" }]
+            .concat(state.vehicles.map((v) => ({ value: String(v.id), label: labelFor(v) })));
 
-        const filterOptions = ['<option value="">Todos os veiculos</option>']
-            .concat(state.vehicles.map((v) => {
-                const label = escapeHtml(([v.marca, v.modelo].filter(Boolean).join(" ") || ("Veiculo #" + v.id)));
-                return `<option value="${v.id}">${label}</option>`;
-            }))
-            .join("");
-        document.getElementById("vehicleFilter").innerHTML = filterOptions;
-        document.getElementById("vehicleFilter").disabled = false;
+        const filterItems = [{ value: "", label: "Todos os veiculos" }]
+            .concat(state.vehicles.map((v) => ({ value: String(v.id), label: labelFor(v) })));
+
+        const formEl = document.getElementById("veiculoSelect");
+        const filterEl = document.getElementById("vehicleFilter");
+        if (formEl && formEl._appSelect) formEl._appSelect.setOptions(formItems);
+        if (filterEl && filterEl._appSelect) filterEl._appSelect.setOptions(filterItems);
+    }
+
+    function mountSelects() {
+        const formEl = document.getElementById("veiculoSelect");
+        if (formEl && window.AppSelect && !formEl._appSelect) {
+            AppSelect.mount(formEl, {
+                placeholder: formEl.dataset.placeholder || "Carregando veiculos...",
+                searchPlaceholder: "Pesquisar veiculo...",
+                emptyText: "Nenhum veiculo encontrado",
+                ariaLabel: "Veiculo (opcional)"
+            });
+        }
+
+        const filterEl = document.getElementById("vehicleFilter");
+        if (filterEl && window.AppSelect && !filterEl._appSelect) {
+            AppSelect.mount(filterEl, {
+                placeholder: filterEl.dataset.placeholder || "Carregando veiculos...",
+                searchPlaceholder: "Pesquisar veiculo...",
+                emptyText: "Nenhum veiculo encontrado",
+                ariaLabel: "Filtrar por veiculo"
+            });
+        }
+
+        const sortEl = document.getElementById("sortFilter");
+        if (sortEl && window.AppSelect && !sortEl._appSelect) {
+            AppSelect.mount(sortEl, {
+                placeholder: "Mais recentes",
+                searchPlaceholder: "Ordenar por...",
+                ariaLabel: "Ordenar registros"
+            });
+            sortEl._appSelect.setOptions([
+                { value: "recent", label: "Mais recentes" },
+                { value: "cost_desc", label: "Maior gasto" },
+                { value: "urgency", label: "Mais urgente" }
+            ]);
+            sortEl._appSelect.setValue("recent");
+        }
     }
 
     function renderStats() {
@@ -1034,6 +1086,7 @@
     window.startEditMaintenance = startEditMaintenance;
     window.deleteMaintenance = deleteMaintenance;
 
+    mountSelects();
     init();
 </script>
 <script>if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}</script>

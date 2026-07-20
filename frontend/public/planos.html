@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="referrer" content="strict-origin-when-cross-origin">
-    <title>Planos e Preços â€¢ AutoAssist IA</title>
+    <title>Planos e Preços • AutoAssist IA</title>
     <meta name="description" content="Escolha o plano AutoAssist ideal: diagnóstico automotivo com IA grátis ou o plano Completo com relatórios PDF, alertas preventivos e tabela FIPE ilimitada. Comece grátis.">
     <meta name="theme-color" content="#09090b">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="AutoAssist IA">
-    <meta property="og:title" content="Planos e Preços â€¢ AutoAssist IA">
+    <meta property="og:title" content="Planos e Preços • AutoAssist IA">
     <meta property="og:description" content="Diagnóstico automotivo com IA grátis ou o plano Completo com relatórios PDF, alertas preventivos e tabela FIPE ilimitada.">
     <meta property="og:image" content="static/logo2.png?v=20260608">
     <meta name="twitter:card" content="summary_large_image">
@@ -17,6 +17,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="static/css/responsive.css">
+    <link rel="stylesheet" href="static/css/shared.css">
+    <link rel="stylesheet" href="static/css/notifications.css">
 
     <style>
       body {
@@ -343,15 +346,11 @@
       footer p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
 
       @media (max-width: 760px) {
-        .nav-links { display: none; }
         .plans-grid { grid-template-columns: 1fr; padding-top: 32px; }
         .plan-card--premium { order: -1; }
         .plans-header { padding-top: 48px; }
       }
     </style>
-    <link rel="stylesheet" href="static/css/responsive.css">
-    <link rel="stylesheet" href="static/css/shared.css">
-    <link rel="stylesheet" href="static/css/notifications.css">
   </head>
   <body class="plans-page">
     <div class="page">
@@ -439,7 +438,7 @@
         </div>
         <div class="faq-item">
           <h3><i class="fas fa-circle-question"></i> Como funciona a garantia de 7 dias?</h3>
-          <p>Se não ficar satisfeito na primeira semana, devolvemos o valor pago â€” sem perguntas.</p>
+          <p>Se não ficar satisfeito na primeira semana, devolvemos o valor pago — sem perguntas.</p>
         </div>
       </section>
 
@@ -460,11 +459,16 @@
     <script src="static/js/auth.js"></script>
     <script src="static/js/security-utils.js"></script>
     <script src="static/js/notifications.js" defer></script>
+    <script src="static/js/responsive.js" defer></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
+        // A navegação mobile (hamburguer + drawer) é fornecida pelo
+        // componente compartilhado em static/js/responsive.js, exatamente
+        // como nas demais páginas do AutoAssist. Nenhuma lógica própria aqui.
+
         // Preenche a navbar conforme o estado de login (visitante x logado).
+        const authLinks = document.getElementById('authLinks');
         if (typeof Auth !== 'undefined' && Auth.isAuthenticated && Auth.isAuthenticated()) {
-          const authLinks = document.getElementById('authLinks');
           if (authLinks) {
             authLinks.innerHTML = `
               <a href="dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
@@ -481,6 +485,7 @@
             if (typeof Notifications !== 'undefined') Notifications.init();
           }
         }
+
 
         const btnPlanPremium = document.getElementById('btnPlanPremium');
         if (btnPlanPremium && typeof Auth !== 'undefined') {

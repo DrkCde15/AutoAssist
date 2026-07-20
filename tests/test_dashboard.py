@@ -1,4 +1,5 @@
 import sys
+import os
 import unittest
 from unittest.mock import patch, MagicMock, ANY
 from pathlib import Path
@@ -7,6 +8,9 @@ from datetime import datetime, timedelta
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 sys.path.insert(0, str(BACKEND_DIR / "backend"))
+
+# Forca o caminho sincrono de atualizacao FIPE nos testes (sem fila Redis/RQ).
+os.environ["REDIS_URL"] = "memory://"
 
 
 class DashboardHelpersTest(unittest.TestCase):
