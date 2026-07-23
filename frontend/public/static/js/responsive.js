@@ -4,93 +4,6 @@
 */
 (function () {
   const BREAKPOINT = 860;
-  const NAV_TOOLTIP_SELECTOR = [
-    ".nav-links .nav-link",
-    ".nav-links .nav-btn",
-    ".header-nav .nav-link",
-    ".header-nav .nav-btn",
-    ".nav-bell-btn",
-    "#btnReport",
-  ].join(", ");
-
-  const NAV_TOOLTIPS_BY_PATH = {
-    "dashboard.html": "Premium: acompanhe a saúde do veículo em tempo real, receba alertas inteligentes e evite prejuízos antes que eles aconteçam.",
-    "chat.html": "Converse com a IA para diagnosticar problemas, analisar arquivos e manter todo o histórico salvo para consultas futuras.",
-    "maintenance_history.html": "Premium: Tenha controle total das manutenções, despesas e revisões para valorizar seu veículo e reduzir gastos desnecessários.",
-    "library.html": "Premium: salve diagnósticos, recomendações e conteúdos importantes em uma biblioteca exclusiva, acessível sempre que precisar.",
-  };
-
-  const NAV_TOOLTIPS_BY_LABEL = {
-    dashboard: NAV_TOOLTIPS_BY_PATH["dashboard.html"],
-    chat: NAV_TOOLTIPS_BY_PATH["chat.html"],
-    anotacoes: NAV_TOOLTIPS_BY_PATH["maintenance_history.html"],
-    biblioteca: NAV_TOOLTIPS_BY_PATH["library.html"],
-  };
-
-  function normalizeLabel(value) {
-    return String(value || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  }
-
-  function getLinkPath(item) {
-    const href = item.getAttribute("href") || "";
-    if (!href || href.startsWith("#")) return "";
-
-    try {
-      return new URL(href, window.location.href).pathname.split("/").pop().toLowerCase();
-    } catch (error) {
-      return href.split("#")[0].split("?")[0].split("/").pop().toLowerCase();
-    }
-  }
-
-  function getTooltipById(item) {
-    if (item.id === "btnNotifications") return "Ver alertas e lembretes de manutenção.";
-    if (item.id === "btnReport") return "Exportar a última análise em PDF.";
-    if (item.id === "logout" || item.id === "btnLogout") return NAV_TOOLTIPS_BY_LABEL.sair;
-    return "";
-  }
-
-  function getTooltipForItem(item) {
-    const byId = getTooltipById(item);
-    if (byId) return byId;
-
-    const label = normalizeLabel(item.textContent);
-    if (NAV_TOOLTIPS_BY_LABEL[label]) return NAV_TOOLTIPS_BY_LABEL[label];
-
-    const path = getLinkPath(item);
-    return NAV_TOOLTIPS_BY_PATH[path] || "";
-  }
-
-  function findNavTooltipItems(root) {
-    const items = [];
-    if (root.matches && root.matches(NAV_TOOLTIP_SELECTOR)) items.push(root);
-    if (root.querySelectorAll) {
-      root.querySelectorAll(NAV_TOOLTIP_SELECTOR).forEach((item) => items.push(item));
-    }
-    return items;
-  }
-
-  function applyNavTooltips(root) {
-    return;
-  }
-
-  function observeNavTooltipChanges() {
-    if (!("MutationObserver" in window)) return;
-
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) applyNavTooltips(node);
-        });
-      });
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
 
   function createToggle(nav) {
     const button = document.createElement("button");
@@ -199,9 +112,6 @@
   }
 
   function initResponsiveMenus() {
-    applyNavTooltips(document);
-    observeNavTooltipChanges();
-
     document.querySelectorAll(".navbar").forEach(setupNavbar);
     document.querySelectorAll("header").forEach(function (header) {
       if (header.querySelector(".header-nav")) setupChatHeader(header);

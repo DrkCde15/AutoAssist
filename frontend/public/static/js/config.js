@@ -13,6 +13,7 @@
  *
  * Em producao: aponta diretamente ao servidor Flask hospedado.
  */
+// eslint-disable-next-line no-unused-vars
 const CONFIG = (() => {
   const FLASK_URL_DEV = "http://localhost:5000";
   const FLASK_URL_PROD = window.location.origin;

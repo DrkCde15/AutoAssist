@@ -1,6 +1,7 @@
+// eslint-disable-next-line no-unused-vars
 const Notifications = (() => {
   let unreadCount = 0;
-  let pollInterval = null;
+
 
   function escapeHTML(str) {
     if (typeof SecurityUtils !== "undefined" && SecurityUtils.escapeHTML) {
@@ -308,7 +309,7 @@ const Notifications = (() => {
     if (document.getElementById("notif-bell-container")) {
       createBell();
       fetchUnreadCount();
-      pollInterval = setInterval(fetchUnreadCount, 30000);
+      setInterval(fetchUnreadCount, 30000);
       requestPushPermission();
     }
   }

@@ -101,7 +101,7 @@ const Auth = (() => {
 
   // ─── Persistência ─────────────────────────────────────────────────────────
 
-  function saveSession(accessToken, refreshToken, user, options = {}) {
+  function saveSession(accessToken, refreshToken, user) {
     invalidSessionHandled = false;
     if (accessToken) localStorage.setItem(KEYS.ACCESS, accessToken);
     if (refreshToken) localStorage.setItem(KEYS.REFRESH, refreshToken);
@@ -682,7 +682,6 @@ const Auth = (() => {
       options.message ||
       "Este recurso esta disponivel apenas para usuarios Premium.";
     const showBackButton = options.showBackButton !== false;
-    const backHref = options.backHref || "index.html";
 
     const styleId = "autoassist-premium-style";
     if (!document.getElementById(styleId)) {
