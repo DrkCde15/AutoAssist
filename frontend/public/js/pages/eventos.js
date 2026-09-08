@@ -262,7 +262,7 @@
           imgHTML +
           '<div class="flex flex-1 flex-col gap-2 p-4">' +
             '<div class="flex items-center gap-2">' +
-              '<span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ' + catClass + '">' + escapeHTML(catLabel) + '</span>' +
+              '<span class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ' + catClass + '">' + escapeHTML(catLabel) + '</span>' +
               (ev.fonte ? '<span class="ml-auto text-xs text-muted">' + escapeHTML(ev.fonte) + '</span>' : '') +
             '</div>' +
             '<h3 class="line-clamp-2 text-base font-semibold leading-snug text-primary group-hover:text-accent transition-colors">' + escapeHTML(ev.titulo || "Evento automotivo") + '</h3>' +

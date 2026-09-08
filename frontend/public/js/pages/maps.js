@@ -4,8 +4,6 @@
 (function () {
   "use strict";
 
-  if (!window.auth.requireAuth()) return;
-
   var BRAZIL_CENTER = [-14.235, -51.925];
   var DEFAULT_RADIUS = 10;
   var map = null;
@@ -25,43 +23,6 @@
     document.head.appendChild(script);
   }
 
-  function render() {
-    var main = document.querySelector("main");
-    if (!main) return;
-    main.innerHTML = '<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">'
-      + '<div class="mb-6">'
-      + '<h1 class="text-2xl font-bold text-primary mb-2">Oficinas Mecânicas Próximas</h1>'
-      + '<p class="text-secondary text-sm">Encontre a melhor oficina para o seu veículo</p>'
-      + '</div>'
-      + '<div class="flex flex-col lg:flex-row gap-6">'
-      + '<div class="lg:w-1/3 order-2 lg:order-1">'
-      + '<div class="mb-4">'
-      + '<input type="text" id="maps-search" placeholder="Buscar por nome ou especialidade..." '
-      + 'class="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-primary placeholder:text-secondary/60 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent" />'
-      + '</div>'
-      + '<div class="mb-4 flex flex-wrap gap-2">'
-      + '<select id="maps-radius" class="rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">'
-      + '<option value="5">5 km</option>'
-      + '<option value="10" selected>10 km</option>'
-      + '<option value="25">25 km</option>'
-      + '<option value="50">50 km</option>'
-      + '</select>'
-      + '<select id="maps-sort" class="rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">'
-      + '<option value="distance" selected>Mais próximas</option>'
-      + '<option value="rating">Melhor avaliadas</option>'
-      + '</select>'
-      + '</div>'
-      + '<div id="maps-count" class="text-xs text-secondary mb-3"></div>'
-      + '<div id="maps-list" class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1"></div>'
-      + '</div>'
-      + '<div class="lg:w-2/3 order-1 lg:order-2">'
-      + '<div id="maps-container" class="w-full h-[50vh] lg:h-[70vh] rounded-xl border border-border overflow-hidden bg-secondary/30"></div>'
-      + '<div id="maps-geo-msg" class="hidden mt-3 rounded-lg bg-accent/10 border border-accent/30 px-4 py-3 text-sm text-accent"></div>'
-      + '</div>'
-      + '</div>'
-      + '</div>';
-  }
-
   function initMap(center) {
     map = L.map("maps-container", { zoomControl: true }).setView(center, userPosition ? 12 : 5);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -70,7 +31,7 @@
     }).addTo(map);
     if (userPosition) {
       L.circleMarker(userPosition, {
-        radius: 8, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.3, weight: 2
+        radius: 8, color: "#5b8def", fillColor: "#5b8def", fillOpacity: 0.3, weight: 2
       }).addTo(map).bindPopup('<b class="text-sm">Sua localização</b>');
     }
   }
@@ -94,7 +55,7 @@
       var esp = Array.isArray(m.especialidades) ? m.especialidades.join(", ") : (m.especialidades || "");
       var dist = m.distance_km != null ? m.distance_km + " km" : "";
       var rating = m.avaliacao_media ? '<span class="text-yellow-500 text-xs">★ ' + Number(m.avaliacao_media).toFixed(1) + '</span>' : "";
-      return '<div class="maps-card rounded-xl border border-border bg-secondary/30 p-4 cursor-pointer transition-all hover:border-accent/50 hover:bg-secondary/50" data-id="' + (m.id || "") + '" data-lat="' + (m.latitude || "") + '" data-lng="' + (m.longitude || "") + '">'
+      return '<div class="maps-card rounded-xl border border-border bg-secondary/30 p-4 cursor-pointer transition-all duration-200 hover:border-accent/50 hover:bg-secondary/50 hover:shadow-lg hover:shadow-[0_8px_30px_-4px_rgba(91,141,239,0.08)] hover:-translate-y-0.5" data-id="' + (m.id || "") + '" data-lat="' + (m.latitude || "") + '" data-lng="' + (m.longitude || "") + '">'
         + '<div class="flex items-start justify-between gap-2 mb-1">'
         + '<h3 class="text-sm font-semibold text-primary leading-tight">' + escapeHTML(m.nome || "Oficina") + '</h3>'
         + (m.is_verified ? '<span class="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-500">Verificada</span>' : '')
@@ -111,6 +72,7 @@
   }
 
   function renderMarkers(mechanics) {
+    if (!map) return;
     markers.forEach(function (m) { map.removeLayer(m); });
     markers = [];
     mechanics.forEach(function (m) {
@@ -172,7 +134,6 @@
   }
 
   function init() {
-    render();
     loadLeaflet(function () {
       navigator.geolocation.getCurrentPosition(
         function (pos) {

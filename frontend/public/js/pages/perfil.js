@@ -51,19 +51,19 @@
 
   function badgePremium(isPremium) {
     if (isPremium) {
-      return '<span class="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-500">' +
+      return '<span class="inline-flex items-center gap-1 rounded-md bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-500">' +
         '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-crown" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>' +
         "Premium</span>";
     }
-    return '<span class="inline-flex items-center gap-1 rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-xs font-medium text-zinc-400">Gratuito</span>';
+    return '<span class="inline-flex items-center gap-1 rounded-md bg-zinc-500/10 px-2.5 py-0.5 text-xs font-medium text-zinc-400">Gratuito</span>';
   }
 
   function badgeTrial(trialExpired, daysRemaining) {
     if (trialExpired) {
-      return '<span class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-400">Trial expirado</span>';
+      return '<span class="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-400">Trial expirado</span>';
     }
     if (daysRemaining !== null && daysRemaining !== undefined && daysRemaining > 0) {
-      return '<span class="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400">Trial: ' + daysRemaining + " dias restantes</span>";
+      return '<span class="inline-flex items-center gap-1 rounded-md bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400">Trial: ' + daysRemaining + " dias restantes</span>";
     }
     return "";
   }
@@ -82,7 +82,7 @@
 
       /* ── Header do perfil ── */
       '<div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">' +
-        '<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent text-2xl font-bold">' +
+        '<div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent text-2xl font-bold">' +
           escapeHTML(initials) +
         "</div>" +
         '<div class="text-center sm:text-left flex-1">' +
@@ -210,7 +210,7 @@
       var v = veiculos[i];
       var tipoLabel = { carro: "Carro", moto: "Moto", caminhao: "Caminhão", outro: "Outro" }[v.tipo] || v.tipo || "—";
       html +=
-        '<div class="rounded-xl border border-border bg-secondary p-5 transition-colors hover:border-border-hover">' +
+        '<div class="rounded-xl border border-border bg-secondary p-5 transition-all duration-200 hover:border-border-hover hover:shadow-lg hover:shadow-[0_8px_30px_-4px_rgba(91,141,239,0.06)] hover:-translate-y-0.5">' +
           '<div class="flex items-start justify-between">' +
             '<div class="flex items-center gap-3">' +
               '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">' +

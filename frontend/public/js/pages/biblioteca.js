@@ -129,7 +129,7 @@
       "</div>" +
       (desc ? '<p class="line-clamp-2 text-xs text-muted leading-relaxed">' + desc + "</p>" : "") +
       (topic && topic !== title
-        ? '<span class="mt-auto inline-flex w-fit items-center rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">' + topic + "</span>"
+        ? '<span class="mt-auto inline-flex w-fit items-center rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">' + topic + "</span>"
         : "") +
       "</div>" +
       "</div>"
@@ -147,46 +147,16 @@
       // Header
       '<div class="section__header mb-8">' +
       '<h1 class="text-3xl font-bold tracking-tight text-primary sm:text-4xl">Biblioteca de Vídeos</h1>' +
-      '<p class="mt-2 text-secondary">Seus vídeos salvos e aulas do chat organizadas por tópico.</p>' +
-      "</div>" +
-      // Save form
-      '<div class="mb-10 rounded-2xl border border-border bg-card p-5">' +
-      '<h2 class="mb-4 text-lg font-semibold text-primary">Salvar novo vídeo</h2>' +
-      '<form id="biblioteca-form" class="grid gap-4 sm:grid-cols-3">' +
-      '<input type="text" name="titulo" placeholder="Título do vídeo" required class="col-span-full sm:col-span-1 rounded-xl border border-border bg-primary px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />' +
-      '<input type="url" name="url" placeholder="URL do YouTube" required class="col-span-full sm:col-span-1 rounded-xl border border-border bg-primary px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />' +
-      '<input type="text" name="descricao" placeholder="Descrição (opcional)" class="col-span-full sm:col-span-1 rounded-xl border border-border bg-primary px-4 py-2.5 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />' +
-      '<button type="submit" id="biblioteca-submit" class="col-span-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover sm:col-span-3">' +
-      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>' +
-      "Salvar vídeo" +
-      "</button>" +
-      "</form>" +
-      "</div>" +
-      // Saved videos section
-      '<div id="saved-section" class="mb-10">' +
-      '<div class="flex items-center gap-2 mb-4">' +
-      '<h2 class="text-lg font-semibold text-primary">Meus Vídeos Salvos</h2>' +
-      '<span id="saved-count" class="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent"></span>' +
-      "</div>" +
-      '<div id="saved-grid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>' +
+      '<p class="mt-2 text-secondary">Vídeos e links organizados por tópico, coletados automaticamente nas suas conversas com a IA.</p>' +
       "</div>" +
       // Library section
       '<div id="library-section">' +
-      '<div class="flex items-center gap-2 mb-4">' +
-      '<h2 class="text-lg font-semibold text-primary">Vídeos do Chat</h2>' +
-      '<span id="library-count" class="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent"></span>' +
-      "</div>" +
       '<div id="library-grid" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>' +
       "</div>" +
       "</div>" +
       "</section>";
 
-    form = document.getElementById("biblioteca-form");
-    savedGrid = document.getElementById("saved-grid");
     libraryGrid = document.getElementById("library-grid");
-    savedCountEl = document.getElementById("saved-count");
-    libraryCountEl = document.getElementById("library-count");
-    savedSection = document.getElementById("saved-section");
     librarySection = document.getElementById("library-section");
 
     return true;
@@ -358,8 +328,6 @@
     if (!window.auth.requireAuth()) return;
     if (!buildPage()) return;
 
-    form.addEventListener("submit", handleSubmit);
-    fetchSaved();
     fetchLibrary();
   }
 

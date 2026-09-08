@@ -50,17 +50,18 @@
   // ── Toast notification ──
   window.showToast = function (message, type) {
     type = type || "info";
-    var colors = {
-      info: "bg-accent text-white",
-      success: "bg-green-600 text-white",
-      error: "bg-red-600 text-white",
-      warning: "bg-yellow-500 text-black",
+    var config = {
+      info: { bg: "bg-accent text-white", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>' },
+      success: { bg: "bg-green-600 text-white", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' },
+      error: { bg: "bg-red-600 text-white", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>' },
+      warning: { bg: "bg-amber-500 text-black", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>' }
     };
+    var c = config[type] || config.info;
     var toast = document.createElement("div");
     toast.className =
-      "fixed bottom-4 right-4 z-[9999] rounded-lg px-4 py-3 text-sm font-medium shadow-lg transition-all duration-300 translate-y-2 opacity-0 " +
-      (colors[type] || colors.info);
-    toast.textContent = message;
+      "fixed bottom-4 right-4 z-[9999] flex items-center gap-2.5 rounded-lg border-l-4 border-white/20 px-4 py-3 text-sm font-medium shadow-lg transition-all duration-300 translate-y-2 opacity-0 " +
+      c.bg;
+    toast.innerHTML = '<span class="shrink-0">' + c.icon + '</span><span>' + message + '</span>';
     document.body.appendChild(toast);
 
     requestAnimationFrame(function () {
@@ -125,5 +126,32 @@
         });
       },
     };
+  };
+
+  // ── Skeleton loaders ──
+  window.createSkeletonCard = function () {
+    return '<div class="skeleton-card rounded-xl">' +
+      '<div class="flex items-start justify-between mb-4">' +
+        '<div class="flex-1">' +
+          '<div class="skeleton skeleton-text mb-2" style="width:70%"></div>' +
+          '<div class="skeleton skeleton-text-sm" style="width:40%"></div>' +
+        '</div>' +
+        '<div class="skeleton skeleton-text-sm" style="width:3rem;height:1.25rem"></div>' +
+      '</div>' +
+      '<div class="skeleton rounded-lg mb-4" style="height:3.5rem"></div>' +
+      '<div class="grid grid-cols-3 gap-2">' +
+        '<div class="skeleton rounded-lg" style="height:2.5rem"></div>' +
+        '<div class="skeleton rounded-lg" style="height:2.5rem"></div>' +
+        '<div class="skeleton rounded-lg" style="height:2.5rem"></div>' +
+      '</div>' +
+    '</div>';
+  };
+
+  window.createSkeletonStats = function () {
+    return '<div class="flex flex-wrap items-center gap-6">' +
+      '<div class="flex items-center gap-2"><div class="skeleton skeleton-text-sm" style="width:5rem"></div><div class="skeleton skeleton-text-sm" style="width:2rem"></div></div>' +
+      '<div class="flex items-center gap-2"><div class="skeleton skeleton-text-sm" style="width:6rem"></div><div class="skeleton skeleton-text-sm" style="width:4rem"></div></div>' +
+      '<div class="flex items-center gap-2"><div class="skeleton skeleton-text-sm" style="width:5rem"></div><div class="skeleton skeleton-text-sm" style="width:2rem"></div></div>' +
+    '</div>';
   };
 })();

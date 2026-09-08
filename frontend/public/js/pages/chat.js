@@ -546,19 +546,19 @@
         '<h3 class="text-lg font-semibold text-primary mb-2">Fale com o NOG</h3>' +
         '<p class="text-sm text-muted max-w-md mb-6">Seu consultor automotivo com IA. Pergunte sobre manutencao, pecas, diagnosticos ou qualquer duvida sobre seu veiculo.</p>' +
         '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">' +
-          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5">' +
+          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
             '<p class="text-sm font-medium text-primary">Troca de oleo</p>' +
             '<p class="text-xs text-muted mt-1">Qual oleo usar e quando trocar?</p>' +
           '</button>' +
-          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5">' +
+          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
             '<p class="text-sm font-medium text-primary">Diagnostico</p>' +
             '<p class="text-xs text-muted mt-1">Meu carro faz um ruido estranho</p>' +
           '</button>' +
-          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5">' +
+          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
             '<p class="text-sm font-medium text-primary">Custo estimado</p>' +
             '<p class="text-xs text-muted mt-1">Quanto custa uma revisao geral?</p>' +
           '</button>' +
-          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5">' +
+          '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
             '<p class="text-sm font-medium text-primary">Proxima manutencao</p>' +
             '<p class="text-xs text-muted mt-1">O que devo revisar proximamente?</p>' +
           '</button>' +

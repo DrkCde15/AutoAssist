@@ -54,7 +54,7 @@
       color = "text-red-700 dark:text-red-400";
       bg = "bg-red-100 dark:bg-red-900/30";
     }
-    return '<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ' + bg + ' ' + color + '">' +
+    return '<span class="inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold ' + bg + ' ' + color + '">' +
       '<span class="h-1.5 w-1.5 rounded-full ' + color.replace("text-", "bg-") + '"></span>' +
       score +
     '</span>';
@@ -135,7 +135,7 @@
     var manutencoes = stats.manutencoes_realizadas || 0;
     var ultimaData = stats.data_ultima_manutencao || "---";
 
-    return '<div class="group rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5">' +
+    return '<div class="group fade-in-up rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-accent/40 hover:shadow-lg hover:shadow-[0_8px_30px_-4px_rgba(91,141,239,0.08)] hover:-translate-y-0.5">' +
       '<!-- Header -->' +
       '<div class="mb-4 flex items-start justify-between">' +
         '<div class="min-w-0 flex-1">' +
@@ -191,6 +191,15 @@
   }
 
   async function loadDashboard() {
+    // Show skeleton loaders while loading
+    if (statsBar) {
+      statsBar.innerHTML = window.createSkeletonStats ? window.createSkeletonStats() : '';
+      statsBar.classList.remove("hidden");
+    }
+    if (vehicleGrid) {
+      vehicleGrid.innerHTML = (window.createSkeletonCard ? window.createSkeletonCard() : '').repeat(3);
+    }
+
     try {
       var data = await window.api.get("/api/dashboard");
 

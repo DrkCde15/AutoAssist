@@ -701,6 +701,7 @@ app.register_blueprint(mechanics_bp)
 app.register_blueprint(config_bp)
 app.register_blueprint(b2b_bp)
 app.register_blueprint(marketing_bp)
+app.register_blueprint(notes_bp)
 
 # Gera VAPID keys se nao existirem
 if not os.getenv("VAPID_PRIVATE_KEY") or not os.getenv("VAPID_PUBLIC_KEY"):

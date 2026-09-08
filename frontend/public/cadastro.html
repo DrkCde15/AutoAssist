@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="pt-BR" class="" data-scroll-behavior="smooth">
 <head>
     <meta charSet="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="theme-color" content="#09090b"/>
+    <meta name="theme-color" content="#0c0c14"/>
     <title>Criar conta | AutoAssist</title>
     <meta name="description" content="Crie sua conta AutoAssist."/>
     <meta name="robots" content="noindex, nofollow"/>
@@ -16,6 +16,7 @@
     <script src="/js/cadastro.js" defer></script>
 </head>
 <body class="font-sans antialiased bg-primary">
+<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-white focus:font-medium">Pular para o conteúdo</a>
 <main class="flex min-h-screen items-center justify-center px-4 py-12">
   <div class="w-full max-w-md">
     <div class="mb-8 text-center">
@@ -40,7 +41,7 @@
       <form id="signupForm" class="space-y-4">
         <div>
           <label class="mb-1.5 block text-sm font-medium text-secondary">Nome Completo</label>
-          <input id="name" type="text" placeholder="João da Silva" required class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/>
+          <input id="name" type="text" placeholder="Joo da Silva" required class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/>
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-medium text-secondary">E-mail</label>
@@ -52,11 +53,11 @@
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-medium text-secondary">Senha</label>
-          <input id="password" type="password" placeholder="Mínimo 8 caracteres" required minlength="8" class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/>
+          <input id="password" type="password" placeholder="Mnimo 8 caracteres" required minlength="8" class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/>
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-medium text-secondary">Confirmar Senha</label>
-          <input id="password2" type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required minlength="8" class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/>
+          <input id="password2" type="password" placeholder="••••••••" required minlength="8" class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/>
         </div>
         <div id="turnstileBox" class="min-h-[65px]"></div>
         <div id="error" class="hidden rounded-lg bg-red-500/10 p-3 text-sm text-red-400"></div>
@@ -66,7 +67,7 @@
       </form>
 
       <div class="mt-6 text-center text-sm">
-        <span class="text-muted">Já tem conta? </span>
+        <span class="text-muted">J tem conta? </span>
         <a class="text-accent hover:text-accent/80" href="/login">Entrar</a>
       </div>
     </div>

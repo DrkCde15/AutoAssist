@@ -61,7 +61,7 @@
         .substring(0, 2)
         .toUpperCase();
       html +=
-        '<div class="rounded-xl border border-border bg-secondary p-4 transition-colors hover:border-border-hover">' +
+        '<div class="rounded-xl border border-border bg-secondary p-4 transition-all duration-200 hover:border-border-hover hover:-translate-y-0.5">' +
         '<div class="flex items-start gap-3">' +
         '<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">' +
         escapeHTML(initials) +

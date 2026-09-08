@@ -9,7 +9,7 @@
     var style = document.createElement("style");
     style.textContent = [
       '[data-mobile-drawer] {',
-      '  background-color: var(--color-primary, #09090b) !important;',
+      '  background-color: var(--color-primary, #0c0c14) !important;',
       '  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;',
       '}',
       '[data-mobile-backdrop] {',
@@ -134,7 +134,7 @@
         if (!href) return;
         var cleanHref = href.replace(/\/$/, "") || "/";
         if (cleanHref === path) {
-          a.classList.add("bg-white/5", "text-primary");
+          a.classList.add("bg-accent/10", "text-accent");
           a.classList.remove("text-secondary");
         }
       });

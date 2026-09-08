@@ -4,8 +4,8 @@
   "description": "Consultoria Automotiva com IA",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#3b82f6",
+  "background_color": "#0c0c14",
+  "theme_color": "#5b8def",
   "orientation": "portrait-primary",
   "icons": [
     {

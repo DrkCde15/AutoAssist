@@ -1304,8 +1304,12 @@ def get_user():
         cursor.execute("SELECT COUNT(DISTINCT session_id) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
 
-        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem FROM veiculos WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem, fipe_valor, fipe_mes_referencia FROM veiculos WHERE user_id = %s", (user_id,))
         veiculos = cursor.fetchall()
+
+        for v in veiculos:
+            if isinstance(v.get("fipe_valor"), Decimal):
+                v["fipe_valor"] = float(v["fipe_valor"])
 
         return jsonify({
             **user,

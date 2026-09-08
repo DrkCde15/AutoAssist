@@ -131,7 +131,7 @@
                 '<p class="text-sm text-muted mb-2">Por tipo</p>' +
                 '<div class="flex flex-wrap gap-2">' +
                   summary.gastos_por_tipo.map(function (item) {
-                    return '<span class="inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-secondary">' +
+                    return '<span class="inline-flex items-center rounded-md border border-border px-2.5 py-0.5 text-xs font-medium text-secondary">' +
                       escapeHTML(item.tipo) + ': ' + formatCurrency(item.valor) +
                     '</span>';
                   }).join("") +
@@ -162,7 +162,7 @@
         }
 
         var row = document.createElement("div");
-        row.className = "flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-zinc-600";
+        row.className = "flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4 transition-all duration-200 hover:border-zinc-600 hover:-translate-y-0.5";
 
         var left = document.createElement("div");
         left.className = "flex-1 min-w-0";
