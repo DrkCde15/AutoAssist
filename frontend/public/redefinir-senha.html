@@ -1,59 +1,137 @@
-﻿﻿<!DOCTYPE html><html lang="pt-BR" class="" data-scroll-behavior="smooth"><head>
-    <meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <meta name="theme-color" content="#0c0c14"/>
+﻿﻿<!doctype html>
+<html lang="pt-BR" class="" data-scroll-behavior="smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c0c14" />
     <title>Redefinir Senha | AutoAssist</title>
-    <meta name="robots" content="noindex, nofollow"/>
-    <link rel="icon" href="/favicon.ico" sizes="256x256" type="image/x-icon"/>
-    <link rel="icon" href="/logo2.png"/>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/favicon.ico" sizes="256x256" type="image/x-icon" />
+    <link rel="icon" href="/logo2.png" />
     <link rel="stylesheet" href="/css/styles.css" />
     <script src="/js/api.js" defer></script>
     <script src="/js/auth.js" defer></script>
     <script src="/js/nav.js" defer></script>
     <script src="/js/components.js" defer></script>
-  </head><body class="font-sans antialiased">
-<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-white focus:font-medium">Pular para o conteúdo</a><main class="flex min-h-screen items-center justify-center bg-primary px-4 py-12"><div class="w-full max-w-md"><div class="mb-8 text-center"><a class="inline-flex items-center gap-2 text-primary" href="/"><img src="/logo.png" alt="AutoAssist" class="h-14 w-auto"/></a></div><div class="rounded-2xl border border-border bg-secondary p-6 sm:p-8"><h1 class="mb-2 text-center font-display text-2xl font-bold text-primary">Redefinir Senha</h1><p class="mb-6 text-center text-sm text-muted">Digite sua nova senha para concluir</p><div id="tokenError" class="hidden rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-6 text-center text-sm text-yellow-400">Token de recuperao no encontrado. Solicite um novo link de recuperao.</div><form id="resetForm" class="space-y-4"><div><label class="mb-1.5 block text-sm font-medium text-secondary">Nova Senha</label><input id="new-password" type="password" placeholder="Mnimo 8 caracteres" required minlength="8" class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/></div><div><label class="mb-1.5 block text-sm font-medium text-secondary">Confirmar Senha</label><input id="confirm-password" type="password" placeholder="••••••••" required minlength="8" class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"/></div><div id="error" class="hidden rounded-lg bg-red-500/10 p-3 text-sm text-red-400"></div><button id="submitBtn" type="submit" class="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50">Redefinir senha</button></form><div class="mt-6 text-center text-sm"><a class="text-accent hover:text-accent/80" href="/login">Voltar para login</a></div></div></div></main>
+  </head>
+  <body class="font-sans antialiased">
+    <main
+      class="flex min-h-screen items-center justify-center bg-primary px-4 py-12"
+    >
+      <div class="w-full max-w-md">
+        <div class="mb-8 text-center">
+          <a class="inline-flex items-center gap-2 text-primary" href="/"
+            ><img src="/logo.png" alt="AutoAssist" class="h-14 w-auto"
+          /></a>
+        </div>
+        <div class="rounded-2xl border border-border bg-secondary p-6 sm:p-8">
+          <h1
+            class="mb-2 text-center font-display text-2xl font-bold text-primary"
+          >
+            Redefinir Senha
+          </h1>
+          <p class="mb-6 text-center text-sm text-muted">
+            Digite sua nova senha para concluir
+          </p>
+          <div
+            id="tokenError"
+            class="hidden rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-6 text-center text-sm text-yellow-400"
+          >
+            Token de recuperação no encontrado. Solicite um novo link de
+            recuperao.
+          </div>
+          <form id="resetForm" class="space-y-4">
+            <div>
+              <label class="mb-1.5 block text-sm font-medium text-secondary"
+                >Nova Senha</label
+              ><input
+                id="new-password"
+                type="password"
+                placeholder="Mnimo 8 caracteres"
+                required
+                minlength="8"
+                class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            <div>
+              <label class="mb-1.5 block text-sm font-medium text-secondary"
+                >Confirmar Senha</label
+              ><input
+                id="confirm-password"
+                type="password"
+                placeholder="••••••••"
+                required
+                minlength="8"
+                class="w-full rounded-lg border border-border bg-primary px-4 py-3 text-primary placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            <div
+              id="error"
+              class="hidden rounded-lg bg-red-500/10 p-3 text-sm text-red-400"
+            ></div>
+            <button
+              id="submitBtn"
+              type="submit"
+              class="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Redefinir senha
+            </button>
+          </form>
+          <div class="mt-6 text-center text-sm">
+            <a class="text-accent hover:text-accent/80" href="/login"
+              >Voltar para login</a
+            >
+          </div>
+        </div>
+      </div>
+    </main>
     <script>
-    (function() {
-      var params = new URLSearchParams(window.location.search);
-      var token = params.get('token');
-      var tokenError = document.getElementById('tokenError');
-      var resetForm = document.getElementById('resetForm');
-      var errorDiv = document.getElementById('error');
-      var submitBtn = document.getElementById('submitBtn');
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get("token");
+        var tokenError = document.getElementById("tokenError");
+        var resetForm = document.getElementById("resetForm");
+        var errorDiv = document.getElementById("error");
+        var submitBtn = document.getElementById("submitBtn");
 
-      if (!token) {
-        tokenError.classList.remove('hidden');
-        resetForm.classList.add('hidden');
-        return;
-      }
-
-      resetForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        errorDiv.classList.add('hidden');
-
-        var pw = document.getElementById('new-password').value;
-        var pw2 = document.getElementById('confirm-password').value;
-
-        if (pw !== pw2) {
-          errorDiv.textContent = 'As senhas no coincidem.';
-          errorDiv.classList.remove('hidden');
+        if (!token) {
+          tokenError.classList.remove("hidden");
+          resetForm.classList.add("hidden");
           return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Redefinindo...';
+        resetForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          errorDiv.classList.add("hidden");
 
-        window.api.post('/api/auth/reset-password', { token: token, password: pw })
-          .then(function() {
-            resetForm.innerHTML = '<div class="text-center"><div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-8 w-8 text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="m9 11 3 3L22 4"></path></svg></div><h2 class="mb-2 text-lg font-bold text-primary">Senha redefinida!</h2><p class="text-sm text-secondary mb-4">Voc j pode fazer login com sua nova senha.</p><a href="/login" class="inline-block rounded-lg bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90">Fazer login</a></div>';
-          })
-          .catch(function(err) {
-            errorDiv.textContent = err.message || 'Erro ao redefinir senha. O link pode ter expirado.';
-            errorDiv.classList.remove('hidden');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Redefinir senha';
-          });
-      });
-    })();
+          var pw = document.getElementById("new-password").value;
+          var pw2 = document.getElementById("confirm-password").value;
+
+          if (pw !== pw2) {
+            errorDiv.textContent = "As senhas não coincidem.";
+            errorDiv.classList.remove("hidden");
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Redefinindo...";
+
+          window.api
+            .post("/api/auth/reset-password", { token: token, password: pw })
+            .then(function () {
+              resetForm.innerHTML =
+                '<div class="text-center"><div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-8 w-8 text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="m9 11 3 3L22 4"></path></svg></div><h2 class="mb-2 text-lg font-bold text-primary">Senha redefinida!</h2><p class="text-sm text-secondary mb-4">Você j pode fazer login com sua nova senha.</p><a href="/login" class="inline-block rounded-lg bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90">Fazer login</a></div>';
+            })
+            .catch(function (err) {
+              errorDiv.textContent =
+                err.message ||
+                "Erro ao redefinir senha. O link pode ter expirado.";
+              errorDiv.classList.remove("hidden");
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Redefinir senha";
+            });
+        });
+      })();
     </script>
-  </body></html>
+  </body>
+</html>

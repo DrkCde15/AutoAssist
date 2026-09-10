@@ -1,9 +1,923 @@
-﻿﻿<!DOCTYPE html><html lang="pt-BR" class="" data-scroll-behavior="smooth"><head>
-    <link rel="preload" href="/fonts/1b99372b3eaef0c8-s.p.1gsd1jahc5dg_.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/03bda585a99c6450-s.p.32sris142tqlb.woff2" as="font" type="font/woff2" crossorigin /><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="preload" href="/fonts/03bda585a99c6450-s.p.32sris142tqlb.woff2" as="font" crossorigin="" type="font/woff2"/><link rel="preload" href="/fonts/1b99372b3eaef0c8-s.p.1gsd1jahc5dg_.woff2" as="font" crossorigin="" type="font/woff2"/><link rel="preload" href="/logo.png" as="image"/><meta name="theme-color" content="#0c0c14"/><title>Blog | AutoAssist</title><meta name="description" content="Artigos sobre manutencao automotiva, duvidas sobre carros e dicas da IA."/><link rel="manifest" href="/manifest.json"/><meta name="robots" content="index, follow"/><link rel="canonical" href="https://autoassist-l9lr.onrender.com/blog"/><meta property="og:title" content="AutoAssist: Entenda seu carro antes de gastar dinheiro"/><meta property="og:description" content="Diagnóstico automotivo com IA, Tabela FIPE, histórico de manutenção e muito mais."/><meta property="og:site_name" content="AutoAssist"/><meta property="og:locale" content="pt_BR"/><meta property="og:image" content="https://autoassist-l9lr.onrender.com/logo2.png"/><meta property="og:image:width" content="1200"/><meta property="og:image:height" content="630"/><meta property="og:image:alt" content="AutoAssist"/><meta property="og:type" content="website"/><meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="AutoAssist: Entenda seu carro antes de gastar dinheiro"/><meta name="twitter:description" content="Diagnóstico automotivo com IA, Tabela FIPE, histórico de manutenção e muito mais."/><meta name="twitter:image" content="https://autoassist-l9lr.onrender.com/logo2.png"/><link rel="icon" href="/favicon.ico?favicon.2vob68tjqpejf.ico" sizes="256x256" type="image/x-icon"/><link rel="icon" href="/logo2.png"/>    <link rel="stylesheet" href="/css/styles.css" />
+﻿﻿<!doctype html>
+<html lang="pt-BR" class="" data-scroll-behavior="smooth">
+  <head>
+    <link
+      rel="preload"
+      href="/fonts/1b99372b3eaef0c8-s.p.1gsd1jahc5dg_.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/03bda585a99c6450-s.p.32sris142tqlb.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="preload"
+      href="/fonts/03bda585a99c6450-s.p.32sris142tqlb.woff2"
+      as="font"
+      crossorigin=""
+      type="font/woff2"
+    />
+    <link
+      rel="preload"
+      href="/fonts/1b99372b3eaef0c8-s.p.1gsd1jahc5dg_.woff2"
+      as="font"
+      crossorigin=""
+      type="font/woff2"
+    />
+    <link rel="preload" href="/logo.png" as="image" />
+    <meta name="theme-color" content="#0c0c14" />
+    <title>Blog | AutoAssist</title>
+    <meta
+      name="description"
+      content="Artigos sobre manutenção automotiva, dúvidas sobre carros e dicas da IA."
+    />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://autoassist-l9lr.onrender.com/blog" />
+    <meta
+      property="og:title"
+      content="AutoAssist: Entenda seu carro antes de gastar dinheiro"
+    />
+    <meta
+      property="og:description"
+      content="Diagnóstico automotivo com IA, Tabela FIPE, histórico de manutenção e muito mais."
+    />
+    <meta property="og:site_name" content="AutoAssist" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta
+      property="og:image"
+      content="https://autoassist-l9lr.onrender.com/logo2.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="AutoAssist" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="AutoAssist: Entenda seu carro antes de gastar dinheiro"
+    />
+    <meta
+      name="twitter:description"
+      content="Diagnóstico automotivo com IA, Tabela FIPE, histórico de manutenção e muito mais."
+    />
+    <meta
+      name="twitter:image"
+      content="https://autoassist-l9lr.onrender.com/logo2.png"
+    />
+    <link
+      rel="icon"
+      href="/favicon.ico?favicon.2vob68tjqpejf.ico"
+      sizes="256x256"
+      type="image/x-icon"
+    />
+    <link rel="icon" href="/logo2.png" />
+    <link rel="stylesheet" href="/css/styles.css" />
     <script src="/js/api.js" defer></script>
     <script src="/js/auth.js" defer></script>
     <script src="/js/nav.js" defer></script>
     <script src="/js/components.js" defer></script>
-  </head><body class="font-sans antialiased">
-<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-white focus:font-medium">Pular para o conteúdo</a><header class="fixed top-0 left-0 right-0 z-[1100] border-b border-border/50 bg-primary/80 md:backdrop-blur-xl"><nav class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"><a class="flex items-center gap-2 text-primary" href="/"><img src="/logo.png" alt="AutoAssist" class="h-22 w-auto"/></a><div class="hidden items-center gap-1 md:flex"><a class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary" href="/chat"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot h-4 w-4" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg></span>Chat</a><a class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary" href="/planos"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card h-4 w-4" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg></span>Planos</a><a class="rounded-lg px-3 py-2 text-sm font-medium text-secondary transition-colors duration-150 hover:bg-white/5 hover:text-primary" href="/login">Entrar</a><a class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-accent-hover" href="/cadastro">Criar Conta</a></div><button type="button" data-hamburger="true" class="flex h-10 w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-white/5 hover:text-primary md:hidden" aria-label="Abrir menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu h-5 w-5" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg></button></nav></header><div data-mobile-drawer="true" class="fixed top-0 right-0 z-[1300] flex h-dvh w-72 flex-col border-l border-border/50 bg-primary shadow-2xl transition-transform duration-300 ease-in-out md:hidden translate-x-full" role="dialog" aria-modal="true" aria-label="Menu de navegao"><div class="flex h-16 shrink-0 items-center justify-between border-b border-border/50 px-5"><span class="text-sm font-semibold text-primary">Menu</span><button type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-white/5 hover:text-primary" aria-label="Fechar menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x h-5 w-5" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></div><div class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4"><div class="flex flex-col gap-1"><a class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary" href="/chat"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot h-4 w-4" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg></span>Chat</a><a class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary" href="/planos"><span class="shrink-0"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-credit-card h-4 w-4" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg></span>Planos</a></div></div><div class="shrink-0 border-t border-border/50 px-3 py-4"><div class="flex flex-col gap-2"><a class="rounded-lg px-3 py-2.5 text-center text-sm font-medium text-secondary transition-colors hover:bg-white/5 hover:text-primary" href="/login">Entrar</a><a class="rounded-lg bg-accent px-3 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-accent-hover" href="/cadastro">Criar Conta</a></div></div></div><main class="section pt-20 md:pt-28"><div class="section__wrap"><div class="section__header"><span class="section__tag">Blog</span><h1 class="section__title">Dúvidas do carro</h1><p class="section__desc">Artigos sobre manutenção, dvidas e dicas para entender melhor o seu veículo.</p></div><div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/luz-painel"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">O que cada luz no painel significa</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Painel acendeu? Veja o que significa cada luz (motor, leo, bateria, freio, airbag), o que fazer imediatamente e quando no pode esperar para ir  oficina.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>04 de mai. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/pneus-calibragem"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Calibragem e rodzio de pneus: guia completo</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Presso correta dos pneus, quando fazer o rodzio, sinais de desalinhamento e como a presso errada aumenta o consumo e o risco.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>08 de abr. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/barulho-motor"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Barulho estranho no motor: o que pode ser</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Chiado, batida, ronco ou estalo no motor? Veja os sons mais comuns, o que costuma causar cada um e quando procurar um mecânico de imediato.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>18 de mar. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/pastilha-freio"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Quando trocar a pastilha de freio (e o disco)</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Sinais de desgaste das pastilhas de freio, a partir de quantos km trocar e por que no deixar para a luz do painel acender.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>13 de mar. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/gasolina-aditivada"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Gasolina comum x aditivada: vale a pena?</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Diferena entre gasolina comum e aditivada, quando a aditivada ajuda de verdade e por que a gasolina &quot;C&quot; (renovada) no existe mais no Brasil.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>10 de fev. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/revisao-preventiva"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Reviso preventiva: quando fazer e por qu</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Por que manter a manutenção em dia evita sustos e valoriza o carro. Veja o que uma reviso preventiva costuma incluir e como organizar os lembretes.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>01 de fev. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/oleo-motor"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Qual leo do motor usar (viscosidade e troca)</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Como escolher a viscosidade do leo do motor, a diferena entre sinttico e mineral e a cada quantos km trocar para no fundir o motor.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>20 de jan. de 2026</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/valor-fipe"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">Como consultar o valor FIPE do seu carro</h2><p class="text-sm text-secondary mb-4 line-clamp-2">O que  a tabela FIPE, por que o preo de tabela  diferente do de rua e como us-la para vender, comprar ou trocar de carro sem levar vantagem.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>16 de dez. de 2025</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a><a class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1" href="/blog/ipva-2026"><span class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4">Dúvidas do carro</span><h2 class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors">IPVA 2026: calendrio, alquotas e desconto</h2><p class="text-sm text-secondary mb-4 line-clamp-2">Calendrio do IPVA 2026 em So Paulo, alquotas por tipo de veículo, desconto de 3%  vista em janeiro e como consultar o valor pelo Renavam.</p><div class="flex items-center justify-between"><span class="flex items-center gap-1.5 text-xs text-muted"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar" aria-hidden="true"><path d="M8 2v3"></path><path d="M16 2v3"></path><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18"></path></svg>27 de nov. de 2025</span><span class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">Ler <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span></div></a></div></div></main><footer class="border-t border-border bg-primary"><div class="mx-auto max-w-7xl px-4 py-8 sm:py-16 sm:px-6 lg:px-8"><div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4"><div class="sm:col-span-2 lg:col-span-1"><a class="flex items-center gap-2 text-primary" href="/"><img src="/logo.png" alt="AutoAssist" class="h-10 w-auto"/></a><p class="mt-4 max-w-xs text-sm leading-relaxed text-muted">Seu consultor automotivo inteligente. Diagnóstico, gesto e valor do seu veículo em um s lugar.</p></div><div><h4 class="text-sm font-semibold text-primary">Produto</h4><ul class="mt-4 space-y-2.5"><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/chat">IA</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/dashboard">Dashboard</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/planos">Planos</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/b2b">B2B / API</a></li></ul></div><div><h4 class="text-sm font-semibold text-primary">Suporte</h4><ul class="mt-4 space-y-2.5"><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/duvidas">Dúvidas</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/blog">Blog</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/eventos">Eventos</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/feedback">Feedback</a></li></ul></div><div><h4 class="text-sm font-semibold text-primary">Legal</h4><ul class="mt-4 space-y-2.5"><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/termos">Termos de Uso</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/privacidade">Privacidade</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/lgpd">LGPD</a></li><li><a class="text-sm text-muted transition-colors hover:text-primary" href="/analytics">Analytics</a></li></ul></div></div></div><div class="border-t border-border"><div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8"><p class="text-xs text-muted">© 2026 AutoAssist. Todos os direitos reservados.</p><p class="text-xs text-muted">Powered by<!-- --> <span class="font-medium text-secondary">IA AI</span></p></div></div></footer><!--$--><!--/$--></body></html>
+  </head>
+  <body class="font-sans antialiased">
+    <header
+      class="fixed top-0 left-0 right-0 z-[1100] border-b border-border/50 bg-primary/80 md:backdrop-blur-xl"
+    >
+      <nav
+        class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+      >
+        <a class="flex items-center gap-2 text-primary" href="/"
+          ><img src="/logo.png" alt="AutoAssist" class="h-22 w-auto"
+        /></a>
+        <div class="hidden items-center gap-1 md:flex">
+          <a
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary"
+            href="/chat"
+            ><span class="shrink-0"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-bot h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M12 8V4H8"></path>
+                <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                <path d="M2 14h2"></path>
+                <path d="M20 14h2"></path>
+                <path d="M15 13v2"></path>
+                <path d="M9 13v2"></path></svg></span
+            >Chat</a
+          ><a
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary"
+            href="/planos"
+            ><span class="shrink-0"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-credit-card h-4 w-4"
+                aria-hidden="true"
+              >
+                <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+                <line x1="2" x2="22" y1="10" y2="10"></line></svg></span
+            >Planos</a
+          ><a
+            class="rounded-lg px-3 py-2 text-sm font-medium text-secondary transition-colors duration-150 hover:bg-white/5 hover:text-primary"
+            href="/login"
+            >Entrar</a
+          ><a
+            class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-accent-hover"
+            href="/cadastro"
+            >Criar Conta</a
+          >
+        </div>
+        <button
+          type="button"
+          data-hamburger="true"
+          class="flex h-10 w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-white/5 hover:text-primary md:hidden"
+          aria-label="Abrir menu"
+          aria-expanded="false"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-menu h-5 w-5"
+            aria-hidden="true"
+          >
+            <path d="M4 5h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 19h16"></path>
+          </svg>
+        </button>
+      </nav>
+    </header>
+    <div
+      data-mobile-drawer="true"
+      class="fixed top-0 right-0 z-[1300] flex h-dvh w-72 flex-col border-l border-border/50 bg-primary shadow-2xl transition-transform duration-300 ease-in-out md:hidden translate-x-full"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu de navegação"
+    >
+      <div
+        class="flex h-16 shrink-0 items-center justify-between border-b border-border/50 px-5"
+      >
+        <span class="text-sm font-semibold text-primary">Menu</span
+        ><button
+          type="button"
+          class="flex h-10 w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-white/5 hover:text-primary"
+          aria-label="Fechar menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-x h-5 w-5"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+        <div class="flex flex-col gap-1">
+          <a
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary"
+            href="/chat"
+            ><span class="shrink-0"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-bot h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M12 8V4H8"></path>
+                <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                <path d="M2 14h2"></path>
+                <path d="M20 14h2"></path>
+                <path d="M15 13v2"></path>
+                <path d="M9 13v2"></path></svg></span
+            >Chat</a
+          ><a
+            class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 text-secondary hover:bg-white/5 hover:text-primary"
+            href="/planos"
+            ><span class="shrink-0"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-credit-card h-4 w-4"
+                aria-hidden="true"
+              >
+                <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+                <line x1="2" x2="22" y1="10" y2="10"></line></svg></span
+            >Planos</a
+          >
+        </div>
+      </div>
+      <div class="shrink-0 border-t border-border/50 px-3 py-4">
+        <div class="flex flex-col gap-2">
+          <a
+            class="rounded-lg px-3 py-2.5 text-center text-sm font-medium text-secondary transition-colors hover:bg-white/5 hover:text-primary"
+            href="/login"
+            >Entrar</a
+          ><a
+            class="rounded-lg bg-accent px-3 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+            href="/cadastro"
+            >Criar Conta</a
+          >
+        </div>
+      </div>
+    </div>
+    <main class="section pt-20 md:pt-28">
+      <div class="section__wrap">
+        <div class="section__header">
+          <span class="section__tag">Blog</span>
+          <h1 class="section__title">Dúvidas do carro</h1>
+          <p class="section__desc">
+            Artigos sobre manutenção, dúvidas e dicas para entender melhor o seu
+            veículo.
+          </p>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/luz-painel"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              O que cada luz no painel significa
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Painel acendeu? Veja o que significa cada luz (motor, óleo,
+              bateria, freio, airbag), o que fazer imediatamente e quando no
+              pode esperar para ir à oficina.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >04 de mai. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/pneus-calibragem"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Calibragem e rodízio de pneus: guia completo
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Presso correta dos pneus, quando fazer o rodízio, sinais de
+              desalinhamento e como a presso errada aumenta o consumo e o risco.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >08 de abr. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/barulho-motor"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Barulho estranho no motor: o que pode ser
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Chiado, batida, ronco ou estalo no motor? Veja os sons mais
+              comuns, o que costuma causar cada um e quando procurar um mecânico
+              de imediato.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >18 de mar. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/pastilha-freio"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Quando trocar a pastilha de freio (e o disco)
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Sinais de desgaste das pastilhas de freio, a partir de quantos km
+              trocar e por que no deixar para a luz do painel acender.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >13 de mar. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/gasolina-aditivada"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Gasolina comum x aditivada: vale a pena?
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Diferença entre gasolina comum e aditivada, quando a aditivada
+              ajuda de verdade e por que a gasolina &quot;C&quot; (renovada) no
+              existe mais no Brasil.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >10 de fev. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/revisao-preventiva"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Revisão preventiva: quando fazer e por qu
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Por que manter a manutenção em dia evita sustos e valoriza o
+              carro. Veja o que uma revisão preventiva costuma incluir e como
+              organizar os lembretes.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >01 de fev. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/oóleo-motor"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Qual óleo do motor usar (viscosidade e troca)
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Como escolher a viscosidade do óleo do motor, a diferena entre
+              sinttico e mineral e a cada quantos km trocar para no fundir o
+              motor.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >20 de jan. de 2026</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/valor-fipe"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              Como consultar o valor FIPE do seu carro
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              O que é a tabela FIPE, por que o preço de tabela é diferente do de
+              rua e como us-la para vender, comprar ou trocar de carro sem levar
+              vantagem.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >16 de dez. de 2025</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div></a
+          ><a
+            class="group rounded-2xl border border-border bg-secondary p-6 transition-all duration-200 hover:border-border-hover hover:-translate-y-1"
+            href="/blog/ipva-2026"
+            ><span
+              class="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent mb-4"
+              >Dúvidas do carro</span
+            >
+            <h2
+              class="text-lg font-semibold text-primary mb-2 group-hover:text-accent transition-colors"
+            >
+              IPVA 2026: calendrio, alíquotas e desconto
+            </h2>
+            <p class="text-sm text-secondary mb-4 line-clamp-2">
+              Calendário do IPVA 2026 em So Paulo, alíquotas por tipo de
+              veículo, desconto de 3% à vista em janeiro e como consultar o
+              valor pelo Renavam.
+            </p>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-xs text-muted"
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-calendar"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2v3"></path>
+                  <path d="M16 2v3"></path>
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path></svg
+                >27 de nov. de 2025</span
+              ><span
+                class="flex items-center gap-1 text-xs font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                >Ler
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-arrow-right"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="m12 5 7 7-7 7"></path></svg
+              ></span></div
+          ></a>
+        </div>
+      </div>
+    </main>
+    <footer class="border-t border-border bg-primary">
+      <div class="mx-auto max-w-7xl px-4 py-8 sm:py-16 sm:px-6 lg:px-8">
+        <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="sm:col-span-2 lg:col-span-1">
+            <a class="flex items-center gap-2 text-primary" href="/"
+              ><img src="/logo.png" alt="AutoAssist" class="h-10 w-auto"
+            /></a>
+            <p class="mt-4 max-w-xs text-sm leading-relaxed text-muted">
+              Seu consultor automotivo inteligente. Diagnóstico, gestão e valor
+              do seu veículo em um só lugar.
+            </p>
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-primary">Produto</h4>
+            <ul class="mt-4 space-y-2.5">
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/chat"
+                  >IA</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/dashboard"
+                  >Dashboard</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/planos"
+                  >Planos</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/b2b"
+                  >B2B / API</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-primary">Suporte</h4>
+            <ul class="mt-4 space-y-2.5">
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/dúvidas"
+                  >Dúvidas</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/blog"
+                  >Blog</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/eventos"
+                  >Eventos</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/feedback"
+                  >Feedback</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-sm font-semibold text-primary">Legal</h4>
+            <ul class="mt-4 space-y-2.5">
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/termos"
+                  >Termos de Uso</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/privacidade"
+                  >Privacidade</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/lgpd"
+                  >LGPD</a
+                >
+              </li>
+              <li>
+                <a
+                  class="text-sm text-muted transition-colors hover:text-primary"
+                  href="/analytics"
+                  >Analytics</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-border">
+        <div
+          class="mx-auto flex max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8"
+        >
+          <p class="text-xs text-muted">
+            © 2026 AutoAssist. Todos os direitos reservados.
+          </p>
+          <p class="text-xs text-muted">
+            Powered by<!-- -->
+            <span class="font-medium text-secondary">IA AI</span>
+          </p>
+        </div>
+      </div>
+    </footer>
+    <!--$--><!--/$-->
+  </body>
+</html>
