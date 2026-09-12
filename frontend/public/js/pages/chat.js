@@ -116,8 +116,48 @@
       var chatCss = document.createElement("style");
       chatCss.id = "chat-responsive-css";
       chatCss.textContent =
+        "html { font-size: 16px; }" +
+        ".w-80 { width: 20rem; }" +
+        ".w-fit { width: fit-content; }" +
+        ".h-full { height: 100%; }" +
+        ".max-h-32 { max-height: 8rem; }" +
+        ".max-w-sm { max-width: 24rem; }" +
+        ".z-10 { z-index: 10; }" +
+        ".opacity-100 { opacity: 1; }" +
+        ".pointer-events-auto { pointer-events: auto; }" +
+        ".translate-y-0 { transform: translateY(0); }" +
+        ".translate-y-2 { transform: translateY(0.5rem); }" +
+        ".font-normal { font-weight: 400; }" +
+        ".ml-auto { margin-left: auto; }" +
+        ".col-span-full { grid-column: 1 / -1; }" +
+        ".bg-zinc-700 { background-color: #3f3f46; }" +
+        ".bg-zinc-800 { background-color: #27272a; }" +
+        ".bg-muted { background-color: var(--color-text-muted); }" +
+        ".text-primary { color: var(--color-text-primary); }" +
+        ".text-secondary { color: var(--color-text-secondary); }" +
+        ".text-muted { color: var(--color-text-muted); }" +
+        ".bg-card { background-color: var(--color-bg-card); }" +
+        ".bg-primary { background-color: var(--color-bg-primary); }" +
+        ".bg-primary\\/30 { background-color: color-mix(in srgb, var(--color-bg-primary) 30%, transparent); }" +
+        ".bg-primary\\/50 { background-color: color-mix(in srgb, var(--color-bg-primary) 50%, transparent); }" +
+        ".bg-accent\\/10 { background-color: color-mix(in srgb, var(--color-accent) 10%, transparent); }" +
+        ".bg-accent\\/15 { background-color: color-mix(in srgb, var(--color-accent) 15%, transparent); }" +
+        ".bg-black\\/60 { background-color: rgba(0,0,0,0.6); }" +
+        ".text-amber-500 { color: #f59e0b; }" +
+        ".text-emerald-600 { color: #059669; }" +
+        ".text-green-500 { color: #22c55e; }" +
+        ".text-gray-500 { color: #6b7280; }" +
+        ".hover\\:bg-white\\/5:hover { background-color: rgba(255,255,255,0.05); }" +
+        ".hover\\:text-primary:hover { color: var(--color-text-primary); }" +
+        ".hover\\:border-accent\\/50:hover { border-color: color-mix(in srgb, var(--color-accent) 50%, transparent); }" +
+        ".hover\\:text-red-400:hover { color: #f87171; }" +
+        ".focus\\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }" +
+        ".focus\\:ring-2:focus { box-shadow: 0 0 0 2px var(--color-bg-primary), 0 0 0 4px var(--color-accent); }" +
+        ".disabled\\:opacity-40:disabled { opacity: 0.4; }" +
         "#chat-messages { max-width: 1100px; margin: 0 auto; }" +
         "#chat-messages > div { padding-left: 0; padding-right: 0; }" +
+        ".h-\\[calc\\(100vh-64px\\)\\] { height: calc(100vh - 64px); }" +
+        "* { scrollbar-width: thin; scrollbar-color: var(--color-border) var(--color-bg-primary); }" +
         "@keyframes typing-dot { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }" +
         "@media (max-width: 768px) {" +
           "#chat-messages { max-width: 100%; padding-left: 12px; padding-right: 12px; }" +
@@ -129,7 +169,7 @@
 
     // Main wrapper
     chatWrapper = document.createElement("div");
-    chatWrapper.className = "flex h-[calc(100vh-4rem)] overflow-hidden";
+    chatWrapper.className = "flex h-[calc(100vh-64px)] overflow-hidden";
 
     // ── Sidebar ──
     sidebarEl = document.createElement("aside");
