@@ -116,11 +116,11 @@
       var chatCss = document.createElement("style");
       chatCss.id = "chat-responsive-css";
       chatCss.textContent =
-        "#chat-messages { max-width: 900px; margin: 0 auto; }" +
+        "#chat-messages { max-width: 1100px; margin: 0 auto; }" +
         "#chat-messages > div { padding-left: 0; padding-right: 0; }" +
         "@keyframes typing-dot { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }" +
-        "@media (max-width: 640px) {" +
-          "#chat-messages { padding-left: 12px; padding-right: 12px; }" +
+        "@media (max-width: 768px) {" +
+          "#chat-messages { max-width: 100%; padding-left: 12px; padding-right: 12px; }" +
           "#chat-messages > div > div:last-child { max-width: calc(100% - 44px) !important; }" +
           "#chat-messages > div > div:last-child > div { word-break: break-word; }" +
         "}";
@@ -303,7 +303,7 @@
     inputArea.className = "border-t border-border bg-primary/50 px-4 py-3 shrink-0";
 
     var inputRow = document.createElement("div");
-    inputRow.className = "flex items-end gap-2 max-w-4xl mx-auto";
+    inputRow.className = "flex items-end gap-2 max-w-5xl mx-auto";
 
     // Action button (plus icon) with dropdown
     var actionWrap = document.createElement("div");
@@ -488,7 +488,7 @@
     if (msg.videos && msg.videos.length > 0) {
       var videosDiv = document.createElement("div");
       videosDiv.className = "mt-2 space-y-1.5 rounded-xl border border-border p-3";
-      videosDiv.innerHTML = '<p class="text-xs font-medium text-muted mb-1.5">Videos relacionados</p>';
+      videosDiv.innerHTML = '<p class="text-xs font-medium text-muted mb-1.5">Vídeos relacionados</p>';
       msg.videos.forEach(function (v) {
         var videoLink = document.createElement("a");
         videoLink.href = v.url || "#";
@@ -497,7 +497,7 @@
         videoLink.className = "flex items-center gap-2 rounded-lg border border-border p-2 text-xs text-accent hover:bg-accent/5 transition-colors";
         videoLink.innerHTML =
           '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' +
-          '<span class="truncate">' + escapeHTML(v.title || v.url || "Video") + '</span>';
+          '<span class="truncate">' + escapeHTML(v.title || v.url || "Vídeo") + '</span>';
         videosDiv.appendChild(videoLink);
       });
       bubbleWrap.appendChild(videosDiv);
@@ -507,7 +507,7 @@
     if (msg.links && msg.links.length > 0) {
       var linksDiv = document.createElement("div");
       linksDiv.className = "mt-2 space-y-1.5 rounded-xl border border-border p-3";
-      linksDiv.innerHTML = '<p class="text-xs font-medium text-muted mb-1.5">Links uteis</p>';
+      linksDiv.innerHTML = '<p class="text-xs font-medium text-muted mb-1.5">Links úteis</p>';
       msg.links.forEach(function (l) {
         var linkEl = document.createElement("a");
         linkEl.href = l.url || "#";
@@ -544,23 +544,23 @@
           '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>' +
         '</div>' +
         '<h3 class="text-lg font-semibold text-primary mb-2">Fale com o NOG</h3>' +
-        '<p class="text-sm text-muted max-w-md mb-6">Seu consultor automotivo com IA. Pergunte sobre manutencao, pecas, diagnosticos ou qualquer duvida sobre seu veiculo.</p>' +
-        '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">' +
+        '<p class="text-sm text-muted max-w-lg mb-6">Seu consultor automotivo com IA. Pergunte sobre manutenção, peças, diagnósticos ou qualquer dúvida sobre seu veículo.</p>' +
+        '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">' +
           '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
-            '<p class="text-sm font-medium text-primary">Troca de oleo</p>' +
-            '<p class="text-xs text-muted mt-1">Qual oleo usar e quando trocar?</p>' +
+            '<p class="text-sm font-medium text-primary">Troca de óleo</p>' +
+            '<p class="text-xs text-muted mt-1">Qual óleo usar e quando trocar?</p>' +
           '</button>' +
           '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
-            '<p class="text-sm font-medium text-primary">Diagnostico</p>' +
-            '<p class="text-xs text-muted mt-1">Meu carro faz um ruido estranho</p>' +
+            '<p class="text-sm font-medium text-primary">Diagnóstico</p>' +
+            '<p class="text-xs text-muted mt-1">Meu carro faz um ruído estranho</p>' +
           '</button>' +
           '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
             '<p class="text-sm font-medium text-primary">Custo estimado</p>' +
-            '<p class="text-xs text-muted mt-1">Quanto custa uma revisao geral?</p>' +
+            '<p class="text-xs text-muted mt-1">Quanto custa uma revisão geral?</p>' +
           '</button>' +
           '<button type="button" class="chat-suggestion rounded-xl border border-border bg-card p-4 text-left transition-all duration-200 hover:border-accent/50 hover:bg-accent/5 hover:-translate-y-0.5">' +
-            '<p class="text-sm font-medium text-primary">Proxima manutencao</p>' +
-            '<p class="text-xs text-muted mt-1">O que devo revisar proximamente?</p>' +
+            '<p class="text-sm font-medium text-primary">Próxima manutenção</p>' +
+            '<p class="text-xs text-muted mt-1">O que devo revisar em breve?</p>' +
           '</button>' +
         '</div>';
       messagesEl.appendChild(emptyStateEl);
@@ -749,7 +749,7 @@
     if (!file) return;
 
     if (file.size > 8 * 1024 * 1024) {
-      alert("Arquivo muito grande. Maximo 8 MB.");
+      alert("Arquivo muito grande. Máximo 8 MB.");
       fileInput.value = "";
       return;
     }

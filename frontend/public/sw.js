@@ -1,4 +1,4 @@
-const CACHE_NAME = "autoassist-v1";
+const CACHE_NAME = "autoassist-v2";
 const PRECACHE = ["/", "/css/styles.css", "/logo2.png"];
 
 self.addEventListener("install", (e) => {

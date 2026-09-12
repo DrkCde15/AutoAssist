@@ -1,4 +1,4 @@
-﻿﻿<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR" class="" data-scroll-behavior="smooth">
   <head>
     <meta charset="utf-8" />
@@ -37,8 +37,8 @@
             id="tokenError"
             class="hidden rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-6 text-center text-sm text-yellow-400"
           >
-            Token de recuperação no encontrado. Solicite um novo link de
-            recuperao.
+            Token de recuperação não encontrado. Solicite um novo link de
+            recuperação.
           </div>
           <form id="resetForm" class="space-y-4">
             <div>
@@ -120,7 +120,7 @@
             .post("/api/auth/reset-password", { token: token, password: pw })
             .then(function () {
               resetForm.innerHTML =
-                '<div class="text-center"><div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-8 w-8 text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="m9 11 3 3L22 4"></path></svg></div><h2 class="mb-2 text-lg font-bold text-primary">Senha redefinida!</h2><p class="text-sm text-secondary mb-4">Você j pode fazer login com sua nova senha.</p><a href="/login" class="inline-block rounded-lg bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90">Fazer login</a></div>';
+                '<div class="text-center"><div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-circle h-8 w-8 text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="m9 11 3 3L22 4"></path></svg></div><h2 class="mb-2 text-lg font-bold text-primary">Senha redefinida!</h2><p class="text-sm text-secondary mb-4">Você já pode fazer login com sua nova senha.</p><a href="/login" class="inline-block rounded-lg bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90">Fazer login</a></div>';
             })
             .catch(function (err) {
               errorDiv.textContent =
