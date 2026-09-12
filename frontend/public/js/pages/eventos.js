@@ -22,6 +22,51 @@
   ];
 
   document.addEventListener("DOMContentLoaded", function () {
+    if (!document.getElementById("eventos-responsive-css")) {
+      var eventosCss = document.createElement("style");
+      eventosCss.id = "eventos-responsive-css";
+      eventosCss.textContent =
+        /* hover states */
+        ".hover\\:border-zinc-600:hover { border-color: #3f3f46; }" +
+        ".hover\\:shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); }" +
+        ".hover\\:shadow-black\\/20:hover { --tw-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2); box-shadow: var(--tw-shadow); }" +
+        ".group:hover .group-hover\\:scale-105 { transform: scale(1.05); }" +
+        ".group:hover .group-hover\\:text-accent { color: var(--color-accent); }" +
+        ".hover\\:bg-accent-hover:hover { background-color: var(--color-accent-hover); }" +
+        ".hover\\:bg-white\\/5:hover { background-color: rgba(255,255,255,0.05); }" +
+        ".hover\\:bg-secondary:hover { background-color: var(--color-bg-secondary); }" +
+        ".hover\\:text-primary:hover { color: var(--color-text-primary); }" +
+        ".hover\\:border-border-hover:hover { border-color: var(--color-border-hover); }" +
+        /* disabled states */
+        ".disabled\\:opacity-50:disabled { opacity: 0.5; }" +
+        ".disabled\\:cursor-not-allowed:disabled { cursor: not-allowed; }" +
+        /* gradients */
+        ".bg-zinc-800 { background-color: #27272a; }" +
+        ".from-zinc-800 { --tw-gradient-from: #27272a; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(39,39,42,0)); }" +
+        ".to-zinc-900 { --tw-gradient-to: #18181b; }" +
+        ".bg-gradient-to-br { background-image: linear-gradient(to bottom right, var(--tw-gradient-from), var(--tw-gradient-to)); }" +
+        /* transitions */
+        ".transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 200ms; }" +
+        ".transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }" +
+        ".duration-200 { transition-duration: 200ms; }" +
+        ".duration-300 { transition-duration: 300ms; }" +
+        /* semantic colors — missing from compiled CSS */
+        ".bg-primary { background-color: var(--color-bg-primary); }" +
+        ".bg-card { background-color: var(--color-bg-card); }" +
+        ".bg-secondary { background-color: var(--color-bg-secondary); }" +
+        ".text-primary { color: var(--color-text-primary); }" +
+        ".text-secondary { color: var(--color-text-secondary); }" +
+        ".text-muted { color: var(--color-text-muted); }" +
+        ".text-accent { color: var(--color-accent); }" +
+        /* dropdown max-height */
+        ".max-h-64 { max-height: 16rem; }" +
+        /* spacing used by cards */
+        ".mb-8 { margin-bottom: 2rem; }" +
+        ".py-20 { padding-top: 5rem; padding-bottom: 5rem; }" +
+        ".py-16 { padding-top: 4rem; padding-bottom: 4rem; }";
+      document.head.appendChild(eventosCss);
+    }
+
     var section = document.querySelector("main section");
     if (!section) return;
 
@@ -63,12 +108,14 @@
     }
 
     var grid = document.createElement("div");
-    grid.className =
-      "grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
+    grid.className = "grid gap-5 sm:grid-cols-2 lg:grid-cols-3";
     wrap.appendChild(grid);
 
     var selectedUF = "";
     var loading = false;
+    var initialLoad = true;
+    var events = [];
+    var errorMessage = null;
 
     // ── UF Dropdown ──
     var dropdownWrap = ufDropdownBtn
@@ -86,6 +133,7 @@
         "absolute left-0 top-full z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-primary shadow-xl";
       dropdownPanel.style.display = "none";
       dropdownPanel.setAttribute("role", "listbox");
+      dropdownPanel.setAttribute("aria-label", "Filtrar por UF");
 
       var allOpt = document.createElement("div");
       allOpt.className =
@@ -182,8 +230,8 @@
       });
     }
 
-    // ── Fetch events ──
-    function setLoading(isLoading) {
+    // ── Helpers ──
+    function setLoadingState(isLoading) {
       loading = isLoading;
       if (refreshBtn) {
         refreshBtn.disabled = isLoading;
@@ -191,11 +239,7 @@
         refreshBtn.classList.toggle("disabled:cursor-not-allowed", isLoading);
         var svg = refreshBtn.querySelector("svg");
         if (svg) {
-          if (isLoading) {
-            svg.classList.add("animate-spin");
-          } else {
-            svg.classList.remove("animate-spin");
-          }
+          svg.classList.toggle("animate-spin", isLoading);
         }
       }
     }
@@ -216,14 +260,14 @@
       grid.appendChild(msg);
     }
 
-    function renderEvents(events) {
+    function renderEvents(eventList) {
       grid.innerHTML = "";
-      if (!events || events.length === 0) {
+      if (!eventList || eventList.length === 0) {
         renderEmpty();
         return;
       }
 
-      events.forEach(function (ev) {
+      eventList.forEach(function (ev) {
         var card = document.createElement("a");
         var url = ev.event_url || ev.url || "#";
         card.href = url;
@@ -301,11 +345,14 @@
       err.className = "col-span-full flex flex-col items-center justify-center py-16 text-center";
       err.innerHTML =
         '<p class="text-lg font-medium text-red-400">' + escapeHTML(msg) + '</p>' +
-        '<p class="mt-1 text-sm text-muted">Verifique sua conexão e tente novamente.</p>';
+        '<p class="mt-1 text-sm text-muted">Verifique sua conexão e tente novamente.</p>' +
+        '<button class="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover" onclick="window.__eventosRetry()">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>' +
+          'Tentar novamente' +
+        '</button>';
       grid.appendChild(err);
     }
 
-    // ── Helpers ──
     function escapeHTML(str) {
       if (!str) return "";
       return String(str)
@@ -327,8 +374,13 @@
 
     // ── Fetch ──
     function fetchEvents(force) {
-      setLoading(true);
-      renderLoading();
+      setLoadingState(true);
+      errorMessage = null;
+
+      if (initialLoad) {
+        countEl.textContent = "Carregando eventos...";
+        renderLoading();
+      }
 
       var params = [];
       if (selectedUF) params.push("uf=" + encodeURIComponent(selectedUF));
@@ -339,19 +391,27 @@
       window.api
         .get(url)
         .then(function (data) {
-          var events = data.events || [];
+          events = data.events || [];
+          initialLoad = false;
           setCount(events.length);
           renderEvents(events);
         })
         .catch(function (err) {
           console.error("[eventos] fetch error:", err);
+          events = [];
+          initialLoad = false;
+          errorMessage = err.message || "Erro ao carregar eventos";
           setCount(0);
-          showError(err.message || "Erro ao carregar eventos");
+          showError(errorMessage);
         })
         .finally(function () {
-          setLoading(false);
+          setLoadingState(false);
         });
     }
+
+    window.__eventosRetry = function () {
+      fetchEvents(true);
+    };
 
     // ── Init ──
     buildDropdown();

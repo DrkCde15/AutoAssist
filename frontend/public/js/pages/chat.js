@@ -580,9 +580,7 @@
       emptyStateEl.id = "chat-empty-state";
       emptyStateEl.className = "flex flex-col items-center justify-center h-full text-center px-6 py-12";
       emptyStateEl.innerHTML =
-        '<div class="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/10">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>' +
-        '</div>' +
+        '<img src="/logo.png" alt="AutoAssist" class="mb-6 h-40 w-auto object-contain" />' +
         '<h3 class="text-lg font-semibold text-primary mb-2">Fale com o NOG</h3>' +
         '<p class="text-sm text-muted max-w-lg mb-6">Seu consultor automotivo com IA. Pergunte sobre manutenção, peças, diagnósticos ou qualquer dúvida sobre seu veículo.</p>' +
         '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">' +

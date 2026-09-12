@@ -14,9 +14,41 @@
   var records = [];
   var summary = null;
   var loading = false;
+  var initialLoad = true;
 
   document.addEventListener("DOMContentLoaded", function () {
     if (!auth.requireAuth()) return;
+
+    // Inject missing CSS
+    if (!document.getElementById("anotacoes-responsive-css")) {
+      var css = document.createElement("style");
+      css.id = "anotacoes-responsive-css";
+      css.textContent =
+        ".bg-primary { background-color: var(--color-bg-primary); }" +
+        ".bg-card { background-color: var(--color-bg-card); }" +
+        ".bg-secondary { background-color: var(--color-bg-secondary); }" +
+        ".text-primary { color: var(--color-text-primary); }" +
+        ".text-secondary { color: var(--color-text-secondary); }" +
+        ".text-muted { color: var(--color-text-muted); }" +
+        ".hover\\:bg-white\\/5:hover { background-color: rgba(255,255,255,0.05); }" +
+        ".hover\\:bg-secondary:hover { background-color: var(--color-bg-secondary); }" +
+        ".hover\\:text-primary:hover { color: var(--color-text-primary); }" +
+        ".hover\\:border-zinc-600:hover { border-color: #3f3f46; }" +
+        ".hover\\:border-border-hover:hover { border-color: var(--color-border-hover); }" +
+        ".hover\\:-translate-y-0\\.5:hover { transform: translateY(-0.125rem); }" +
+        ".disabled\\:opacity-50:disabled { opacity: 0.5; }" +
+        ".disabled\\:cursor-not-allowed:disabled { cursor: not-allowed; }" +
+        ".focus\\:border-accent:focus { border-color: var(--color-accent); }" +
+        ".focus\\:ring-1:focus { box-shadow: 0 0 0 1px var(--color-accent); }" +
+        ".focus\\:ring-2:focus { box-shadow: 0 0 0 2px var(--color-accent); }" +
+        ".focus\\:ring-accent\\/50:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 50%, transparent); }" +
+        ".focus\\:outline-none:focus { outline: 2px solid transparent; outline-offset: 2px; }" +
+        ".whitespace-nowrap { white-space: nowrap; }" +
+        ".text-\\[11px\\] { font-size: 11px; line-height: 1rem; }" +
+        ".transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 200ms; }" +
+        ".anotacoes-section__header { text-align: left; margin-bottom: 0; }";
+      document.head.appendChild(css);
+    }
 
     var section = document.querySelector("main section");
     if (!section) return;
@@ -61,7 +93,7 @@
     }
 
     function formatCurrency(value) {
-      if (value == null) return "";
+      if (value == null) return "R$ 0,00";
       return "R$ " + Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
@@ -81,7 +113,7 @@
     function renderLoading() {
       grid.innerHTML = "";
       var loader = document.createElement("div");
-      loader.className = "flex items-center justify-center py-20";
+      loader.className = "flex items-center justify-center py-12";
       loader.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin text-accent"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>';
       grid.appendChild(loader);
@@ -90,7 +122,7 @@
     function renderEmpty() {
       grid.innerHTML = "";
       var msg = document.createElement("div");
-      msg.className = "flex flex-col items-center justify-center py-16 text-center";
+      msg.className = "flex flex-col items-center justify-center py-12 text-center";
       msg.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-4 text-zinc-600"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>' +
         '<p class="text-lg font-medium text-secondary">Nenhuma anotação registrada</p>' +
@@ -101,21 +133,26 @@
     function showError(msg) {
       grid.innerHTML = "";
       var err = document.createElement("div");
-      err.className = "flex flex-col items-center justify-center py-16 text-center";
+      err.className = "flex flex-col items-center justify-center py-12 text-center";
       err.innerHTML =
         '<p class="text-lg font-medium text-red-400">' + escapeHTML(msg) + '</p>' +
-        '<p class="mt-1 text-sm text-muted">Verifique sua conexão e tente novamente.</p>';
+        '<p class="mt-1 text-sm text-muted">Verifique sua conexão e tente novamente.</p>' +
+        '<button class="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover" onclick="window.__anotacoesRetry()">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>' +
+          'Tentar novamente' +
+        '</button>';
       grid.appendChild(err);
     }
 
     // ── Summary card ──
     function renderSummary() {
-      if (!summary) return;
       var existing = wrap.querySelector(".anotacoes-summary");
       if (existing) existing.remove();
 
+      if (!summary) return;
+
       var card = document.createElement("div");
-      card.className = "anotacoes-summary rounded-xl border border-border bg-card p-5 mb-5";
+      card.className = "anotacoes-summary rounded-xl border border-border bg-card p-4 mb-4";
       card.innerHTML =
         '<div class="flex flex-wrap items-center gap-6">' +
           '<div>' +
@@ -179,7 +216,7 @@
           var dateSpan = document.createElement("span");
           dateSpan.className = "flex items-center gap-1";
           dateSpan.innerHTML =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></rect></svg>' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>' +
             escapeHTML(formatDate(rec.service_date));
           meta.appendChild(dateSpan);
         }
@@ -277,7 +314,7 @@
     function buildAddButton() {
       addBtn = document.createElement("button");
       addBtn.type = "button";
-      addBtn.className = "rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover";
+      addBtn.className = "rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover whitespace-nowrap";
       addBtn.textContent = "Nova anotação";
       addBtn.addEventListener("click", function () {
         openAddForm();
@@ -306,8 +343,7 @@
         refreshBtn.classList.toggle("disabled:cursor-not-allowed", isLoading);
         var svg = refreshBtn.querySelector("svg");
         if (svg) {
-          if (isLoading) svg.classList.add("animate-spin");
-          else svg.classList.remove("animate-spin");
+          svg.classList.toggle("animate-spin", isLoading);
         }
       }
     }
@@ -331,7 +367,11 @@
 
     function fetchHistory() {
       setLoadingState(true);
-      renderLoading();
+
+      if (initialLoad) {
+        countEl.textContent = "Carregando...";
+        renderLoading();
+      }
 
       var params = [];
       if (selectedVehicleId) params.push("veiculo_id=" + encodeURIComponent(selectedVehicleId));
@@ -343,12 +383,16 @@
         .then(function (data) {
           records = data.historico || [];
           summary = data.resumo || null;
+          initialLoad = false;
           setCount(data.total || records.length);
           renderSummary();
           renderRecords();
         })
         .catch(function (err) {
           console.error("[anotacoes] fetch history error:", err);
+          records = [];
+          summary = null;
+          initialLoad = false;
           setCount(0);
           showError(err.message || "Erro ao carregar histórico");
         })
@@ -356,6 +400,10 @@
           setLoadingState(false);
         });
     }
+
+    window.__anotacoesRetry = function () {
+      fetchHistory();
+    };
 
     // ── Delete ──
     function handleDelete(id, label) {
@@ -378,18 +426,21 @@
         });
     }
 
-    // ── Add form ──
+    // ── Add form modal ──
     function openAddForm() {
       var existing = document.getElementById("anotacoes-modal");
       if (existing) existing.remove();
 
       var modal = document.createElement("div");
       modal.id = "anotacoes-modal";
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
+      modal.setAttribute("aria-labelledby", "anotacoes-modal-title");
       modal.className = "fixed inset-0 z-[1200] flex items-center justify-center p-4";
       modal.innerHTML =
         '<div class="fixed inset-0 bg-black/60" data-close-modal></div>' +
-        '<div class="relative w-full max-w-lg rounded-2xl border border-border bg-primary p-6 shadow-2xl">' +
-          '<h3 class="text-lg font-semibold text-primary mb-4">Nova anotação</h3>' +
+        '<div class="relative w-full max-w-lg rounded-2xl border border-border bg-primary p-6 shadow-2xl" style="max-height:calc(100vh - 32px);overflow-y:auto">' +
+          '<h3 id="anotacoes-modal-title" class="text-lg font-semibold text-primary mb-4">Nova anotação</h3>' +
           '<form id="anotacoes-form" class="space-y-4">' +
             '<div>' +
               '<label class="block text-sm font-medium text-secondary mb-1.5" for="anotacao-desc">Descrição *</label>' +
@@ -410,6 +461,7 @@
 
       document.body.appendChild(modal);
 
+      // Populate vehicle options
       var modalSelect = modal.querySelector("#anotacao-veiculo");
       vehicles.forEach(function (v) {
         var opt = document.createElement("option");
@@ -422,6 +474,7 @@
         modalSelect.value = selectedVehicleId;
       }
 
+      // Close handlers
       modal.querySelectorAll("[data-close-modal]").forEach(function (el) {
         el.addEventListener("click", function (e) {
           if (e.target === el || el.hasAttribute("data-close-modal")) {
@@ -430,12 +483,43 @@
         });
       });
 
+      // Escape key closes modal
+      function onKeyDown(e) {
+        if (e.key === "Escape") {
+          modal.remove();
+          document.removeEventListener("keydown", onKeyDown);
+        }
+      }
+      document.addEventListener("keydown", onKeyDown);
+
+      // Trap focus inside modal
+      modal.addEventListener("keydown", function (e) {
+        if (e.key !== "Tab") return;
+        var focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      });
+
+      // Form submit
       var form = modal.querySelector("#anotacoes-form");
       form.addEventListener("submit", function (e) {
         e.preventDefault();
         handleSubmit(form, modal);
       });
 
+      // Focus first field
       var descInput = modal.querySelector("#anotacao-desc");
       if (descInput) descInput.focus();
     }
