@@ -204,6 +204,8 @@ def _build_vehicle_dashboard(row, health_score, pred):
         "ano_fabricacao": row["ano_fabricacao"],
         "quilometragem": row["quilometragem"],
         "foto_base64": row.get("foto_base64"),
+        "modificacoes": row.get("modificacoes"),
+        "fipe_ajustada": row.get("fipe_ajustada"),
     }
 
     # FIPE - resolve de forma sincrona quando ausente/obsoleto (popula o banco).
@@ -272,6 +274,7 @@ def get_dashboard_data():
                 """SELECT v.id, v.user_id, v.tipo, v.marca, v.modelo,
                           v.ano_fabricacao, v.quilometragem, v.foto_base64,
                           v.fipe_valor, v.fipe_mes_referencia, v.fipe_updated_at,
+                          v.modificacoes, v.fipe_ajustada,
                           COUNT(mh.id) AS qtde_manutencao,
                           MAX(mh.service_date) AS ultima_manutencao
                    FROM veiculos v

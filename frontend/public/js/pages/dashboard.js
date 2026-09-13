@@ -152,6 +152,11 @@
           '<span class="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">' + (fipe.MesReferencia || "---") + '</span>' +
         '</div>' +
         '<p class="mt-1 text-lg font-bold text-accent">' + formatCurrency(fipe.Valor) + '</p>' +
+        (v.fipe_ajustada ?
+          '<div class="mt-1.5 flex items-center gap-2 border-t border-accent/10 pt-1.5">' +
+            '<span class="text-[10px] text-muted">Estimado c/ mods:</span>' +
+            '<span class="text-xs font-bold text-accent">' + formatCurrency(v.fipe_ajustada) + '</span>' +
+          '</div>' : '') +
       '</div>' +
 
       '<!-- Next Maintenance -->' +
@@ -181,7 +186,17 @@
       '</div>' +
 
       '<!-- Action -->' +
-      '<div class="mt-4">' +
+      '<div class="mt-4 space-y-2">' +
+        (window.modPassport ?
+          '<div class="flex gap-2">' +
+            '<button type="button" data-mp-edit="' + v.id + '" class="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/10">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></svg>' +
+              'Mod Passport' +
+            '</button>' +
+            '<button type="button" data-mp-history="' + v.id + '" class="rounded-lg border border-border px-3 py-2 text-xs font-medium text-secondary transition-colors hover:border-accent/50 hover:text-primary" title="Historico">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>' +
+            '</button>' +
+          '</div>' : '') +
         '<a href="/perfil" class="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-secondary transition-colors hover:border-accent/50 hover:text-primary">' +
           'Ver detalhes' +
           '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>' +
@@ -214,6 +229,7 @@
 
       if (vehicleGrid) {
         vehicleGrid.innerHTML = data.map(renderVehicleCard).join("");
+        setupModPassportButtons(data);
       }
     } catch (err) {
       if (loadingEl) loadingEl.classList.add("hidden");
@@ -229,4 +245,40 @@
   }
 
   loadDashboard();
+
+  function setupModPassportButtons(vehicles) {
+    if (!window.modPassport || !vehicleGrid) return;
+
+    vehicleGrid.addEventListener("click", function (e) {
+      var editBtn = e.target.closest("[data-mp-edit]");
+      var historyBtn = e.target.closest("[data-mp-history]");
+
+      if (editBtn) {
+        var vid = parseInt(editBtn.getAttribute("data-mp-edit"));
+        var vData = null;
+        for (var i = 0; i < vehicles.length; i++) {
+          if (vehicles[i].veiculo && vehicles[i].veiculo.id === vid) {
+            vData = vehicles[i];
+            break;
+          }
+        }
+        if (vData) {
+          var v = vData.veiculo;
+          var name = ((v.marca || "") + " " + (v.modelo || "")).trim() || v.tipo || "Veiculo";
+          var mods = [];
+          try { mods = v.modificacoes ? JSON.parse(v.modificacoes) : []; } catch (_) { mods = []; }
+          window.modPassport.openForm(vid, name, v.fipe_valor, mods);
+        }
+      }
+
+      if (historyBtn) {
+        var hid = parseInt(historyBtn.getAttribute("data-mp-history"));
+        window.modPassport.openHistory(hid);
+      }
+    });
+  }
+
+  window.reloadDashboard = function () {
+    loadDashboard();
+  };
 })();
