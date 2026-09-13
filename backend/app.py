@@ -770,6 +770,29 @@ def handle_413(e):
     return jsonify(error="Arquivo muito grande. O limite e de 16MB."), 413
 
 
+@app.route("/api/public/stats", methods=["GET"])
+def public_stats():
+    try:
+        from routes.database import get_db
+        with get_db() as (cursor, conn):
+            cursor.execute("SELECT COUNT(*) AS cnt FROM maintenance_history")
+            diagnosticos = cursor.fetchone()["cnt"]
+
+            cursor.execute("SELECT COUNT(*) AS cnt FROM veiculos")
+            veiculos = cursor.fetchone()["cnt"]
+
+            cursor.execute("SELECT COUNT(*) AS cnt FROM users")
+            usuarios = cursor.fetchone()["cnt"]
+
+        return jsonify({
+            "diagnosticos": diagnosticos,
+            "veiculos": veiculos,
+            "usuarios": usuarios
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # [404] Telas sensiveis (robots.txt / sitemap.xml / llms.txt) recebem a
 # pagina 404 estilizada em vez do arquivo bruto.
 @app.route("/robots.txt")

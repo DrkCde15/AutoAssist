@@ -2,6 +2,7 @@ import logging
 import os
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from extensions import limiter
 from .database import get_db
 from utils.cron_auth import require_cron_secret
 
@@ -39,6 +40,7 @@ def list_notifications():
 
 @notifications_bp.route("/api/notifications/unread-count", methods=["GET"])
 @jwt_required()
+@limiter.limit("200 per hour")
 def unread_count():    
     user_id = get_jwt_identity()
     try:

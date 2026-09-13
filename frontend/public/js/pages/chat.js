@@ -3,6 +3,7 @@
  *
  * Endpoints:
  *   POST /api/chat            — envia mensagem (message, vehicle_id?, session_id?, image?, attachment?)
+ *   POST /api/voice           — envia áudio para transcrição (audio, vehicle_id?, session_id?)
  *   GET  /api/chat/history     — histórico do usuário (chats[])
  *   GET  /api/chat/conversations — conversas agrupadas por session_id
  *   GET  /api/veiculos         — lista de veículos do usuário
@@ -174,6 +175,7 @@
     // ── Sidebar ──
     sidebarEl = document.createElement("aside");
     sidebarEl.className = "flex flex-col w-80 border-r border-border bg-primary/50 shrink-0";
+    if (!isLoggedIn()) sidebarEl.style.display = "none";
 
     var sidebarHeader = document.createElement("div");
     sidebarHeader.className = "flex items-center justify-between p-4 border-b border-border";
@@ -223,11 +225,12 @@
     toggleBtn.type = "button";
     toggleBtn.className = "rounded-lg p-2 text-secondary hover:bg-white/5 transition-colors";
     toggleBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="6" y2="6"></line><line x1="3" x2="21" y1="12" y2="12"></line><line x1="3" x2="21" y1="18" y2="18"></line></svg>';
+    if (!isLoggedIn()) toggleBtn.style.display = "none";
 
     // Sidebar backdrop (mobile)
     var sidebarBackdrop = document.createElement("div");
     sidebarBackdrop.className = "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300";
-    document.body.appendChild(sidebarBackdrop);
+    if (isLoggedIn()) document.body.appendChild(sidebarBackdrop);
 
     function isDesktop() {
       return window.innerWidth >= DESKTOP_BP;
@@ -423,6 +426,130 @@
     textareaEl.className = "flex-1 resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 max-h-32 overflow-y-auto";
     textareaEl.style.minHeight = "44px";
 
+    var micBtn = document.createElement("button");
+    micBtn.type = "button";
+    micBtn.id = "chat-mic-btn";
+    micBtn.className = "rounded-xl p-3 text-secondary border border-border bg-card hover:bg-white/5 hover:text-primary transition-colors shrink-0";
+    micBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>';
+
+    // ── Voice recording ──
+    var mediaRecorder = null;
+    var audioChunks = [];
+    var isRecording = false;
+
+    micBtn.addEventListener("click", function () {
+      if (isRecording) {
+        mediaRecorder.stop();
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Gravação de áudio não suportada neste navegador.");
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function (stream) {
+          audioChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = function (e) {
+            if (e.data.size > 0) audioChunks.push(e.data);
+          };
+          mediaRecorder.onstop = function () {
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            isRecording = false;
+            micBtn.classList.remove("bg-red-500/20", "text-red-400", "border-red-500/50");
+            micBtn.classList.add("text-secondary", "border-border", "bg-card");
+            micBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>';
+            if (audioChunks.length > 0) {
+              var blob = new Blob(audioChunks, { type: "audio/webm" });
+              sendVoice(blob);
+            }
+          };
+          mediaRecorder.start();
+          isRecording = true;
+          micBtn.classList.remove("text-secondary", "border-border", "bg-card");
+          micBtn.classList.add("bg-red-500/20", "text-red-400", "border-red-500/50");
+          micBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle></svg>';
+        })
+        .catch(function () {
+          alert("Permissão de microfone negada.");
+        });
+    });
+
+    function sendVoice(blob) {
+      if (state.sending) return;
+      state.sending = true;
+      updateSendBtn();
+      hideEmptyState();
+
+      var userMsg = { role: "user", content: "[Áudio]", timestamp: new Date().toISOString() };
+      renderMessage(userMsg);
+      scrollToBottom(true);
+      textareaEl.value = "";
+      autoResize();
+      updateSendBtn();
+      showTyping();
+
+      var fd = new FormData();
+      fd.append("audio", blob, "recording.webm");
+      var vehicleVal = vehicleSelect ? vehicleSelect.value : "";
+      if (vehicleVal) fd.append("vehicle_id", vehicleVal);
+      if (state.activeSessionId) fd.append("session_id", state.activeSessionId);
+
+      var token = localStorage.getItem("autoassist_access_token");
+      var headers = {};
+      if (token) headers["Authorization"] = "Bearer " + token;
+      if (!isLoggedIn()) headers["X-AutoAssist-Guest-Id"] = getGuestId();
+
+      fetch("/api/voice", {
+        method: "POST",
+        headers: headers,
+        credentials: "include",
+        body: fd,
+      })
+        .then(function (res) {
+          if (!res.ok) return res.json().then(function (b) { throw new Error(b.error || "Erro ao enviar áudio"); });
+          return res.json();
+        })
+        .then(function (data) {
+          hideTyping();
+          if (!data) return;
+          var aiMsg = { role: "assistant", content: data.response || data.text || "", timestamp: new Date().toISOString() };
+          renderMessage(aiMsg);
+          scrollToBottom(true);
+          if (data.chat && data.chat.id) {
+            state.latestId = data.chat.id;
+            state.messages.push({ id: data.chat.id, role: "assistant", content: aiMsg.content, session_id: data.chat.session_id || state.activeSessionId, created_at: aiMsg.timestamp });
+            if (data.chat.session_id && data.chat.session_id !== state.activeSessionId) {
+              state.activeSessionId = data.chat.session_id;
+              if (isLoggedIn()) loadConversations();
+            }
+          }
+          if (data.guest_messages_remaining !== undefined) {
+            var remaining = data.guest_messages_remaining;
+            var limit = data.guest_limit || 5;
+            if (remaining <= 2 && remaining > 0) {
+              renderMessage({ role: "assistant", content: "Você tem " + remaining + " mensagem" + (remaining > 1 ? "s" : "") + " restante" + (remaining > 1 ? "s" : "") + ". Crie uma conta para continuar.", timestamp: new Date().toISOString() });
+              scrollToBottom(true);
+            } else if (remaining === 0) {
+              renderMessage({ role: "assistant", content: "Você atingiu o limite de " + limit + " mensagens gratuitas. Crie uma conta ou faça login para continuar.", timestamp: new Date().toISOString() });
+              scrollToBottom(true);
+              textareaEl.disabled = true;
+              sendBtn.disabled = true;
+              micBtn.disabled = true;
+            }
+          }
+        })
+        .catch(function (err) {
+          hideTyping();
+          renderMessage({ role: "assistant", content: "Desculpe, não consegui processar o áudio. " + (err.message || "Tente novamente."), timestamp: new Date().toISOString() });
+          scrollToBottom(true);
+        })
+        .finally(function () {
+          state.sending = false;
+          updateSendBtn();
+        });
+    }
+
     sendBtn = document.createElement("button");
     sendBtn.type = "button";
     sendBtn.id = "chat-send-btn";
@@ -432,6 +559,7 @@
 
     inputRow.appendChild(actionWrap);
     inputRow.appendChild(textareaEl);
+    inputRow.appendChild(micBtn);
     inputRow.appendChild(sendBtn);
     inputArea.appendChild(inputRow);
     mainEl.appendChild(inputArea);
@@ -878,12 +1006,19 @@
     var headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = "Bearer " + token;
 
-    fetch(CHAT_ENDPOINT, {
+    var fetchOpts = {
       method: "POST",
       headers: headers,
       credentials: "include",
       body: JSON.stringify(payload),
-    })
+    };
+
+    if (!isLoggedIn()) {
+      payload.guest_id = getGuestId();
+      fetchOpts.headers["X-AutoAssist-Guest-Id"] = payload.guest_id;
+    }
+
+    fetch(CHAT_ENDPOINT, fetchOpts)
       .then(function (res) {
         if (!res.ok) {
           return res.json().then(function (body) {
@@ -920,8 +1055,23 @@
           state.latestId = data.chat.id || state.latestId;
         }
 
+        // Guest remaining messages
+        if (data.guest_messages_remaining !== undefined) {
+          var remaining = data.guest_messages_remaining;
+          var limit = data.guest_limit || 5;
+          if (remaining <= 2 && remaining > 0) {
+            renderMessage({ role: "assistant", content: "Você tem " + remaining + " mensagem" + (remaining > 1 ? "s" : "") + " restante" + (remaining > 1 ? "s" : "") + ". Crie uma conta para continuar.", timestamp: new Date().toISOString() });
+            scrollToBottom(true);
+          } else if (remaining === 0) {
+            renderMessage({ role: "assistant", content: "Você atingiu o limite de " + limit + " mensagens gratuitas. Crie uma conta ou faça login para continuar.", timestamp: new Date().toISOString() });
+            scrollToBottom(true);
+            textareaEl.disabled = true;
+            sendBtn.disabled = true;
+          }
+        }
+
         // Refresh conversations in background
-        fetchConversations();
+        if (isLoggedIn()) fetchConversations();
       })
       .catch(function (err) {
         hideTyping();
@@ -1197,18 +1347,28 @@
     }
   }
 
+  // ── Guest ID ──
+  function getGuestId() {
+    var gid = localStorage.getItem("autoassist_guest_id");
+    if (gid) return gid;
+    gid = "g_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    localStorage.setItem("autoassist_guest_id", gid);
+    return gid;
+  }
+
+  function isLoggedIn() {
+    return !!(auth && auth.isAuthenticated && auth.isAuthenticated());
+  }
+
   // ── Init ──
   document.addEventListener("DOMContentLoaded", function () {
-    if (!auth.requireAuth()) return;
-
     buildUI();
     bindEvents();
     renderEmptyState();
 
     fetchVehicles().then(function () {
-      return fetchConversations();
+      if (isLoggedIn()) return fetchConversations();
     }).then(function () {
-      // Show empty state for new conversation
       if (!state.activeSessionId) {
         renderEmptyState();
       }

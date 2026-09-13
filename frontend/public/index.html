@@ -84,6 +84,7 @@
     <script src="/js/auth.js" defer></script>
     <script src="/js/nav.js" defer></script>
     <script src="/js/components.js" defer></script>
+    <script src="/js/notifications.js" defer></script>
   </head>
   <body class="font-sans antialiased">
     <script type="application/ld+json">
@@ -859,7 +860,7 @@
                   Problema ignorado
                 </p>
                 <p class="mt-1 text-xs leading-relaxed text-muted">
-                  &quot; coisa bobaquot;É coisa boba, vai passar.&quot; O
+                  &quot;É coisa boba, vai passar.&quot; O
                   sintoma se repete e piora.
                 </p>
               </div>
@@ -1735,7 +1736,7 @@
                   ></path>
                 </svg>
               </div>
-              <p class="font-display text-4xl font-bold text-primary">0</p>
+              <p class="font-display text-4xl font-bold text-primary" id="stat-diagnosticos">0</p>
               <p class="mt-1 text-sm text-muted">Diagnósticos realizados</p>
             </div>
             <div
@@ -1765,7 +1766,7 @@
                   <circle cx="17" cy="17" r="2"></circle>
                 </svg>
               </div>
-              <p class="font-display text-4xl font-bold text-primary">0</p>
+              <p class="font-display text-4xl font-bold text-primary" id="stat-veiculos">0</p>
               <p class="mt-1 text-sm text-muted">Veículos cadastrados</p>
             </div>
             <div
@@ -1793,12 +1794,12 @@
                   <circle cx="9" cy="7" r="4"></circle>
                 </svg>
               </div>
-              <p class="font-display text-4xl font-bold text-primary">0</p>
-              <p class="mt-1 text-sm text-muted">Usurios ativos</p>
+              <p class="font-display text-4xl font-bold text-primary" id="stat-usuarios">0</p>
+              <p class="mt-1 text-sm text-muted">Usuários ativos</p>
             </div>
           </div>
           <p class="mt-8 text-center text-xs text-muted">
-            Valores sero atualizados em breve.
+            Valores serão atualizados em breve.
           </p>
         </div>
       </section>
@@ -2106,318 +2107,296 @@
       </section>
       <section class="relative bg-secondary py-24 sm:py-32">
         <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div class="text-center">
-            <h2
-              class="font-display text-3xl font-bold tracking-tight text-primary sm:text-4xl"
-            >
-              Perguntas frequentes
-            </h2>
-          </div>
-          <div class="mt-12 space-y-3">
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="true"
+          <h2 class="mb-6 text-center text-2xl font-bold text-primary">
+            Perguntas frequentes
+          </h2>
+          <div class="divide-y divide-border">
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>O que é a IA?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>O que é a IA?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300 rotate-180"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-96 pb-5"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    A IA é uma Inteligência artificial especializada em
-                    Diagnóstico automotivo. Ela analisa descrições de problemas,
-                    fotos e áudios para identificar possíveis causas e orientar
-                    o próximo passo.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  A IA é uma Inteligência artificial especializada em
+                  Diagnóstico automotivo. Ela analisa descrições de problemas,
+                  fotos e áudios para identificar possíveis causas e orientar
+                  o próximo passo.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>A IA substitui o mecânico?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>A IA substitui o mecânico?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Não. A IA é uma ferramenta de apoio que fornece hipóteses e
-                    orientações. O Diagnóstico definitivo e o reparo devem ser
-                    realizados por um profissional qualificado.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Não. A IA é uma ferramenta de apoio que fornece hipóteses e
+                  orientações. O Diagnóstico definitivo e o reparo devem ser
+                  realizados por um profissional qualificado.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>Posso enviar fotos do meu carro?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>Posso enviar fotos do meu carro?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Sim. Você pode enviar fotos de peças, painis, vazamentos ou
-                    qualquer componente. a IA analisa a imagem e retorna
-                    hipóteses com base no visual.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Sim. Você pode enviar fotos de peças, painis, vazamentos ou
+                  qualquer componente. a IA analisa a imagem e retorna
+                  hipóteses com base no visual.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>O áudio funciona como?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>O áudio funciona como?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Você grava o som do problema (rangido, batida, motor) e a IA
-                    analisa o padrão acústico para identificar a causa mais
-                    provável.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Você grava o som do problema (rangido, batida, motor) e a IA
+                  analisa o padrão acústico para identificar a causa mais
+                  provável.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>Qual a diferença entre Gratuito e Premium?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>Qual a diferença entre Gratuito e Premium?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    No plano gratuito, você tem acesso limitado à IA, FIPE e 1
-                    veículo. No Premium, a IA é ilimitada, você pode cadastrar
-                    veículos ilimitados, gerar laudos PDF e receber alertas de
-                    manutenção.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  No plano gratuito, você tem acesso limitado à IA, FIPE e 1
+                  veículo. No Premium, a IA é ilimitada, você pode cadastrar
+                  veículos ilimitados, gerar laudos PDF e receber alertas de
+                  manutenção.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>A consulta FIPE é atualizada?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>A consulta FIPE é atualizada?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Sim. A tabela FIPE é atualizada mensalmente e o AutoAssist
-                    reflete os valores mais recentes disponíveis no mercado.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Sim. A tabela FIPE é atualizada mensalmente e o AutoAssist
+                  reflete os valores mais recentes disponíveis no mercado.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>Meus dados esto seguros?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>Meus dados esto seguros?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Sim. Todos os dados são criptografados e armazenados com
-                    segurança. Nunca compartilhamos suas informações com
-                    terceiros. O AutoAssist está totalmente em conformidade com
-                    a LGPD.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Sim. Todos os dados são criptografados e armazenados com
+                  segurança. Nunca compartilhamos suas informações com
+                  terceiros. O AutoAssist está totalmente em conformidade com
+                  a LGPD.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>Posso cancelar o Premium a qualquer momento?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>Posso cancelar o Premium a qualquer momento?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Sim. Não há fidelidade. Você pode cancelar sua assinatura a
-                    qualquer momento e continuar usando até o final do período
-                    já pago.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Sim. Não há fidelidade. Você pode cancelar sua assinatura a
+                  qualquer momento e continuar usando até o final do período
+                  já pago.
                 </div>
               </div>
             </div>
-            <div class="rounded-xl border border-border bg-secondary px-5">
-              <div class="border-b border-border">
-                <button
-                  class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
-                  aria-expanded="false"
+            <div class="border-b border-border">
+              <button
+                class="flex w-full items-center justify-between gap-4 py-5 text-left text-[15px] font-semibold text-primary transition-colors hover:text-accent cursor-pointer"
+                aria-expanded="false"
+              >
+                <span>O AutoAssist funciona para qualquer carro?</span
+                ><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
+                  aria-hidden="true"
                 >
-                  <span>O AutoAssist funciona para qualquer carro?</span
-                  ><svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="lucide lucide-chevron-down shrink-0 text-muted transition-transform duration-300"
-                    aria-hidden="true"
-                  >
-                    <path d="m6 9 6 6 6-6"></path>
-                  </svg>
-                </button>
-                <div
-                  class="overflow-hidden transition-all duration-300 max-h-0"
-                >
-                  <div class="text-sm leading-relaxed text-secondary">
-                    Sim. A IA funciona com qualquer marca, modelo ou ano. Quanto
-                    mais detalhes você fornecer, mais preciso ser o Diagnóstico.
-                  </div>
+                  <path d="m6 9 6 6 6-6"></path>
+                </svg>
+              </button>
+              <div
+                class="overflow-hidden transition-all duration-300 max-h-0"
+              >
+                <div class="text-sm leading-relaxed text-secondary">
+                  Sim. A IA funciona com qualquer marca, modelo ou ano. Quanto
+                  mais detalhes você fornecer, mais preciso ser o Diagnóstico.
                 </div>
               </div>
             </div>
@@ -2595,11 +2574,11 @@
           </p>
           <p class="text-xs text-muted">
             Powered by
-            <span class="font-medium text-secondary">AutoAssist</span>
+            <span class="font-medium text-secondary">NOG-AI</span>
           </p>
         </div>
       </div>
     </footer>
-    <!--$--><!--/$-->
+    <script src="/js/pages/index.js" defer></script>
   </body>
 </html>
