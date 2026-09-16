@@ -57,16 +57,17 @@
     if (modalOverlay) return;
     modalOverlay = document.createElement("div");
     modalOverlay.id = "mod-passport-modal";
-    modalOverlay.className = "fixed inset-0 z-[1200] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4";
+    modalOverlay.className = "hidden";
+    modalOverlay.style.cssText = "position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);padding:1rem;";
     modalOverlay.innerHTML =
-      '<div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">' +
-        '<div class="flex items-center justify-between border-b border-border px-6 py-4">' +
-          '<h3 class="text-lg font-bold text-primary">Mod Passport</h3>' +
-          '<button type="button" id="mp-close" class="rounded-lg p-1.5 text-muted hover:text-primary hover:bg-white/5 transition-colors">' +
+      '<div style="width:100%;max-width:32rem;max-height:90vh;overflow-y:auto;border-radius:1rem;border:1px solid var(--border-color,#27272a);background:var(--card-bg,#09090b);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-color,#27272a);padding:1rem 1.5rem;">' +
+          '<h3 style="font-size:1.125rem;font-weight:700;color:var(--text-primary,#fafafa);margin:0;">Mod Passport</h3>' +
+          '<button type="button" id="mp-close" style="border:none;background:none;cursor:pointer;padding:0.375rem;border-radius:0.5rem;color:var(--text-muted,#a1a1aa);">' +
             '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
           '</button>' +
         '</div>' +
-        '<div id="mp-body" class="px-6 py-4"></div>' +
+        '<div id="mp-body" style="padding:1rem 1.5rem;"></div>' +
       '</div>';
     document.body.appendChild(modalOverlay);
 
@@ -81,19 +82,20 @@
 
   function openModal() {
     createModal();
+    modalOverlay.style.display = "flex";
     modalOverlay.classList.remove("hidden");
-    modalOverlay.classList.add("flex");
   }
 
   function closeModal() {
     if (modalOverlay) {
+      modalOverlay.style.display = "none";
       modalOverlay.classList.add("hidden");
-      modalOverlay.classList.remove("flex");
     }
   }
 
   // ── Render mod form ──
   function renderModForm(vehicleId, vehicleName, fipeValor, existingMods) {
+    createModal();
     currentVehicleId = vehicleId;
     currentMods = (existingMods || []).slice();
     var body = document.getElementById("mp-body");
@@ -104,44 +106,44 @@
     var ajustado = fipeNum > 0 ? fipeNum * (1 + pctTotal) : 0;
 
     body.innerHTML =
-      '<div class="mb-4 rounded-lg bg-accent/5 px-4 py-3">' +
-        '<p class="text-xs text-muted">' + escapeHTML(vehicleName) + '</p>' +
-        '<div class="mt-2 flex items-center gap-4">' +
+      '<div style="margin-bottom:1rem;border-radius:0.5rem;background:rgba(91,141,239,0.05);padding:0.75rem 1rem;">' +
+        '<p style="font-size:0.75rem;color:var(--text-muted,#a1a1aa);margin:0;">' + escapeHTML(vehicleName) + '</p>' +
+        '<div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem;">' +
           '<div>' +
-            '<p class="text-[10px] uppercase tracking-wide text-muted">FIPE Base</p>' +
-            '<p class="text-sm font-bold text-primary">' + formatCurrency(fipeValor) + '</p>' +
+            '<p style="font-size:0.625rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted,#a1a1aa);margin:0;">FIPE Base</p>' +
+            '<p style="font-size:0.875rem;font-weight:700;color:var(--text-primary,#fafafa);margin:0.25rem 0 0;">' + formatCurrency(fipeValor) + '</p>' +
           '</div>' +
-          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted,#a1a1aa);"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>' +
           '<div>' +
-            '<p class="text-[10px] uppercase tracking-wide text-muted">Valor Estimado</p>' +
-            '<p class="text-sm font-bold text-accent">' + (ajustado > 0 ? formatCurrency(ajustado) : "---") + '</p>' +
+            '<p style="font-size:0.625rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted,#a1a1aa);margin:0;">Valor Estimado</p>' +
+            '<p style="font-size:0.875rem;font-weight:700;color:var(--accent,#5b8def);margin:0.25rem 0 0;">' + (ajustado > 0 ? formatCurrency(ajustado) : "---") + '</p>' +
           '</div>' +
-          '<div class="ml-auto">' +
-            '<span class="rounded bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">+' + (pctTotal * 100).toFixed(1) + '%</span>' +
+          '<div style="margin-left:auto;">' +
+            '<span style="border-radius:0.25rem;background:rgba(91,141,239,0.1);padding:0.125rem 0.5rem;font-size:0.625rem;font-weight:500;color:var(--accent,#5b8def);">+' + (pctTotal * 100).toFixed(1) + '%</span>' +
           '</div>' +
         '</div>' +
       '</div>' +
 
-      '<div id="mp-mods-list" class="space-y-2 mb-4"></div>' +
+      '<div id="mp-mods-list" style="margin-bottom:1rem;"></div>' +
 
-      '<button type="button" id="mp-add-mod" class="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 py-2.5 text-sm text-muted transition-colors hover:border-accent hover:text-accent">' +
+      '<button type="button" id="mp-add-mod" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.5rem;border-radius:0.5rem;border:1px dashed var(--border-color,#27272a);padding:0.625rem;font-size:0.875rem;color:var(--text-muted,#a1a1aa);background:none;cursor:pointer;margin-bottom:1rem;">' +
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>' +
         'Adicionar modificacao' +
       '</button>' +
 
-      '<div class="flex gap-2">' +
-        '<button type="button" id="mp-save" class="flex-1 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed">' +
+      '<div style="display:flex;gap:0.5rem;">' +
+        '<button type="button" id="mp-save" style="flex:1;border-radius:0.5rem;background:var(--accent,#5b8def);padding:0.625rem 1rem;font-size:0.875rem;font-weight:600;color:#fff;border:none;cursor:pointer;">' +
           'Salvar' +
         '</button>' +
-        '<button type="button" id="mp-share" class="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent hover:text-primary">' +
+        '<button type="button" id="mp-share" style="border-radius:0.5rem;border:1px solid var(--border-color,#27272a);padding:0.625rem 1rem;font-size:0.875rem;font-weight:500;color:var(--text-secondary,#a1a1aa);background:none;cursor:pointer;">' +
           'Compartilhar' +
         '</button>' +
-        '<button type="button" id="mp-pdf" class="rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-secondary transition-colors hover:border-accent hover:text-primary">' +
+        '<button type="button" id="mp-pdf" style="border-radius:0.5rem;border:1px solid var(--border-color,#27272a);padding:0.625rem 1rem;font-size:0.875rem;font-weight:500;color:var(--text-secondary,#a1a1aa);background:none;cursor:pointer;">' +
           'PDF' +
         '</button>' +
       '</div>' +
 
-      '<p class="mt-3 text-[10px] leading-relaxed text-muted">' +
+      '<p style="margin-top:0.75rem;font-size:0.625rem;line-height:1.5;color:var(--text-muted,#a1a1aa);">' +
         'Valor estimado com base na Tabela FIPE e precos de anuncios reais, ajustado por modificacoes documentadas. ' +
         'Nao e avaliacao oficial e nao substitui pericia para venda, seguro ou financiamento.' +
       '</p>';
@@ -164,13 +166,15 @@
     document.getElementById("mp-pdf").addEventListener("click", function () {
       exportPDF(vehicleId);
     });
+
+    openModal();
   }
 
   function renderModsList() {
     var list = document.getElementById("mp-mods-list");
     if (!list) return;
     if (currentMods.length === 0) {
-      list.innerHTML = '<p class="text-center text-sm text-muted py-4">Nenhuma modificacao registrada.</p>';
+      list.innerHTML = '<p style="text-align:center;font-size:0.875rem;color:var(--text-muted,#a1a1aa);padding:1rem 0;">Nenhuma modificacao registrada.</p>';
       return;
     }
     var html = "";
@@ -183,18 +187,18 @@
       }
       var pct = MOD_PCT[m.categoria] || MOD_PCT.outros;
       html +=
-        '<div class="rounded-lg border border-border bg-primary/5 p-3">' +
-          '<div class="flex items-center gap-2 mb-2">' +
-            '<select data-idx="' + i + '" data-field="categoria" class="mp-field flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-xs text-primary">' +
+        '<div style="border:1px solid var(--border-color,#27272a);border-radius:0.5rem;padding:0.75rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.02);">' +
+          '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">' +
+            '<select data-idx="' + i + '" data-field="categoria" class="mp-field" style="flex:1;border-radius:0.25rem;border:1px solid var(--border-color,#27272a);background:var(--card-bg,#09090b);padding:0.375rem 0.5rem;font-size:0.75rem;color:var(--text-primary,#fafafa);">' +
               catOpts +
             '</select>' +
-            '<span class="text-[10px] text-accent font-medium">+' + (pct * 100).toFixed(1) + '%</span>' +
-            '<button type="button" data-idx="' + i + '" class="mp-remove rounded p-1 text-muted hover:text-red-400 transition-colors">' +
+            '<span style="font-size:0.625rem;color:var(--accent,#5b8def);font-weight:500;">+' + (pct * 100).toFixed(1) + '%</span>' +
+            '<button type="button" data-idx="' + i + '" class="mp-remove" style="border:none;background:none;cursor:pointer;padding:0.25rem;color:var(--text-muted,#a1a1aa);">' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
             '</button>' +
           '</div>' +
-          '<input data-idx="' + i + '" data-field="descricao" class="mp-field w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs text-primary placeholder:text-muted" placeholder="Descricao (ex: Turbo Kit Garrett)" value="' + escapeHTML(m.descricao || "") + '" />' +
-          '<input data-idx="' + i + '" data-field="valor" type="number" class="mp-field mt-1 w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs text-primary placeholder:text-muted" placeholder="Valor informado em R$ (opcional)" value="' + escapeHTML(m.valor || "") + '" />' +
+          '<input data-idx="' + i + '" data-field="descricao" class="mp-field" style="width:100%;border-radius:0.25rem;border:1px solid var(--border-color,#27272a);background:var(--card-bg,#09090b);padding:0.375rem 0.5rem;font-size:0.75rem;color:var(--text-primary,#fafafa);box-sizing:border-box;" placeholder="Descricao (ex: Turbo Kit Garrett)" value="' + escapeHTML(m.descricao || "") + '" />' +
+          '<input data-idx="' + i + '" data-field="valor" type="number" class="mp-field" style="width:100%;border-radius:0.25rem;border:1px solid var(--border-color,#27272a);background:var(--card-bg,#09090b);padding:0.375rem 0.5rem;font-size:0.75rem;color:var(--text-primary,#fafafa);margin-top:0.25rem;box-sizing:border-box;" placeholder="Valor informado em R$ (opcional)" value="' + escapeHTML(m.valor || "") + '" />' +
         '</div>';
     }
     list.innerHTML = html;
@@ -298,32 +302,33 @@
     var body = document.getElementById("mp-body");
     if (!body) return;
     body.innerHTML =
-      '<div class="flex items-center justify-center py-8">' +
-        '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin text-accent"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>' +
+      '<style>@keyframes mp-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>' +
+      '<div style="display:flex;align-items:center;justify-content:center;padding:2rem 0;">' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent,#5b8def);animation:mp-spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>' +
       '</div>';
     openModal();
     document.querySelector("#mod-passport-modal h3").textContent = "Historico Mod Passport";
 
     window.api.get("/api/veiculos/" + vehicleId + "/modificacoes/history")
       .then(function (data) {
-        var versions = data.versions || [];
+        var versions = data.history || data.versions || [];
         if (versions.length === 0) {
-          body.innerHTML = '<p class="text-center text-sm text-muted py-8">Nenhum historico encontrado.</p>';
+          body.innerHTML = '<p style="text-align:center;font-size:0.875rem;color:var(--text-muted,#a1a1aa);padding:2rem 0;">Nenhum historico encontrado.</p>';
           return;
         }
-        var html = '<div class="space-y-3">';
+        var html = '<div style="display:flex;flex-direction:column;gap:0.75rem;">';
         for (var i = 0; i < versions.length; i++) {
           var v = versions[i];
           var date = v.created_at ? new Date(v.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "---";
           html +=
-            '<div class="rounded-lg border border-border bg-primary/5 px-4 py-3">' +
-              '<div class="flex items-center justify-between">' +
-                '<span class="text-xs font-medium text-primary">' + date + '</span>' +
-                '<span class="text-[10px] text-muted">' + (v.qtd_modificacoes || 0) + ' mods</span>' +
+            '<div style="border:1px solid var(--border-color,#27272a);border-radius:0.5rem;padding:0.75rem 1rem;background:rgba(255,255,255,0.02);">' +
+              '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+                '<span style="font-size:0.75rem;font-weight:500;color:var(--text-primary,#fafafa);">' + date + '</span>' +
+                '<span style="font-size:0.625rem;color:var(--text-muted,#a1a1aa);">' + (v.qtd_modificacoes || 0) + ' mods</span>' +
               '</div>' +
-              '<div class="mt-1 flex items-center gap-3 text-xs">' +
-                '<span class="text-muted">FIPE: ' + formatCurrency(v.fipe_valor) + '</span>' +
-                '<span class="text-accent font-medium">Estimado: ' + formatCurrency(v.fipe_ajustada) + '</span>' +
+              '<div style="display:flex;align-items:center;gap:0.75rem;font-size:0.75rem;margin-top:0.25rem;">' +
+                '<span style="color:var(--text-muted,#a1a1aa);">FIPE: ' + formatCurrency(v.fipe_valor) + '</span>' +
+                '<span style="color:var(--accent,#5b8def);font-weight:500;">Estimado: ' + formatCurrency(v.fipe_ajustada) + '</span>' +
               '</div>' +
             '</div>';
         }
@@ -331,7 +336,7 @@
         body.innerHTML = html;
       })
       .catch(function (err) {
-        body.innerHTML = '<p class="text-center text-sm text-red-400 py-8">Erro ao carregar historico.</p>';
+        body.innerHTML = '<p style="text-align:center;font-size:0.875rem;color:#ef4444;padding:2rem 0;">Erro ao carregar historico.</p>';
       });
   }
 

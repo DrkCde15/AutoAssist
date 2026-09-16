@@ -254,25 +254,29 @@
       var historyBtn = e.target.closest("[data-mp-history]");
 
       if (editBtn) {
-        var vid = parseInt(editBtn.getAttribute("data-mp-edit"));
+        var vid = editBtn.getAttribute("data-mp-edit");
         var vData = null;
         for (var i = 0; i < vehicles.length; i++) {
-          if (vehicles[i].veiculo && vehicles[i].veiculo.id === vid) {
+          if (vehicles[i].veiculo && String(vehicles[i].veiculo.id) === String(vid)) {
             vData = vehicles[i];
             break;
           }
         }
         if (vData) {
           var v = vData.veiculo;
+          var fipeObj = vData.fipe || {};
           var name = ((v.marca || "") + " " + (v.modelo || "")).trim() || v.tipo || "Veiculo";
           var mods = [];
-          try { mods = v.modificacoes ? JSON.parse(v.modificacoes) : []; } catch (_) { mods = []; }
-          window.modPassport.openForm(vid, name, v.fipe_valor, mods);
+          if (v.modificacoes) {
+            mods = typeof v.modificacoes === "string" ? JSON.parse(v.modificacoes) : v.modificacoes;
+          }
+          var fipeRaw = fipeObj.Valor || v.fipe_valor || null;
+          window.modPassport.openForm(vid, name, fipeRaw, mods);
         }
       }
 
       if (historyBtn) {
-        var hid = parseInt(historyBtn.getAttribute("data-mp-history"));
+        var hid = historyBtn.getAttribute("data-mp-history");
         window.modPassport.openHistory(hid);
       }
     });
