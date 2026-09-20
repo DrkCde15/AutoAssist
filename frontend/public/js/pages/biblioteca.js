@@ -326,6 +326,7 @@
   // ── Init ──
   function init() {
     if (!window.auth.requireAuth()) return;
+    if (window.premiumModal && !window.premiumModal.requirePremium()) return;
     if (!buildPage()) return;
 
     fetchLibrary();

@@ -66,6 +66,10 @@
       }
       var u = getStoredUser();
       if (u && !u.is_premium) {
+        if (window.premiumModal) {
+          window.premiumModal.show();
+          return false;
+        }
         window.location.href = "/planos";
         return false;
       }

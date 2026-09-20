@@ -6,6 +6,7 @@
 
   if (!window.auth || !window.api) return;
   if (!window.auth.requireAuth()) return;
+  if (window.premiumModal && !window.premiumModal.requirePremium()) return;
 
   var statsBar = document.getElementById("stats-bar");
   var vehicleGrid = document.getElementById("vehicle-grid");

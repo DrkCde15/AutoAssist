@@ -135,6 +135,7 @@
 
   function init() {
     if (!window.auth || !window.auth.requireAuth()) return;
+    if (window.premiumModal && !window.premiumModal.requirePremium()) return;
     loadLeaflet(function () {
       navigator.geolocation.getCurrentPosition(
         function (pos) {

@@ -18,6 +18,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     if (!auth.requireAuth()) return;
+    if (window.premiumModal && !window.premiumModal.requirePremium()) return;
 
     // Inject missing CSS
     if (!document.getElementById("anotacoes-responsive-css")) {

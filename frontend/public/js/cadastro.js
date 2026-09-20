@@ -68,7 +68,11 @@
         confirm_password: password2,
         turnstile_token: token
       });
-      window.location.href = '/login?conta criada';
+      var params = new URLSearchParams(window.location.search);
+      var plan = params.get("plan");
+      var redirectUrl = '/login?conta criada';
+      if (plan === "premium") redirectUrl = '/login?redirect=' + encodeURIComponent('/planos');
+      window.location.href = redirectUrl;
     } catch(err) {
       errorDiv.textContent = err.message || 'Erro ao criar conta. Tente novamente.';
       errorDiv.classList.remove('hidden');

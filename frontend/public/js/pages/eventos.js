@@ -23,6 +23,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     if (!auth.requireAuth()) return;
+    if (window.premiumModal && !window.premiumModal.requirePremium()) return;
     if (!document.getElementById("eventos-responsive-css")) {
       var eventosCss = document.createElement("style");
       eventosCss.id = "eventos-responsive-css";

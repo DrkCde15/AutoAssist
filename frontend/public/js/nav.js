@@ -132,6 +132,7 @@
       container.querySelectorAll("a").forEach(function (a) {
         var href = a.getAttribute("href");
         if (!href) return;
+        if (a.querySelector("img[alt='AutoAssist']")) return;
         var cleanHref = href.replace(/\/$/, "") || "/";
         if (cleanHref === path) {
           a.classList.add("bg-accent/10", "text-accent");
