@@ -69,6 +69,21 @@
     }
   }
 
+  function sendChatFeedback(chatId, avaliacao) {
+    if (!isLoggedIn() || !chatId) return;
+    window.api.post("/api/chat/feedback", {
+      avaliacao: avaliacao,
+      chat_id: chatId
+    }).catch(function () {});
+  }
+
+  function deleteChatMessage(chatId, element) {
+    if (!isLoggedIn() || !chatId) return;
+    window.api.delete("/api/chat/history/" + chatId).then(function () {
+      if (element) element.remove();
+    }).catch(function () {});
+  }
+
   function formatDate(isoStr) {
     if (!isoStr) return "";
     try {
@@ -790,6 +805,70 @@
       timeEl.className = "mt-1 text-[10px] text-muted px-1 " + (isUser ? "text-right" : "text-left");
       timeEl.textContent = formatTime(msg.timestamp);
       bubbleWrap.appendChild(timeEl);
+    }
+
+    // Action buttons for AI messages
+    if (!isUser && isLoggedIn() && msg.id) {
+      var actionsRow = document.createElement("div");
+      actionsRow.className = "flex items-center gap-1 mt-1 px-1";
+
+      var thumbsUp = document.createElement("button");
+      thumbsUp.type = "button";
+      thumbsUp.className = "text-muted hover:text-green-400 transition-colors p-1 rounded";
+      thumbsUp.title = "Util";
+      thumbsUp.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>';
+      thumbsUp.addEventListener("click", function () {
+        sendChatFeedback(msg.id, 1);
+        thumbsUp.classList.replace("text-muted", "text-green-400");
+        thumbsDown.classList.replace("text-red-400", "text-muted");
+      });
+
+      var thumbsDown = document.createElement("button");
+      thumbsDown.type = "button";
+      thumbsDown.className = "text-muted hover:text-red-400 transition-colors p-1 rounded";
+      thumbsDown.title = "Não util";
+      thumbsDown.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>';
+      thumbsDown.addEventListener("click", function () {
+        sendChatFeedback(msg.id, -1);
+        thumbsDown.classList.replace("text-muted", "text-red-400");
+        thumbsUp.classList.replace("text-green-400", "text-muted");
+      });
+
+      var deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "text-muted hover:text-red-400 transition-colors p-1 rounded ml-auto";
+      deleteBtn.title = "Excluir mensagem";
+      deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+      deleteBtn.addEventListener("click", function () {
+        if (confirm("Excluir esta mensagem?")) {
+          deleteChatMessage(msg.id, wrapper);
+        }
+      });
+
+      actionsRow.appendChild(thumbsUp);
+      actionsRow.appendChild(thumbsDown);
+      actionsRow.appendChild(deleteBtn);
+      bubbleWrap.appendChild(actionsRow);
+    }
+
+    // Delete button for user messages
+    if (isUser && isLoggedIn() && msg.id) {
+      var userActionsRow = document.createElement("div");
+      userActionsRow.className = "flex justify-end mt-1 px-1";
+
+      var userDeleteBtn = document.createElement("button");
+      userDeleteBtn.type = "button";
+      userDeleteBtn.className = "text-muted hover:text-red-400 transition-colors p-1 rounded";
+      userDeleteBtn.title = "Excluir mensagem";
+      userDeleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+      userDeleteBtn.addEventListener("click", function () {
+        if (confirm("Excluir esta mensagem?")) {
+          deleteChatMessage(msg.id, wrapper);
+        }
+      });
+
+      userActionsRow.appendChild(userDeleteBtn);
+      bubbleWrap.appendChild(userActionsRow);
     }
 
     // Videos section

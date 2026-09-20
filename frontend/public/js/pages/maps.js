@@ -65,8 +65,10 @@
         + '<div class="flex items-center gap-2 mt-2">'
         + (dist ? '<span class="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">' + dist + '</span>' : '')
         + rating
+        + (isLoggedIn() && typeof m.id === "number" ? '<button class="mech-fav-toggle ml-auto text-muted hover:text-yellow-500 transition-colors" data-mech-id="' + m.id + '" title="Favoritar">★</button>' : '')
         + '</div>'
         + (esp ? '<p class="text-[11px] text-secondary/70 mt-2 italic">' + escapeHTML(esp) + '</p>' : '')
+        + '<button class="mech-profile-btn mt-2 w-full rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-white/5 transition-colors" data-mech-id="' + m.id + '">Ver perfil</button>'
         + '</div>';
     }).join("");
   }
@@ -191,6 +193,24 @@
             }
           });
         }
+
+        var profileBtn = e.target.closest(".mech-profile-btn");
+        if (profileBtn) {
+          e.stopPropagation();
+          var mechId = profileBtn.getAttribute("data-mech-id");
+          if (mechId) showProfileModal(mechId);
+        }
+
+        var favBtn = e.target.closest(".mech-fav-toggle");
+        if (favBtn) {
+          e.stopPropagation();
+          var mechId = favBtn.getAttribute("data-mech-id");
+          if (mechId) {
+            toggleFavorite(parseInt(mechId) || mechId, null).then(function (res) {
+              favBtn.classList.toggle("text-yellow-500", !res.message || !res.message.includes("removido"));
+            }).catch(function () {});
+          }
+        }
       });
     });
   }
@@ -202,6 +222,200 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  // ── Mechanics API functions ──
+  function getMechanicProfile(id) {
+    return window.api.get("/api/mechanics/" + encodeURIComponent(id));
+  }
+
+  function addMechanicReview(mechanicId, avaliacao, comentario, serviceType) {
+    return window.api.post("/api/mechanics/" + mechanicId + "/reviews", {
+      avaliacao: avaliacao,
+      comentario: comentario || "",
+      service_type: serviceType || ""
+    });
+  }
+
+  function toggleFavorite(mechanicId, mechanicData) {
+    if (typeof mechanicId === "number") {
+      return window.api.post("/api/mechanics/" + mechanicId + "/favorite", {});
+    }
+    return window.api.post("/api/mechanics/" + encodeURIComponent(mechanicId) + "/favorite", mechanicData || {});
+  }
+
+  function removeFavorite(mechanicId) {
+    return window.api.delete("/api/mechanics/" + mechanicId + "/favorite");
+  }
+
+  function getFavorites() {
+    return window.api.get("/api/mechanics/favorites");
+  }
+
+  function createMechanic(data) {
+    return window.api.post("/api/mechanics", data);
+  }
+
+  // ── Profile modal ──
+  function showProfileModal(mechanicId) {
+    getMechanicProfile(mechanicId).then(function (res) {
+      var m = res.mechanic || res;
+      var reviews = m.reviews || [];
+      var esp = Array.isArray(m.especialidades) ? m.especialidades.join(", ") : (m.especialidades || "");
+      var rating = m.avaliacao_media ? Number(m.avaliacao_media).toFixed(1) : "-";
+      var reviewCount = m.total_avaliacoes || reviews.length;
+
+      var html = '<div id="mech-modal" class="fixed inset-0 z-[1400] flex items-center justify-center p-4" style="display:none">'
+        + '<div class="fixed inset-0 bg-black/70 backdrop-blur-sm" data-mech-close></div>'
+        + '<div class="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-secondary p-6 shadow-2xl">'
+        + '<button data-mech-close class="absolute top-4 right-4 text-muted hover:text-primary transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>'
+        + '<h2 class="text-lg font-bold text-primary mb-1">' + escapeHTML(m.nome || "Oficina") + '</h2>'
+        + (m.endereco ? '<p class="text-sm text-secondary mb-3 flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' + escapeHTML(m.endereco) + '</p>' : '')
+        + '<div class="flex items-center gap-3 mb-4">'
+        + '<span class="text-yellow-500 text-sm">★ ' + rating + '</span>'
+        + '<span class="text-xs text-muted">' + reviewCount + ' avaliação' + (reviewCount !== 1 ? 's' : '') + '</span>'
+        + (m.telefone ? '<a href="tel:' + escapeHTML(m.telefone) + '" class="text-xs text-accent hover:underline">' + escapeHTML(m.telefone) + '</a>' : '')
+        + '</div>'
+        + (esp ? '<p class="text-xs text-secondary/70 italic mb-4">' + escapeHTML(esp) + '</p>' : '')
+        + '<div class="flex gap-2 mb-4">'
+        + '<button id="mech-fav-btn" class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-white/5 transition-colors">★ Favoritar</button>'
+        + (m.telefone ? '<a href="https://wa.me/55' + escapeHTML(m.telefone.replace(/\D/g, '')) + '" target="_blank" class="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-secondary hover:bg-white/5 transition-colors">WhatsApp</a>' : '')
+        + '</div>'
+        + '<h3 class="text-sm font-semibold text-primary mb-3">Avaliações</h3>'
+        + '<div class="space-y-3 mb-4">';
+
+      if (reviews.length === 0) {
+        html += '<p class="text-xs text-muted">Nenhuma avaliação ainda.</p>';
+      } else {
+        reviews.forEach(function (r) {
+          var stars = "";
+          for (var i = 0; i < 5; i++) stars += i < r.avaliacao ? "★" : "☆";
+          html += '<div class="rounded-lg border border-border p-3">'
+            + '<div class="flex items-center gap-2 mb-1">'
+            + '<span class="text-yellow-500 text-xs">' + stars + '</span>'
+            + '<span class="text-xs font-medium text-primary">' + escapeHTML(r.user_nome || "Anônimo") + '</span>'
+            + '</div>'
+            + (r.comentario ? '<p class="text-xs text-secondary">' + escapeHTML(r.comentario) + '</p>' : '')
+            + '</div>';
+        });
+      }
+
+      html += '</div>'
+        + '<h3 class="text-sm font-semibold text-primary mb-2">Deixar avaliação</h3>'
+        + '<div class="flex gap-1 mb-2" id="mech-rating-stars">'
+        + '<button type="button" class="mech-star text-xl text-muted hover:text-yellow-500 transition-colors" data-val="1">☆</button>'
+        + '<button type="button" class="mech-star text-xl text-muted hover:text-yellow-500 transition-colors" data-val="2">☆</button>'
+        + '<button type="button" class="mech-star text-xl text-muted hover:text-yellow-500 transition-colors" data-val="3">☆</button>'
+        + '<button type="button" class="mech-star text-xl text-muted hover:text-yellow-500 transition-colors" data-val="4">☆</button>'
+        + '<button type="button" class="mech-star text-xl text-muted hover:text-yellow-500 transition-colors" data-val="5">☆</button>'
+        + '</div>'
+        + '<textarea id="mech-review-text" rows="2" placeholder="Comentário (opcional)" class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-xs text-primary placeholder:text-muted focus:border-accent focus:outline-none mb-2 resize-none"></textarea>'
+        + '<button id="mech-submit-review" class="rounded-lg bg-accent px-4 py-2 text-xs font-medium text-white hover:bg-accent-hover transition-colors">Enviar avaliação</button>'
+        + '</div></div>';
+
+      var wrapper = document.createElement("div");
+      wrapper.innerHTML = html;
+      document.body.appendChild(wrapper.firstChild);
+
+      var modal = document.getElementById("mech-modal");
+      modal.style.display = "";
+
+      modal.querySelectorAll("[data-mech-close]").forEach(function (el) {
+        el.addEventListener("click", function () { modal.remove(); });
+      });
+
+      var selectedRating = 0;
+      modal.querySelectorAll(".mech-star").forEach(function (star) {
+        star.addEventListener("click", function () {
+          selectedRating = parseInt(star.dataset.val);
+          modal.querySelectorAll(".mech-star").forEach(function (s, i) {
+            s.textContent = i < selectedRating ? "★" : "☆";
+            s.classList.toggle("text-yellow-500", i < selectedRating);
+            s.classList.toggle("text-muted", i >= selectedRating);
+          });
+        });
+      });
+
+      var favBtn = document.getElementById("mech-fav-btn");
+      if (favBtn && typeof m.id === "number") {
+        favBtn.addEventListener("click", function () {
+          toggleFavorite(m.id, null).then(function (res) {
+            favBtn.textContent = res.message && res.message.includes("removido") ? "★ Favoritar" : "★ Favoritado";
+            favBtn.classList.toggle("text-accent", res.message && !res.message.includes("removido"));
+          }).catch(function () {});
+        });
+      }
+
+      var submitBtn = document.getElementById("mech-submit-review");
+      if (submitBtn) {
+        submitBtn.addEventListener("click", function () {
+          if (!selectedRating) { alert("Selecione uma nota."); return; }
+          var txt = document.getElementById("mech-review-text");
+          submitBtn.disabled = true;
+          addMechanicReview(m.id, selectedRating, txt ? txt.value : "").then(function () {
+            alert("Avaliação enviada!");
+            modal.remove();
+          }).catch(function (err) {
+            alert(err.message || "Erro ao enviar avaliação.");
+            submitBtn.disabled = false;
+          });
+        });
+      }
+    }).catch(function () {});
+  }
+
+  // ── Add mechanic modal ──
+  function showAddMechanicModal() {
+    var html = '<div id="add-mech-modal" class="fixed inset-0 z-[1400] flex items-center justify-center p-4" style="display:none">'
+      + '<div class="fixed inset-0 bg-black/70 backdrop-blur-sm" data-add-mech-close></div>'
+      + '<div class="relative w-full max-w-lg rounded-2xl border border-border bg-secondary p-6 shadow-2xl">'
+      + '<button data-add-mech-close class="absolute top-4 right-4 text-muted hover:text-primary transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>'
+      + '<h2 class="text-lg font-bold text-primary mb-4">Cadastrar oficina</h2>'
+      + '<form id="add-mech-form" class="space-y-3">'
+      + '<input type="text" name="nome" placeholder="Nome da oficina *" required class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none">'
+      + '<input type="text" name="endereco" placeholder="Endereço *" required class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none">'
+      + '<div class="grid grid-cols-2 gap-3">'
+      + '<input type="text" name="cidade" placeholder="Cidade" class="rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none">'
+      + '<input type="text" name="estado" placeholder="UF" maxlength="2" class="rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none">'
+      + '</div>'
+      + '<input type="tel" name="telefone" placeholder="Telefone" class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none">'
+      + '<input type="text" name="especialidades" placeholder="Especialidades (separar por vírgula)" class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary placeholder:text-muted focus:border-accent focus:outline-none">'
+      + '<p class="text-xs text-muted">A localização será capturada do seu mapa atual.</p>'
+      + '<button type="submit" class="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors">Cadastrar oficina</button>'
+      + '</form></div></div>';
+
+    var wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper.firstChild);
+
+    var modal = document.getElementById("add-mech-modal");
+    modal.style.display = "";
+
+    modal.querySelectorAll("[data-add-mech-close]").forEach(function (el) {
+      el.addEventListener("click", function () { modal.remove(); });
+    });
+
+    var form = document.getElementById("add-mech-form");
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var fd = new FormData(form);
+      var data = {
+        nome: fd.get("nome"),
+        endereco: fd.get("endereco"),
+        cidade: fd.get("cidade"),
+        estado: fd.get("estado"),
+        telefone: fd.get("telefone"),
+        especialidades: fd.get("especialidades") ? fd.get("especialidades").split(",").map(function(s){return s.trim()}).filter(Boolean) : [],
+        latitude: userPosition ? userPosition[0] : 0,
+        longitude: userPosition ? userPosition[1] : 0
+      };
+      createMechanic(data).then(function () {
+        alert("Oficina cadastrada com sucesso!");
+        modal.remove();
+      }).catch(function (err) {
+        alert(err.message || "Erro ao cadastrar oficina.");
+      });
+    });
   }
 
   if (document.readyState === "loading") {

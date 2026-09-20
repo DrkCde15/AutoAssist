@@ -150,6 +150,9 @@
                 (n.body ? '<p style="font-size:0.75rem;color:var(--color-text-muted);margin:0.125rem 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHTML(n.body) + '</p>' : '') +
                 '<p style="font-size:0.6875rem;color:var(--color-text-muted);margin:0.25rem 0 0">' + time + '</p>' +
               '</div>' +
+              '<button data-notif-delete="' + n.id + '" style="shrink:0;background:none;border:none;color:var(--color-text-muted);cursor:pointer;padding:0.25rem;border-radius:0.25rem;transition:color 0.15s" title="Excluir" onclick="event.stopPropagation()">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
+              '</button>' +
             '</div>';
         });
 
@@ -172,6 +175,15 @@
             if (id) markAsRead(id);
             if (url) window.location.href = url;
             closePanel();
+          });
+        });
+
+        // Delete notification buttons
+        notifPanel.querySelectorAll("[data-notif-delete]").forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var id = btn.getAttribute("data-notif-delete");
+            if (id) deleteNotification(id);
           });
         });
       })
@@ -228,6 +240,18 @@
         el.classList.remove("unread");
       });
     }).catch(function () {});
+  }
+
+  function deleteNotification(id) {
+    window.api.delete("/api/notifications/" + id).then(function () {
+      var item = notifPanel ? notifPanel.querySelector('[data-notif-id="' + id + '"]') : null;
+      if (item) item.remove();
+      fetchUnreadCount();
+    }).catch(function () {});
+  }
+
+  function unsubscribePush(endpoint) {
+    return window.api.post("/api/push/unsubscribe", endpoint ? { endpoint: endpoint } : {});
   }
 
   // ── Push subscription ──

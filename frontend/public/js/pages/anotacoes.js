@@ -269,6 +269,15 @@
         });
         right.appendChild(delBtn);
 
+        var editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "text-xs text-accent hover:text-accent-hover transition-colors";
+        editBtn.textContent = "Editar";
+        editBtn.addEventListener("click", function () {
+          openEditForm(rec);
+        });
+        right.appendChild(editBtn);
+
         row.appendChild(left);
         row.appendChild(right);
         grid.appendChild(row);
@@ -556,6 +565,115 @@
           submitBtn.disabled = false;
           submitBtn.textContent = "Salvar";
         });
+    }
+
+    // ── Edit form modal ──
+    function openEditForm(rec) {
+      var existing = document.getElementById("anotacoes-edit-modal");
+      if (existing) existing.remove();
+
+      var modal = document.createElement("div");
+      modal.id = "anotacoes-edit-modal";
+      modal.className = "fixed inset-0 z-[1200] flex items-center justify-center p-4";
+      modal.innerHTML =
+        '<div class="fixed inset-0 bg-black/60" data-close-modal></div>' +
+        '<div class="relative w-full max-w-lg rounded-2xl border border-border bg-primary p-6 shadow-2xl" style="max-height:calc(100vh - 32px);overflow-y:auto">' +
+          '<h3 class="text-lg font-semibold text-primary mb-4">Editar anotação</h3>' +
+          '<form id="anotacoes-edit-form" class="space-y-4">' +
+            '<div>' +
+              '<label class="block text-sm font-medium text-secondary mb-1.5">Descrição *</label>' +
+              '<textarea id="edit-desc" rows="3" class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50" required>' + escapeHTML(rec.description || "") + '</textarea>' +
+            '</div>' +
+            '<div>' +
+              '<label class="block text-sm font-medium text-secondary mb-1.5">Veículo</label>' +
+              '<select id="edit-veiculo" class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">' +
+                '<option value="">Nenhum</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="flex items-center justify-end gap-3 pt-2">' +
+              '<button type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-medium text-secondary hover:bg-white/5 transition-colors" data-close-modal>Cancelar</button>' +
+              '<button type="submit" id="edit-submit" class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover">Salvar</button>' +
+            '</div>' +
+          '</form>' +
+        '</div>';
+
+      document.body.appendChild(modal);
+
+      var modalSelect = modal.querySelector("#edit-veiculo");
+      vehicles.forEach(function (v) {
+        var opt = document.createElement("option");
+        opt.value = v.id;
+        opt.textContent = ((v.marca || "") + " " + (v.modelo || "")).trim() || "Veículo " + v.id;
+        modalSelect.appendChild(opt);
+      });
+      if (rec.vehicle_id) modalSelect.value = rec.vehicle_id;
+
+      modal.querySelectorAll("[data-close-modal]").forEach(function (el) {
+        el.addEventListener("click", function () { modal.remove(); });
+      });
+
+      var form = modal.querySelector("#anotacoes-edit-form");
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var desc = modal.querySelector("#edit-desc").value.trim();
+        if (!desc) return;
+        var payload = { descricao: desc };
+        var vid = modalSelect.value;
+        if (vid) payload.veiculo_id = parseInt(vid, 10);
+        var submitBtn = modal.querySelector("#edit-submit");
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Salvando...";
+        window.api.put(HISTORY_ENDPOINT + "/" + rec.id, payload).then(function () {
+          modal.remove();
+          fetchHistory();
+        }).catch(function (err) {
+          alert(err.message || "Erro ao editar");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Salvar";
+        });
+      });
+    }
+
+    // ── Maintenance alerts ──
+    function fetchAlerts() {
+      if (!window.auth || !window.auth.isPremium()) return;
+      window.api.get("/api/maintenance/alerts").then(function (res) {
+        var alerts = res.alertas || [];
+        if (alerts.length === 0) return;
+        var container = document.getElementById("anotacoes-alerts");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "anotacoes-alerts";
+          container.className = "mb-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4";
+          var header = document.getElementById("anotacoes-header");
+          if (header && header.nextSibling) {
+            header.parentNode.insertBefore(container, header.nextSibling);
+          }
+        }
+        var html = '<p class="text-sm font-medium text-amber-500 mb-2">Alertas de manutenção</p>';
+        alerts.forEach(function (a) {
+          var color = a.status_code === "overdue" ? "text-red-400" : "text-yellow-400";
+          html += '<p class="text-xs ' + color + ' mb-1">' + escapeHTML(a.msg || a.item) + '</p>';
+        });
+        container.innerHTML = html;
+      }).catch(function () {});
+    }
+
+    // ── Email settings ──
+    function fetchEmailSettings() {
+      if (!window.auth || !window.auth.isPremium()) return;
+      window.api.get("/api/maintenance/email-settings").then(function (res) {
+        var toggle = document.getElementById("email-alerts-toggle");
+        if (toggle) toggle.checked = !!res.enabled;
+      }).catch(function () {});
+    }
+
+    function updateEmailSettings(enabled) {
+      return window.api.put("/api/maintenance/email-settings", { enabled: enabled });
+    }
+
+    function sendEmailNow() {
+      return window.api.post("/api/maintenance/email/send-now", {});
     }
 
     // ── Init ──

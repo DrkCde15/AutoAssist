@@ -286,4 +286,39 @@
   window.reloadDashboard = function () {
     loadDashboard();
   };
+
+  // ── Maintenance alerts (Premium) ──
+  function fetchMaintenanceAlerts() {
+    if (!window.auth || !window.auth.isPremium()) return;
+    window.api.get("/api/maintenance/alerts").then(function (res) {
+      var alerts = res.alertas || [];
+      if (alerts.length === 0) return;
+      var container = document.getElementById("dashboard-alerts");
+      if (!container) {
+        container = document.createElement("div");
+        container.id = "dashboard-alerts";
+        container.className = "mb-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4";
+        var main = document.querySelector("main") || document.body;
+        var firstSection = main.querySelector("section");
+        if (firstSection) {
+          main.insertBefore(container, firstSection);
+        } else {
+          main.prepend(container);
+        }
+      }
+      var html = '<p class="text-sm font-medium text-amber-500 mb-2">Alertas de manutenção</p>';
+      alerts.forEach(function (a) {
+        var color = a.status_code === "overdue" ? "text-red-400" : "text-yellow-400";
+        html += '<p class="text-xs ' + color + ' mb-1">' + escapeHTML(a.msg || a.item) + '</p>';
+      });
+      container.innerHTML = html;
+    }).catch(function () {});
+  }
+
+  function escapeHTML(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  fetchMaintenanceAlerts();
 })();

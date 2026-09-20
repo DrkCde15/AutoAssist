@@ -265,6 +265,27 @@
       });
   }
 
+  function editVeiculo(id, data) {
+    return window.api.put("/api/veiculos/" + id, data);
+  }
+
+  function uploadVeiculoFoto(id, base64) {
+    return window.api.post("/api/veiculos/" + id + "/foto", { foto: base64 });
+  }
+
+  function deleteAccount() {
+    if (!confirm("Tem certeza que deseja excluir sua conta? Esta ação é irreversível.")) return;
+    window.api.delete("/api/user").then(function () {
+      window.auth.logout();
+    }).catch(function (err) {
+      toast(err.message || "Erro ao excluir conta.", "error");
+    });
+  }
+
+  function saveUserLocation(uf) {
+    return window.api.post("/api/user/location", { uf: uf || "" });
+  }
+
   function loadVeiculos() {
     window.api
       .get("/api/veiculos")
