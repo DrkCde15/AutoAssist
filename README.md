@@ -100,43 +100,63 @@ O **AutoAssist IA** é um ecossistema de inteligência artificial de última ger
 AutoAssist/
 ├── backend/
 │   ├── models/                    # Modelos de ML para treinamento
-│   ├── routes/                    # Módulos de API (Auth, Pages, Database, Mechanics, Events)
+│   ├── routes/                    # Módulos de API (Auth, Pages, Database, Mechanics, Events, Payment)
 │   ├── scripts/                   # Treinamento do ML
 │   ├── services/                  # IA e Lógica (NOG IA, Vision, Maintenance, Web Scraping, Automotive Events)
 │   ├── utils/                     # Cache Redis, e-mail, tasks assíncronas e cron auth
-│   ├── tests/                     # Testes unitários (unittest)
+│   ├── tests/                     # Testes unitários (unittest) — 17 arquivos, 3.645 linhas
 │   ├── app.py                     # Entry-point (Servidor Flask)
 │   ├── gunicorn.conf.py           # Configuração Gunicorn (produção)
 │   ├── build.sh                   # Instala dependências Python
-│   ├── docker-compose.yml         # Redis local para desenvolvimento
-│   └── .env                       # Variáveis de ambiente (não commitar)
+│   └── .env                       # Variáveis de ambiente (NÃO commitar — ver Checklist de Segurança)
 ├── frontend/
 │   └── public/                    # Frontend estático (HTML/CSS/JS)
 │       ├── index.html             # Landing page
-│       ├── login.html             # Login
-│       ├── cadastro.html          # Cadastro
+│       ├── login.html             # Login (Google OAuth + Turnstile)
+│       ├── cadastro.html          # Cadastro com referral
 │       ├── chat.html              # Chat com NOG IA
 │       ├── dashboard.html         # Dashboard do veículo
 │       ├── perfil.html            # Perfil do usuário
-│       ├── planos.html            # Planos e preços
+│       ├── planos.html            # Planos e preços (checkout Cakto)
 │       ├── eventos.html           # Agenda de eventos automotivos
+│       ├── maps.html              # Mapa de oficinas
+│       ├── biblioteca.html        # Biblioteca de vídeos
+│       ├── anotacoes.html         # Anotações do usuário
+│       ├── feedback.html          # Feedback
 │       ├── duvidas.html           # Perguntas frequentes
-│       ├── docs.html              # Documentação da API B2B
 │       ├── b2b.html               # B2B (diagnóstico por foto)
+│       ├── docs.html              # Documentação da API B2B
+│       ├── 404.html               # Página de erro
 │       ├── css/
 │       │   └── styles.css         # Tailwind CSS compilado
 │       ├── js/
-│       │   ├── nav.js             # Navbar + drawer mobile
+│       │   ├── api.js             # Cliente API
 │       │   ├── auth.js            # Autenticação (login, cadastro, OAuth)
-│       │   ├── pages/
-│       │   │   ├── chat.js        # Chat com NOG IA
-│       │   │   ├── dashboard.js   # Dashboard do veículo
-│       │   │   ├── perfil.js      # Perfil do usuário
-│       │   │   ├── maps.js        # Mapa de oficinas
-│       │   │   └── ...            # Outros scripts de páginas
-│       │   └── ...
-│       └── static/                # Imagens, manifests, posts
+│       │   ├── nav.js             # Navbar + drawer mobile
+│       │   ├── payment.js         # Integração Cakto
+│       │   ├── premium-modal.js   # Modal de upsell premium
+│       │   ├── notifications.js   # Notificações in-app
+│       │   ├── sw.js              # Service Worker (push notifications)
+│       │   └── pages/
+│       │       ├── chat.js        # Chat com NOG IA
+│       │       ├── dashboard.js   # Dashboard do veículo
+│       │       ├── perfil.js      # Perfil do usuário
+│       │       ├── maps.js        # Mapa de oficinas
+│       │       ├── eventos.js     # Eventos automotivos (com modal de detalhes)
+│       │       ├── biblioteca.js  # Biblioteca de vídeos
+│       │       ├── anotacoes.js   # Anotações
+│       │       ├── b2b.js         # B2B
+│       │       ├── planos-checkout.js # Checkout premium
+│       │       └── ...
+│       ├── sw.js                  # Service Worker
+│       ├── manifest.json          # PWA manifest
+│       ├── robots.txt             # SEO
+│       ├── sitemap.xml            # SEO
+│       └── logo.png, logo2.png    # Logos
 ├── render.yaml                    # Blueprint de deploy (Render)
+├── docker-compose.yml             # Redis local para desenvolvimento
+├── requirements.txt               # 37 dependências Python
+├── runtime.txt                    # python-3.12
 └── README.md
 ```
 
@@ -353,11 +373,12 @@ Pipeline de coleta de eventos tratado como **dado estruturado** (não scraping g
 ## 🔒 Segurança e Boas Práticas
 
 - **Bcrypt Hashing**: Proteção de senhas com algoritmos de derivação de chave.
-- **CSP (Content Security Policy)**: `unsafe-eval` removido por padrão; reative com `CSP_ALLOW_UNSAFE_EVAL=1` apenas se estritamente necessário. `unsafe-inline` é mantido para o frontend estático (migração para nonce é recomendada).
-- **JWT Protection**: Endpoints protegidos garantem que apenas usuários autenticados acessem dados sensíveis.
-- **Cron Auth**: rotas agendadas devem exigir `X-Cron-Secret` (veja `utils/cron_auth.require_cron_secret` e `MAINTENANCE_EMAIL_CRON_SECRET`).
-- **Cloudflare Turnstile**: CAPTCHA anti-bot em `/api/cadastro` (action `signup`) e `/api/login` (action `login`). O siteverify é feito server-side (`utils/turnstile.turnstile_required`) validando `success`, `action` e `hostname` no allowlist `TURNSTILE_HOSTNAMES` - fail-closed em erro de rede/HTTP. Sem `TURNSTILE_SECRET_KEY` configurada, o decorator é no-op (dev/testes). Para criar o widget via API: token com escopo `Account.Turnstile:Edit` e `POST /accounts/<id>/challenges/widgets` (`{"name","domains":[...],"mode":"managed"}`). Tokens do Turnstile são single-use.
-- **Segredos**: o `.env` **não deve ser commitado**. Em produção, configure os segredos no Render via dashboard/Environment Group.
+- **CSP (Content Security Policy)**: `unsafe-eval` deve ser removido (configurar `CSP_ALLOW_UNSAFE_EVAL=0`); `unsafe-inline` mantido para frontend estático (migração para nonce recomendada). Scripts inline nos HTMLs devem ser extraídos para arquivos `.js` externos.
+- **JWT Protection**: Endpoints protegidos garantem que apenas usuários autenticados acessem dados sensíveis. Tokens de acesso expiram em 30 dias; implementar blocklist para revogação.
+- **Cron Auth**: rotas agendadas exigem `X-Cron-Secret` (veja `utils/cron_auth.require_cron_secret` e `MAINTENANCE_EMAIL_CRON_SECRET`).
+- **Cloudflare Turnstile**: CAPTCHA anti-bot em `/api/cadastro` (action `signup`) e `/api/login` (action `login`). O siteverify é feito server-side validando `success`, `action` e `hostname`. Sem `TURNSTILE_SECRET_KEY`, o decorator é no-op (dev/testes).
+- **Webhook Secret**: Cakto webhook validado apenas via header (nunca via query string). Usar `secrets.compare_digest()` para comparação em tempo constante.
+- **Segredos**: o `.env` **não deve ser commitado**. Em produção, configure os segredos no Render via dashboard/Environment Group. Se `.env` já foi commitado no git, rotacionar TODAS as chaves imediatamente.
 
 ---
 
@@ -384,88 +405,40 @@ Cobertura de `test_b2b.py` (11 testes, todos passando):
 
 Registro das mudanças feitas nesta sessão de desenvolvimento:
 
-### Vantagem competitiva (Mod Passport, B2B, retenção, concierge, visão)
-- **Mod Passport (lock-in de dados):** nova tabela `mod_passport_versions` (`backend/routes/database.py`); cada alteração de mods gera versão com snapshot + valores. Endpoints `GET /api/veiculos/<id>/modificacoes/history` (JWT), `POST /api/veiculos/<id>/mod-passport/share` (JWT) e `GET /api/public/mod-passport/<token>` + `.../pdf` (públicos), em `backend/routes/pages.py` (helper `_salvar_mod_passport_version`, `_build_modpassport_pdf`); UI Histórico/Compartilhar/Exportar PDF no `dashboard.html`.
-- **API B2B:** preços ajustados para **R$ 99 / 399 / 999 por mês** (`B2B_PLANS` em `backend/routes/b2b.py`, `PLANS` em `b2b.html`, tabela em `docs.html`); novo `GET /api/b2b/usage` e `POST /api/b2b/webhook/usage` (idempotente); seção de documentação + SDK/Postman em `frontend/public/docs.html` e collection `frontend/public/static/b2b-postman.json`.
-- **Diagnóstico Visual Assistido (memória visual):** `/api/chat` e `/ws/chat` aceitam `vehicle_id`; `backend/services/vision_ai.py` (`analisar_imagem`/`build_vision_messages`) envia a foto do veículo (`veiculos.foto_base64`) como referência para o modelo comparar com a foto atual; `get_vehicle_reference_images`/`seed_vehicle_photo_if_missing` em `pages.py`. `chat.html` ganha seletor de veículo que envia `vehicle_id`.
-- **Concierge de Oficinas + Badge de Confiança:** botão flutuante "Oficinas" (geolocalização → `GET /api/mechanics/search`) em `chat.html` e `dashboard.html`; banner "Seu carro, lembrado pela IA" no topo do dashboard.
-- **Ativação e Retenção:** `add_veiculo` (`pages.py`) dispara notificação in-app + push de boas-vindas; `_resolve_fipe_sync` (`dashboard.py`) notifica + push o dono quando o valor FIPE muda.
+### Correções de Bugs Críticos
+- **`pages.py`**: adicionado `send_file` ao import do Flask (PDF do Mod Passport agora funciona).
+- **`pages.py:3323`**: corrigida variável `image_b64` → `img_b64` (chat de voz crashava após gerar resposta).
+- **`mechanics.py`**: endpoint `POST /api/mechanics` protegido com `@jwt_required()` (antes era público e podia ser abusado para spam).
+- **CSP compliance**: removidos todos os `onclick="..."` inline de `notifications.js`, `dashboard.js`, `perfil.js`, `anotacoes.js` e `eventos.js` — substituídos por `addEventListener`.
 
-### Fotos dos veículos + sessões de chat
-- **Backend (`backend/routes/database.py`):** nova coluna `foto_base64 MEDIUMTEXT` na tabela `veiculos` (criada por `init_db()` e via `ALTER TABLE` de migração).
-- **Backend (`backend/routes/dashboard.py`):** `/api/dashboard` passa a retornar `foto_base64` de cada veículo na agregação (`v.foto_base64` na query).
-- **Backend (`backend/routes/pages.py`):**
-  - `/api/veiculos` (listagem) retorna `foto_base64`.
-  - Novo `POST /api/veiculos/<int:v_id>/foto` (JWT): salva a foto (base64 cru do corpo `foto`), valida magic bytes PNG/JPG/GIF e rejeita outros formatos; enviar `foto` vazio/nulo limpa a foto atual.
-  - `GET /api/chat/history` aceita o filtro `session_id` (valor específico ou `null` para sessões sem agrupamento).
-  - Novo `GET /api/chat/conversations` (JWT): lista as conversas agrupadas por `session_id`, com `title`, `preview`, `updated_at` e `count`, e busca opcional por `q`.
-  - `handle_voice` passa a detectar o formato do áudio recebido automaticamente (`AudioSegment.from_file` sem `format` fixo em webm).
-- **Frontend (`frontend/public/dashboard.html`):** helper `vehiclePhotoSrc()` (infere MIME PNG/JPG/GIF); card do veículo e modal de detalhes (`vm-icon`) exibem a foto quando disponível, com fallback no ícone; CSS `.vehicle-photo`/`.vm-photo`.
-- **Frontend (`frontend/public/perfil.html`):** lista de veículos exibe a foto; botão de câmera por veículo faz upload via `POST /api/veiculos/<id>/foto` e botão para remover a foto; `loadProfile()` passa a buscar `/api/veiculos` (já traz `foto_base64`) para a lista.
-- **Frontend (`frontend/public/chat.html`):** `renderSession()` busca as mensagens da sessão no servidor com o novo filtro `?session_id=...`, aproveitando a funcionalidade backend (com fallback no agrupamento local).
+### Segurança e Hardening
+- **CAKTO_ACCEPT_QUERY_SECRET** forçado como `False` em `cakto.py` — webhook secret aceito apenas via header, nunca via query string (que vaza em logs).
+- **Logs removidos** de cache do chat (`nogai.py`, `vision_ai.py`, `attachment_ai.py`), busca de eventos (`events.py`, `automotive_events.py`, `tasks.py`) e geolocalização (`geocode.py`, `mechanics.py`). Nenhum segredo ou dado sensível é mais impresso em logs.
+- **Prompt do chat** atualizado: respostas agora são em **texto simples** (sem markdown). Adicionada função `_strip_markdown()` em `nogai.py` que remove headers, bold, tabelas e blockquotes que escapem do prompt.
+- **Referência a mecânicos** no prompt do chat atualizada: de "ícone 🔧 no chat" para "página de Mapas (`/maps`)".
 
-### Cobertura de testes da API B2B
-- **Criado `backend/tests/test_b2b.py`** (11 testes, estilo `unittest`) cobrindo todos os endpoints B2B com banco, Redis e visão por IA mockados - roda sem Groq/DB externo.
-  - `POST /api/b2b/keys`: sucesso (201, hash gravado == SHA-256 da chave), `X-Admin-Secret` errado (403), `B2B_ADMIN_SECRET` ausente (500).
-  - `POST /api/b2b/diagnosis`: sem key (401), sem imagem (400), JSON (200), **PDF** (200, `%PDF`).
-  - `POST /api/b2b/leads`: sucesso (201), campos faltando (400).
-  - `GET /api/admin/b2b/leads`: sem admin (403), com admin (200).
+### Correções de UI/UX
+- **Favicon** corrigido em `cadastro.html`, `login.html`, `verificacao.html` e `redefinir-senha.html` (removidas referências quebradas a `/favicon.ico`).
+- **Link "Assinar Premium"** no `index.html` agora aponta para `/planos` (antes ia para `/cadastro?plan=premium`).
+- **Botão "Assinar Premium"** em `planos.html` reescrito como `<button>` puro (sem `<a>`) com script externo `planos-checkout.js` — funciona com CSP, redireciona para login se não autenticado, vai para Cakto checkout se autenticado.
+- **Modal de detalhes do evento** adicionado em `eventos.js`: ao clicar em um card, abre modal com imagem, categoria, título, datas, localização, descrição e botão "Abrir site do evento". Cards são `<button>` em vez de `<a>`.
+- **Biblioteca de vídeos** (`biblioteca.js` v3): cards redesenhados com estilos inline (compatível com Tailwind CSS compilado), play button sempre visível, fallback com gradiente, título uma única vez na seção `.video-info`.
+- **Página de eventos** (`eventos.js`): removido `onclick="window.__eventosRetry()"` do botão de retry (CSP compliance), retry agora usa `addEventListener`.
+- **Service Worker** (`sw.js`): handler de fetch atualizado para não retornar `undefined`.
+- **Página de dúvidas**: todos os links `/dúvidas` corrigidos para `/duvidas` (sem acento) em 14 arquivos HTML + canonical/JSON-LD.
 
-### Arquitetura de Eventos Automotivos (estruturada)
-- **Nova tabela `events`** em `backend/routes/database.py` (`TABLES_SQL`): `id` (PK estável `sha1`), `title`, `normalized_title`, `category`, `start_date`/`end_date`, `venue_name`, `address`, `city`, `state`, `latitude`/`longitude`, `organizer`, `event_url`, `source`, `status`, `confidence`, `last_verified_at`, índices por UF/cidade/data/status/fonte. Criada via `init_db()`.
-- **`backend/services/automotive_events.py`:**
-  - `_make_event` estendido com `normalized_title`, `confidence` (via `CONFIDENCE_BY_SOURCE`), `status` (via `derive_status`), `latitude`/`longitude`, `organizer`, `venue_name`, `address`, `country` e **id estável** (`sha1(fonte|titulo|data|cidade)`) - substitui o `hash()` frágil entre processos.
-  - `_dedupe_events` por score (título + data + cidade + venue + organizador; mantém o canônico de maior confiança), no lugar do set ingênuo `(titulo, data)`.
-  - `_geocode_event` (Nominatim/OSM, reuso de cache) e `persist_events` (upsert MySQL em lote) integrados ao `scan_automotive_events`.
-  - `_haversine` + filtro `lat`/`lng`/`radius` em `filter_events` ("perto de mim").
-  - Web passa a usar **Scrapling/Bing** como fonte primária (sem browser), Brave API se `BRAVE_API_KEY`, Playwright como fallback.
-- **`backend/routes/events.py`:** `GET /api/events/automotive` aceita `lat`/`lng`/`radius`; adicionado `GET /api/events/<id>`.
-- **`frontend/public/eventos.html`:** card com badge de `status` (Agendado/Acontecendo/Cancelado/Encerrado/Data a confirmar) e selo de `fonte_nome`. Lista apenas eventos futuros.
-- **Testes** (`backend/tests/test_events.py`): +7 testes (normalize, modelo/confiança, status, dedupe por score, mapeamento DB, nearby). Suíte de eventos: **51 passam**, 1 falha pré-existente não relacionada (`test_footer_linka_eventos_html`).
-- `requirements.txt`: adicionado `scrapling[fetchers]==0.4.14`.
+### Busca de Mecânicos
+- **Overpass API**: queries combinadas em 2 union queries (antes eram 6 separadas), timeout aumentado de 25s para 45s — resolveu o problema de retornar 0 resultados.
+- **`maps.js`**: adicionada função `isLoggedIn()` que faltava (causava crash).
+- **Perfil de mecânico `serpapi_`**: tratamento adicionado para prefixo `serpapi_` no ID, com cache individual.
 
-### Automação de Marketing (aquisição / topo de funil)
-- **Captura de lead não-logado (`POST /api/waitlist`):** formulário "lista de espera" em `index.html` que registra só nome + e-mail, sem obrigar cadastro. Persiste na nova tabela `leads` (com atribuição `utm_*`, `initial_referrer`, `referred_by`), emite o evento `lead_capture` em `analytics_events` e dispara (via RQ/thread) um e-mail de boas-vindas com CTA para criar conta grátis. É idempotente (não duplica se o e-mail já é usuário ou já é lead).
-- **Conversão de lead:** ao cadastrar (`/api/cadastro`), o usuário é vinculado ao lead prévio (`leads.converted_user_id`), permitindo medir conversão lead→usuário em `GET /api/admin/leads`.
-- **Drip de referral automatizado:** `send_due_lifecycle_emails` (disparado pelo cron `/api/cron/lifecycle-emails`) agora envia convites de indicação nos dias 3 e 10 para quem ainda não indicou ninguém, com o `referral_link` pessoal. Automatiza o programa de indicação (antes manual via WhatsApp em `perfil.html`).
-- **Admin:** `GET /api/admin/leads` (somente admin) lista leads e retorna `total` / `converted` / `distinct_sources` para acompanhar a aquisição.
+### Fluxo de Pagamento
+- **`premium-modal.js`**: adicionada verificação `isAuthenticated()` antes de chamar `goToCheckout()` — redireciona para `/login?redirect={currentPage}` se não autenticado.
+- **`planos-checkout.js`**: novo script externo que gerencia o clique no botão "Assinar Premium" com fallback para login.
 
-### Marketing & Posicionamento (P0)
-- **Posicionamento "copiloto de carro de IA":** títulos, `og:title`/`twitter:title` e eyebrow de `index.html` passam a usar "Seu copiloto de carro de IA"; `og:image`/`twitter:image` agora apontam para URLs absolutas (`https://autoassist.com.br/...`).
-- **Navbar:** visitante vê botão "Criar conta" (`.nav-btn-cta`); logado vê link "Planos". `shared.css` com nova classe de CTA.
-- **Plataforma de pagamento:** cobrança exclusiva via **Cakto** (`R$ 19,90/mês`, sem anual). Removido ruído de "Mercado Pago" do copy.
-- **Alinhamento do Free:** `planos.html` e `chat.html` clarificam "5 mensagens grátis de visitante → crie conta para 30/mês"; card free "grátis ao criar conta".
-- **NOG:** `index.html` explica que "NOG é a inteligência artificial do AutoAssist" no hero e no chat.
-- **Referral via WhatsApp:** `perfil.html` com botão "Ganhar 1 mês no WhatsApp" (`wa.me`) e copy "1 mês Premium grátis".
-- **Loop de retenção → chat:** e-mail de alerta de manutenção (`pages.py`) ganhou 2º CTA "Pergunte à NOG o que fazer" → `chat.html`.
-- **Analytics consentidos:** `analytics-consent.js` gerencia consentimento e dispara eventos de uso (page_view, signup, nog_use, raio_x_use etc.) somente após consentimento, para o pipeline interno `POST /api/analytics/events` (identificador `anonymous_id` + atribuição first-touch UTM/referrer). **Não há integração externa com GA4 nem Meta Pixel** no código — esses IDs não existem; o funil é medido pelo `GET /api/analytics/funnel`.
-- **Funil de negócio (P0.2/P0.3):** tabela `analytics_events` com eventos `page_view`, `signup`, `first_nog_use`, `first_raio_x`, `free_limit_reached` (teto do plano gratuito, 30/mês), `premium_upgrade`, `premium_churn`. `users` ganhou `anonymous_id`, `utm_*`, `initial_referrer`; cadastro faz backfill `anonymous_id → user_id`. `track()` (`analytics-consent.js`) agora inclui a atribuição first-touch (`utm_source/medium/campaign/term/content`, `referrer`) no `metadata` de cada evento, reutilizando `getAttribution()`. Relatório em `GET /api/analytics/funnel` (restrito a `is_admin`), que retorna o resumo `funnel` + `stages`/`conversion_steps` + `acquisition_breakdown` (por `utm_source/medium/campaign`, com `visitors/signups/first_nog_use/first_raio_x` e taxas `signup_rate`/`first_nog_rate`/`first_raio_x_rate`), `acquisition_by_source` e `acquisition_by_campaign`. Atribuição é first-touch; dados ausentes caem em `unknown`.
-- **SEO técnico:** `robots.txt` + `sitemap.xml` (`https://autoassist.com.br`); `index.html`/`planos.html` com `canonical` e JSON-LD (Organization + Service).
-- **B2B cobrando:** `b2b.py` com preços (R$ 99/399/999 por mês), rota `/api/b2b/self-serve/checkout` (gera pedido Cakto + chave inativa) e ativação via webhook (`payment.py` branch `b2b_`); `b2b.html` com planos/valores e checkout. `CAKTO_B2B_CHECKOUT_URL` é opcional - se ausente, reusa `CAKTO_CHECKOUT_URL` (link do Premium, R$ 19,90); defina apenas para cobrar preços B2B distintos por tier.
-- **Conteúdo descartado:** `blog/` removido (decisão do usuário); `plan.md` P1-3 marcado como NÃO IMPLEMENTADO.
-
-### Correções de Bugs Críticos e Altos (Auditoria Completa)
-- **`cadastro.js`**: campo `name`→`nome`, adicionados `confirm_email`+`confirm_password`, redirect pós-cadastro para `/login?conta criada`.
-- **`verificacao.html`**: removido `<main>` duplicado, JS funcional com Turnstile.
-- **`redefinir-senha.html`**: fluxo completo de redefinição via token URL (`/api/auth/reset-password`).
-- **`perfil.js:307`**: filtrado `password_hash`, `2fa_secret` etc. antes de salvar em localStorage.
-- **`index.html`**: 5 links corrigidos (`/fipe`→`/chat`, `/laudo`→`/dashboard`, `/register`→`/cadastro`).
-- **`dashboard.js:185`**: `/veiculo?id=...`→`/perfil`, fallback null vehicle name com `|| ""`.
-- **`duvidas.html`**: 7 links de blog quebrados mapeados para páginas existentes.
-- **10 páginas**: título genérico "AutoAssist" → títulos específicos (perfil, chat, dashboard, etc.).
-- **`maps.js`**: `escapeHtml`→`escapeHTML` padronizado com regex consistente.
-
-### Melhorias de Responsividade e Mobile UX
-- **Drawer navbar (`nav.js`)**: `w-72`→`w-[85vw] max-w-72`, backdrop dinâmico, X funcional com `addEventListener`, separador antes de "Sair", active page indicator, fundo sólido via CSS injection, animação `cubic-bezier(0.4, 0, 0.2, 1)`, drawer hidden on desktop via `matchMedia`.
-- **Blur decorativo**: `h-[600px] w-[600px]`→responsive `200px/400px/600px` com `max-md:hidden`.
-- **Header**: `pt-28`→`pt-20 md:pt-28` em todas as páginas.
-- **Footer**: `py-16`→`py-8 sm:py-16`.
-- **Cards de formulário**: `p-8`→`p-6 sm:p-8` (login, cadastro, verificação, redefinir senha, agendamento, eventos).
-- **Blog**: headings `text-3xl`→`text-2xl sm:text-3xl md:text-4xl`, subtitles `text-lg`→`text-base sm:text-lg`.
-- **API docs/code blocks**: `p-8`→`p-4 sm:p-8`, `text-sm`→`text-xs sm:text-sm`.
-- **Logo (`nav.js`)**: `h-22`→`h-16 md:h-22`.
-- **Eventos**: `w-48`→`w-full sm:w-48` no select de UF.
-- **Chat sidebar (`chat.js`)**: backdrop escuro no mobile, botão X no header, body scroll lock, timestamp `text-[10px]`→`text-[11px]`, conversation click fecha sidebar no mobile.
+### Infraestrutura e Qualidade
+- **`.env`**: o arquivo contém todos os secrets em plaintext — **não deve ser commitado**. Verificar `git log` para confirmar se já foi; se sim, rotacionar TODAS as chaves.
+- **Testes**: 17 arquivos de teste em `backend/tests/` (3.645 linhas) cobrindo auth, dashboard, payment, database, events, chat, marketing, B2B, analytics, geocode, maintenance, Mod Passport, AI cache, cron/webhook e Turnstile.
 
 ---
 

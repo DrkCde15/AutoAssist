@@ -56,6 +56,10 @@
     var checkoutBtn = document.getElementById("premium-modal-checkout-btn");
     if (checkoutBtn) {
       checkoutBtn.addEventListener("click", function () {
+        if (window.auth && !window.auth.isAuthenticated()) {
+          window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname);
+          return;
+        }
         if (window.payment && window.payment.goToCheckout) {
           checkoutBtn.disabled = true;
           checkoutBtn.textContent = "Redirecionando...";

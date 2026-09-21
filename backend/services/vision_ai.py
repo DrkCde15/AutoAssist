@@ -47,10 +47,7 @@ def analisar_imagem(image_b64: str, pergunta: str | None = None, reference_image
             cache_key = make_cache_key("groq:vision", image_b64, pergunta or "", vision_model())
             cached = cache_get_json(cache_key)
             if cached is not None:
-                logger.info("CACHE HIT groq:vision %s", cache_key)
                 return cached
-            logger.info("Groq Vision: analisando imagem.")
-            logger.info("CACHE MISS groq:vision %s", cache_key)
 
         result = chat_completion(
             build_vision_messages(data_url, pergunta, reference_images),

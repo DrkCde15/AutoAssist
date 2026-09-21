@@ -58,7 +58,6 @@ def notify_new_automotive_events(max_per_run=MAX_EVENT_NOTIFICATIONS_PER_RUN, dr
         return {"success": True, "new_count": len(new_events), "new_events": new_events}
 
     if not new_events:
-        logger.info("[Events] Nenhum evento novo para notificar.")
         return {"success": True, "new_count": 0, "notified_rows": 0, "users_count": 0}
 
     with get_db() as (cur, conn):

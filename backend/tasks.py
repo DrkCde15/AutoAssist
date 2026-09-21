@@ -60,9 +60,8 @@ def dispatch_events_notifications():
     from routes.events import notify_new_automotive_events
     try:
         result = notify_new_automotive_events()
-        logger.info("Notificações de eventos: %s", result)
     except Exception as e:
-        logger.warning("Falha ao notificar eventos em background: %s", e)
+        pass
 
 def send_lead_welcome_email(lead_id):
     from routes.marketing import send_lead_welcome_email as _send

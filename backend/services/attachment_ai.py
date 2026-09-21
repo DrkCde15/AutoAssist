@@ -39,9 +39,7 @@ def analisar_pdf(file_data: bytes, filename: str, pergunta: str | None = None) -
     cache_key = make_cache_key("groq:pdf", filename, text, pergunta or "")
     cached = cache_get_json(cache_key)
     if cached is not None:
-        logger.info("CACHE HIT groq:pdf %s", cache_key)
         return cached
-    logger.info("CACHE MISS groq:pdf %s", cache_key)
 
     for text_limit in PDF_TEXT_LIMITS:
         prompt = build_pdf_prompt(filename, text[:text_limit], pergunta, was_truncated=len(text) > text_limit)

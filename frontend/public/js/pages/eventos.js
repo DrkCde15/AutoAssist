@@ -262,6 +262,86 @@
       grid.appendChild(msg);
     }
 
+    function showEventModal(ev) {
+      var existing = document.getElementById("eventos-modal");
+      if (existing) existing.remove();
+
+      var cat = (ev.categoria || ev.categoria_label || "").toLowerCase();
+      var catClass = CATEGORY_COLORS[cat] || "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
+      var catLabel = ev.categoria_label || ev.categoria || "Evento";
+
+      var dateStr = ev.data_inicio || "";
+      if (ev.data_fim && ev.data_fim !== ev.data_inicio) {
+        dateStr += " — " + ev.data_fim;
+      }
+
+      var location = "";
+      if (ev.cidade) location = ev.cidade;
+      if (ev.uf) location += location ? " · " + ev.uf : ev.uf;
+
+      var imgHTML = "";
+      if (ev.image_url) {
+        imgHTML =
+          '<img src="' + escapeAttr(ev.image_url) + '" alt="' + escapeAttr(ev.titulo || "") + '" style="width:100%;max-height:240px;object-fit:cover;border-radius:0.75rem 0.75rem 0 0;" loading="lazy" />';
+      }
+
+      var html =
+        '<div id="eventos-modal" style="position:fixed;inset:0;z-index:1400;display:flex;align-items:center;justify-content:center;padding:1rem;">' +
+          '<div data-ev-close style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);"></div>' +
+          '<div style="position:relative;z-index:1;width:100%;max-width:32rem;max-height:90vh;overflow-y:auto;border-radius:1rem;background:#111119;border:1px solid rgba(255,255,255,0.08);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">' +
+            imgHTML +
+            '<div style="padding:1.5rem;">' +
+              '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">' +
+                '<span class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ' + catClass + '">' + escapeHTML(catLabel) + '</span>' +
+                (ev.fonte ? '<span style="margin-left:auto;font-size:0.75rem;color:#a1a1aa;">' + escapeHTML(ev.fonte) + '</span>' : '') +
+              '</div>' +
+              '<h2 style="font-size:1.25rem;font-weight:600;color:#f4f4f5;line-height:1.4;margin-bottom:1rem;">' + escapeHTML(ev.titulo || "Evento automotivo") + '</h2>' +
+              (dateStr
+                ? '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.875rem;color:#a1a1aa;">' +
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#71717a;"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>' +
+                  escapeHTML(dateStr) +
+                  '</div>'
+                : '') +
+              (location
+                ? '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;font-size:0.875rem;color:#a1a1aa;">' +
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#71717a;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>' +
+                  escapeHTML(location) +
+                  '</div>'
+                : '') +
+              (ev.descricao
+                ? '<p style="font-size:0.875rem;color:#a1a1aa;line-height:1.6;margin-bottom:1.25rem;white-space:pre-wrap;">' + escapeHTML(ev.descricao) + '</p>'
+                : '') +
+              '<div style="display:flex;gap:0.75rem;flex-wrap:wrap;">' +
+                (ev.event_url || ev.url
+                  ? '<a href="' + escapeAttr(ev.event_url || ev.url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:9999px;background:var(--color-accent,#6366f1);padding:0.625rem 1.25rem;font-size:0.875rem;font-weight:600;color:#fff;text-decoration:none;transition:background 0.15s;">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>' +
+                    'Abrir site do evento</a>'
+                  : '') +
+                '<button data-ev-close style="display:inline-flex;align-items:center;gap:0.5rem;border-radius:9999px;border:1px solid rgba(255,255,255,0.1);background:transparent;padding:0.625rem 1.25rem;font-size:0.875rem;font-weight:500;color:#a1a1aa;cursor:pointer;transition:background 0.15s;">Fechar</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      document.body.insertAdjacentHTML("beforeend", html);
+
+      var modal = document.getElementById("eventos-modal");
+      modal.querySelectorAll("[data-ev-close]").forEach(function (el) {
+        el.addEventListener("click", function () { modal.remove(); });
+      });
+      modal.addEventListener("click", function (e) {
+        if (e.target === modal || e.target.getAttribute("data-ev-close") !== null) return;
+        if (e.target === modal.firstElementChild) modal.remove();
+      });
+      document.addEventListener("keydown", function handler(e) {
+        if (e.key === "Escape") {
+          var m = document.getElementById("eventos-modal");
+          if (m) m.remove();
+          document.removeEventListener("keydown", handler);
+        }
+      });
+    }
+
     function renderEvents(eventList) {
       grid.innerHTML = "";
       if (!eventList || eventList.length === 0) {
@@ -270,13 +350,11 @@
       }
 
       eventList.forEach(function (ev) {
-        var card = document.createElement("a");
-        var url = ev.event_url || ev.url || "#";
-        card.href = url;
-        card.target = "_blank";
-        card.rel = "noopener noreferrer";
+        var card = document.createElement("button");
+        card.type = "button";
         card.className =
-          "group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-zinc-600 hover:shadow-lg hover:shadow-black/20";
+          "group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-200 hover:border-zinc-600 hover:shadow-lg hover:shadow-black/20 text-left";
+        card.addEventListener("click", function () { showEventModal(ev); });
 
         var cat = (ev.categoria || ev.categoria_label || "").toLowerCase();
         var catClass = CATEGORY_COLORS[cat] || "bg-zinc-500/15 text-zinc-400 border-zinc-500/30";
@@ -348,11 +426,12 @@
       err.innerHTML =
         '<p class="text-lg font-medium text-red-400">' + escapeHTML(msg) + '</p>' +
         '<p class="mt-1 text-sm text-muted">Verifique sua conexão e tente novamente.</p>' +
-        '<button class="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover" onclick="window.__eventosRetry()">' +
+        '<button class="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover">' +
           '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>' +
           'Tentar novamente' +
         '</button>';
       grid.appendChild(err);
+      err.querySelector("button").addEventListener("click", function () { fetchEvents(true); });
     }
 
     function escapeHTML(str) {

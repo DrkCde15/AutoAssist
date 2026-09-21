@@ -29,10 +29,7 @@ class CaktoService:
     def __init__(self):
         self.default_checkout_url = (os.getenv("CAKTO_CHECKOUT_URL") or "").strip()
         self.webhook_secret = (os.getenv("CAKTO_WEBHOOK_SECRET") or "").strip()
-        self.accept_query_secret = (
-            (os.getenv("CAKTO_ACCEPT_QUERY_SECRET") or "0").strip().lower()
-            not in {"0", "false", "no", "off"}
-        )
+        self.accept_query_secret = False
         self.auto_append_ref = (
             (os.getenv("CAKTO_APPEND_REF") or "1").strip().lower()
             not in {"0", "false", "no", "off"}

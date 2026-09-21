@@ -359,3 +359,47 @@ def _haversine(lat1, lng1, lat2, lng2):
     dlng = radians(lng2 - lng1)
     a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
     return 2 * r * asin(sqrt(a))
+
+
+def validate_url(url, timeout=3):
+    """Verifica se uma URL retorna status 2xx via HEAD request.
+
+    Retorna True se a URL for acessível, False caso contrário.
+    Em caso de erro de conexão ou timeout, retorna False.
+    """
+    if not url or not url.startswith("http"):
+        return False
+    try:
+        resp = requests.head(url, timeout=timeout, allow_redirects=True,
+                             headers={"User-Agent": "AutoAssist/1.0"})
+        return 200 <= resp.status_code < 400
+    except Exception:
+        return False
+
+
+def validate_links(links, max_workers=5):
+    """Filtra uma lista de links, mantendo apenas os que retornam 2xx.
+
+    Faz requests HEAD em paralelo para não bloquear.
+    Retorna apenas os links válidos.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def check(link):
+        url = link.get("url", "")
+        if validate_url(url):
+            return link
+        logger.info("Link quebrado removido: %s", url)
+        return None
+
+    if not links:
+        return links
+
+    valid = []
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(check, link): link for link in links}
+        for future in as_completed(futures):
+            result = future.result()
+            if result is not None:
+                valid.append(result)
+    return valid

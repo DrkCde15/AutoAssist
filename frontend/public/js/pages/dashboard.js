@@ -239,8 +239,10 @@
           '<div class="col-span-full flex flex-col items-center justify-center gap-3 py-16 text-center">' +
             '<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" /></svg>' +
             '<p class="text-sm text-muted">Erro ao carregar dados. Tente novamente.</p>' +
-            '<button onclick="location.reload()" class="mt-1 text-sm font-medium text-accent hover:underline">Recarregar</button>' +
+            '<button class="mt-1 text-sm font-medium text-accent hover:underline">Recarregar</button>' +
           '</div>';
+        var retryBtn = vehicleGrid.querySelector("button");
+        if (retryBtn) retryBtn.addEventListener("click", function () { location.reload(); });
       }
     }
   }

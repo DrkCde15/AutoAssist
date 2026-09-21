@@ -508,8 +508,7 @@
                   </li>
                 </ul>
                 <div class="mt-6">
-                  <a href="/cadastro?plan=premium" id="premiumCheckoutLink"
-                    ><button
+                  <button
                       id="premiumCheckoutBtn"
                       class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ease-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-white border border-accent hover:bg-accent-hover hover:shadow-glow px-5 py-2.5 text-sm w-full"
                     >
@@ -530,8 +529,7 @@
                           d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"
                         ></path></svg
                       >Assinar Premium
-                    </button></a
-                  >
+                    </button>
                 </div>
               </div>
             </div>
@@ -754,7 +752,7 @@
               <li>
                 <a
                   class="text-sm text-muted transition-colors hover:text-primary"
-                  href="/dúvidas"
+                  href="/duvidas"
                   >Dúvidas</a
                 >
               </li>
@@ -831,38 +829,6 @@
       </div>
     </footer>
     <!--$--><!--/$-->
-    <script>
-    (function() {
-      var btn = document.getElementById("premiumCheckoutBtn");
-      var link = document.getElementById("premiumCheckoutLink");
-      if (!btn || !link) return;
-
-      function waitForPayment(cb) {
-        if (window.payment) return cb();
-        var tries = 0;
-        var iv = setInterval(function() {
-          tries++;
-          if (window.payment || tries > 50) { clearInterval(iv); cb(); }
-        }, 100);
-      }
-
-      waitForPayment(function() {
-        if (!window.payment || !window.auth) return;
-
-        if (window.auth.isAuthenticated()) {
-          btn.addEventListener("click", function(e) {
-            e.preventDefault();
-            btn.disabled = true;
-            btn.textContent = "Redirecionando...";
-            window.payment.goToCheckout().catch(function(err) {
-              btn.disabled = false;
-              btn.textContent = "Assinar Premium";
-              alert(err.message || "Erro ao iniciar pagamento.");
-            });
-          });
-        }
-      });
-    })();
-    </script>
+    <script src="/js/pages/planos-checkout.js" defer></script>
   </body>
 </html>

@@ -5,9 +5,20 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
-    // --- Inject drawer styles ---
+    // --- Inject drawer + frosted glass navbar styles ---
     var style = document.createElement("style");
     style.textContent = [
+      /* Frosted glass navbar */
+      'header {',
+      '  background: rgba(12, 12, 20, 0.45) !important;',
+      '  backdrop-filter: blur(16px) saturate(1.4) !important;',
+      '  -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;',
+      '  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;',
+      '}',
+      '@supports not (backdrop-filter: blur(1px)) {',
+      '  header { background: rgba(12, 12, 20, 0.92) !important; }',
+      '}',
+      /* Drawer */
       '[data-mobile-drawer] {',
       '  background-color: var(--color-primary, #0c0c14) !important;',
       '  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;',
@@ -32,6 +43,7 @@
       '@media (min-width: 480px) {',
       '  [data-mobile-drawer] { width: 70vw !important; }',
       '}',
+      /* Logo sizing */
       'header nav img[alt="AutoAssist"] {',
       '  height: 3rem;',
       '}',

@@ -45,7 +45,7 @@
       '<div class="min-h-screen flex flex-col items-center justify-center bg-primary pt-16 gap-4">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle text-red-500" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>' +
       '<p class="text-secondary text-sm">' + escapeHTML(msg) + "</p>" +
-      '<button onclick="window.location.reload()" class="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover">Tentar novamente</button>' +
+      '<button class="mt-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover">Tentar novamente</button>' +
       "</div>";
   }
 
@@ -239,8 +239,10 @@
               '<p class="text-sm font-medium text-primary">' + formatCurrency(v.fipe_valor) + "</p>" +
             "</div>" +
           "</div>" +
-        "</div>";
-    }
+      "</div>";
+    var retryBtn = mainEl.querySelector("button");
+    if (retryBtn) retryBtn.addEventListener("click", function () { window.location.reload(); });
+  }
     container.innerHTML = html;
 
     container.querySelectorAll(".btn-delete-veiculo").forEach(function (btn) {

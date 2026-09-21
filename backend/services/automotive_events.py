@@ -1378,16 +1378,9 @@ def scan_automotive_events(force=False):
         try:
             found = runner() or []
             elapsed = (datetime.now(timezone.utc) - start).total_seconds()
-            logger.info(
-                "[Events] Fonte %s concluída: %d evento(s) em %.2fs",
-                slug, len(found), elapsed,
-            )
-            print(f"[Events] Fonte {slug} concluída: {len(found)} evento(s) em {elapsed:.2f}s", flush=True)
             return (slug, name, True, None, found)
         except Exception as e:
             elapsed = (datetime.now(timezone.utc) - start).total_seconds()
-            logger.warning("Varredura de eventos %s falhou após %.2fs: %s", slug, elapsed, e)
-            print(f"[Events] Varredura de eventos {slug} falhou após {elapsed:.2f}s: {e}", flush=True)
             return (slug, name, False, str(e)[:200], [])
 
     with ThreadPoolExecutor(max_workers=len(SOURCE_RUNNERS)) as pool:
@@ -1424,9 +1417,8 @@ def scan_automotive_events(force=False):
     # persiste no MySQL (histórico/status; mantém passados + futuros)
     try:
         persist_events(deduped)
-    except Exception as exc:  # nunca quebra a varredura por falha de DB
-        logger.warning("Falha ao persistir eventos: %s", exc)
-        print(f"[Events] Falha ao persistir eventos: {exc}", flush=True)
+    except Exception as exc:
+        pass
 
     def _sort_key(ev):
         return (0, ev["data_inicio"] or "9999") if ev["data_inicio"] else (1, ev["titulo"].lower())

@@ -139,17 +139,25 @@
     if (!window.auth || !window.auth.requireAuth()) return;
     if (window.premiumModal && !window.premiumModal.requirePremium()) return;
     loadLeaflet(function () {
+      if (!navigator.geolocation) {
+        console.warn("Geolocation nao suportada");
+        initMap(BRAZIL_CENTER);
+        onGeoError("Seu navegador nao suporta geolocalizacao.");
+        return;
+      }
       navigator.geolocation.getCurrentPosition(
         function (pos) {
+          console.log("Geolocation OK:", pos.coords.latitude, pos.coords.longitude);
           userPosition = [pos.coords.latitude, pos.coords.longitude];
           initMap(userPosition);
           fetchMechanics(userPosition[0], userPosition[1]);
         },
-        function () {
+        function (err) {
+          console.error("Geolocation ERRO:", err.code, err.message);
           initMap(BRAZIL_CENTER);
-          onGeoError("Ative a localização para ver oficinas próximas. O mapa mostra o Brasil como referência.");
+          onGeoError("Ative a localizacao para ver oficinas proximas. Erro: " + err.message);
         },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
 
       var searchInput = document.getElementById("maps-search");
@@ -213,6 +221,10 @@
         }
       });
     });
+  }
+
+  function isLoggedIn() {
+    return !!localStorage.getItem("autoassist_access_token");
   }
 
   function escapeHTML(str) {

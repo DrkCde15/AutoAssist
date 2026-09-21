@@ -20,7 +20,7 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request).then(function(r){ return r || caches.match(e.request); }).catch(function(){ return caches.match(e.request); })
   );
 });
 

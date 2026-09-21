@@ -116,7 +116,7 @@ Você é o NOG, consultor automotivo e mentor didático para o mercado brasileir
 Traduza "mecaniquês" para leigos usando analogias do dia a dia.
 Seja cético e protetor: evite gastos desnecessários e explique riscos.
 
-Formatação: use **negrito** para termos técnicos, > citação para alertas, ### Título para seções, • para listas.
+Formatação: NÃO use markdown. Responda em texto simples. Use CAPS para ênfase em termos técnicos quando necessário. Use • para listas. Evite tabelas — prefira descrições inline.
 Para saudações ("oi", "olá"), use a mensagem de boas-vindas padrão.
 Se o assunto não for automotivo, responda: "Desculpe, mas só posso ajudar com assuntos relacionados a automóveis."
 
@@ -137,14 +137,14 @@ Estrutura da resposta (use linguagem natural, NÃO use os nomes das seções com
 Nunca use "Resumo Direto", "Dicionário do NOG", "Passo a Passo" ou "Valores e FIPE" como texto literal na resposta.
 
 Mecânicos:
-- [OFICINAS PROXIMAS] contém uma lista real de oficinas encontradas na região do usuário. Liste essas opções e destaque nome, endereço, distância e telefone. Convide o usuário a usar a página de Busca de Mecânicos (ícone 🔧 na barra de digitação) para ver no mapa e favoritar.
+- [OFICINAS PROXIMAS] contém uma lista real de oficinas encontradas na região do usuário. Liste essas opções e destaque nome, endereço, distância e telefone. Convide o usuário a usar a página de Mapas (/maps) para ver no mapa e favoritar.
 - [NOTA] contém instruções do sistema. Siga-as literalmente.
 
 Promova os recursos do site sempre que RELEVANTE:
 - **Dashboard**: se falar de revisões, custos ou saúde do veículo, sugira "Você pode acompanhar tudo no seu Dashboard em /dashboard.html".
 - **Histórico de Manutenções**: se falar de trocas recentes ou planejamento, sugira "Registre e acompanhe no Histórico de Manutenções em /maintenance_history.html".
 - **Biblioteca de Vídeos**: se falar de reparos ou tutorials, diga "Temos vídeos tutoriais na Biblioteca em /library.html".
-- **Busca de Mecânicos**: se o usuário precisar de oficina, diga "Use a Busca de Mecânicos (ícone 🔧 no chat) para encontrar e favoritar oficinas perto de você".
+- **Busca de Mecânicos**: se o usuário precisar de oficina, diga "Acesse a página de Mapas (/maps) para encontrar e favoritar oficinas perto de você".
 Use um tom natural, não pareça propaganda.
 
 RESPONSABILIDADE (P0-4): você é uma assistência educativa, NÃO substitui um
@@ -610,9 +610,7 @@ def _generate_content_with_fallback(
     )
     cached = cache_get_json(cache_key)
     if cached is not None:
-        logger.info("CACHE HIT groq:gen %s", cache_key)
         return SimpleNamespace(text=cached)
-    logger.info("CACHE MISS groq:gen %s", cache_key)
 
     text = chat_completion(
         build_chat_messages("", contents, []),
@@ -1072,14 +1070,11 @@ def get_automotive_events_context(uf=None, limit=8):
             prefix += " internacionais"
         return prefix + ":\n" + "\n".join(lines)
     except Exception as e:
-        logger.warning("Erro ao buscar eventos para o chat: %s", e)
         return ""
 
 
 def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historico: list | None = None) -> str:
     try:
-        logger.info(f"NOG Groq: Processando msg do usuário {user_id}")
-
         if not mensagem or not mensagem.strip():
             return "Por favor, digite uma mensagem para eu poder ajudar. 🚗"
 
@@ -1201,6 +1196,7 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
 
         # Normaliza travessões (em/en dash) para hífen no texto exibido ao usuário.
         resposta_final = response.replace("—", "-").replace("–", "-")
+        resposta_final = _strip_markdown(resposta_final)
         _set_cache(cache_key, resposta_final, user_id)
         return resposta_final
 
@@ -1215,6 +1211,28 @@ def gerar_resposta(mensagem: str, user_id: int, user_data: dict = None, historic
 
         logger.error(f"❌ Erro no NOG (Groq): {e}", exc_info=True)
         return "❌ Erro ao conectar com a inteligência na nuvem."
+
+def _strip_markdown(text):
+    """Remove formatação markdown básica de texto gerado pela IA."""
+    if not text:
+        return text
+    # Remove headers ### Title
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+    # Remove bold/italic **bold** and *italic*
+    text = re.sub(r"\*{1,3}([^*]+)\*{1,3}", r"\1", text)
+    # Remove inline code `code`
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    # Remove blockquotes > text
+    text = re.sub(r"^>\s+", "", text, flags=re.MULTILINE)
+    # Remove horizontal rules --- or ***
+    text = re.sub(r"^[-*]{3,}\s*$", "", text, flags=re.MULTILINE)
+    # Remove table pipes at line start/end
+    text = re.sub(r"^\|(.+)\|$", r"\1", text, flags=re.MULTILINE)
+    # Remove table separator rows |---|---|
+    text = re.sub(r"^\|[-| :]+\|$", "", text, flags=re.MULTILINE)
+    # Collapse multiple blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 def _clean_search_term(value):
     if value is None:

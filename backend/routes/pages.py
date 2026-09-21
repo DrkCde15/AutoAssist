@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from time import monotonic
 from services.web_scraping import WebScraper
-from flask import Blueprint, request, jsonify, current_app, send_from_directory, has_request_context, redirect, url_for
+from flask import Blueprint, request, jsonify, current_app, send_from_directory, send_file, has_request_context, redirect, url_for
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 import uuid
 from services.maintenance_service import _status_from_remaining, apply_manual_overrides, parse_maintenance_entry, serialize_maintenance_row
@@ -535,6 +535,14 @@ def build_recommendations(message, historico_recente, default_topic="Consultoria
             logger.warning(f"Erro ao buscar links de peças: {e}")
 
     topic = termo_yt or termo_loja or termo_pecas or default_topic
+
+    if links:
+        try:
+            from services.web_scraping import validate_links
+            links = validate_links(links)
+        except Exception as e:
+            logger.warning(f"Erro na validação de links: {e}")
+
     return videos, links, topic
 
 
@@ -3312,7 +3320,7 @@ def handle_voice():
             user_id=user_id,
             anonymous_id=(request.form.get("anonymous_id") or "").strip()[:80] or None
             if not user_id else None,
-            is_raio=bool(image_b64) or bool(attachment and attachment.get("kind") in ("image", "binary")),
+            is_raio=bool(img_b64) or bool(attachment and attachment.get("kind") in ("image", "binary")),
         )
         return jsonify(response_payload)
 

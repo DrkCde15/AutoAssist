@@ -25,7 +25,7 @@ OVERPASS_URLS = [
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 ]
-OVERPASS_TIMEOUT = 25
+OVERPASS_TIMEOUT = 45
 OVERPASS_TOTAL_BUDGET = 40  # segundos máximos gastos em tentativas contra os mirrors
 OSM_MIN_ELEMENTS_BEFORE_STOP = 40  # para de consultar após esse volume de resultados
 OSM_CACHE_TTL = 3600  # 1 hora (área realmente vazia)
@@ -63,17 +63,18 @@ def calculate_distance(lat1, lng1, lat2, lng2):
 
 
 def _build_overpass_queries(user_lat, user_lng, radius_m, osm_tags):
-    """Gera statements simples (sem union) - o overpass-api.de rejeita unions com 400.
+    """Gera uma query union por tipo de elemento (node, way) para minimizar chamadas à API.
 
-    Retorna (elemento, query) para permitir ordenar por rendimento esperado.
+    Enviar queries separadas por tag dispara rate-limiting do Overpass.
+    Unir todas as tags em uma query por elemento reduz chamadas de 6 para 2,
+    evitando o rate-limiting que retorna 0 elementos.
     """
+    around = f"(around:{radius_m},{user_lat},{user_lng})"
     queries = []
     for elem in ("node", "way"):
-        for tag in osm_tags:
-            queries.append((
-                elem,
-                f'[out:json][timeout:30];{elem}[{tag}](around:{radius_m},{user_lat},{user_lng});out center;',
-            ))
+        tag_clauses = ";".join(f'{elem}[{tag}]{around}' for tag in osm_tags)
+        query = f'[out:json][timeout:60];({tag_clauses};);out center;'
+        queries.append((elem, query))
     return queries
 
 
@@ -139,7 +140,6 @@ def _reverse_geocode(lat, lng, osm_id):
         cache_set_json(cache_key, result, ttl=REVGEO_CACHE_TTL)
         return result
     except Exception as e:
-        logger.debug("Falha reverse geocode (%s,%s): %s", lat, lng, e)
         cache_set_json(cache_key, {}, ttl=REVGEO_CACHE_TTL)
         return None
 
@@ -181,14 +181,14 @@ def search_osm(user_lat, user_lng, radius, service_type=None):
     if cached is not None:
         return cached
 
-    osm_tags = ['"shop"="car_repair"', '"amenity"="car_repair"', '"craft"="auto_mechanic"']
+    osm_tags = ['"shop"="car_repair"', '"craft"="auto_mechanic"']
     if service_type and service_type in ('eletrica',):
         osm_tags.append('"craft"="auto_electrician"')
 
     radius_m = int(radius * 1000)
 
     try:
-        logger.debug("Overpass: %d queries x %d mirrors", len(osm_tags) * 2, len(OVERPASS_URLS))
+        logger.debug("Overpass: %d queries x %d mirrors", 2, len(OVERPASS_URLS))
         deadline = time.time() + OVERPASS_TOTAL_BUDGET
         elements = []
         seen_qids = set()
@@ -217,11 +217,8 @@ def search_osm(user_lat, user_lng, radius, service_type=None):
             # por muito tempo, para não suprimir a fonte por minutos após um erro.
             if got_success:
                 cache_set_json(cache_key, [], ttl=OSM_CACHE_TTL)
-                logger.info("Overpass: área sem mecânicos para %s,%s (raio %skm)", user_lat, user_lng, radius)
             else:
                 cache_set_json(cache_key, [], ttl=OSM_FAILURE_CACHE_TTL)
-                logger.warning("Overpass sem resultados (falha dos mirrors) para %s,%s (raio %skm)",
-                               user_lat, user_lng, radius)
             return []
 
         features = _elements_to_geojson(elements)
@@ -548,6 +545,10 @@ def search_mechanics():
 
         mechanics = mechanics[:limit]
 
+        for m in mechanics:
+            if m.get('id'):
+                cache_set_json(f"mech:{m['id']}", m, ttl=OSM_CACHE_TTL)
+
         return jsonify({
             "success": True,
             "count": len(mechanics),
@@ -568,7 +569,10 @@ def get_mechanic_profile(mechanic_id):
     """
     try:
         sid = str(mechanic_id)
-        if sid.startswith('osm_') or sid.startswith('web_'):
+        if sid.startswith('osm_') or sid.startswith('web_') or sid.startswith('serpapi_'):
+            cached = cache_get_json(f"mech:{sid}")
+            if cached:
+                return jsonify({"success": True, "mechanic": cached}), 200
             return jsonify({
                 "success": True,
                 "mechanic": {
@@ -580,7 +584,7 @@ def get_mechanic_profile(mechanic_id):
                     "reviews": [],
                     "servicos": [],
                     "horario_funcionamento": None,
-                    "_source": "osm" if sid.startswith('osm_') else "web"
+                    "_source": "serpapi" if sid.startswith('serpapi_') else "osm" if sid.startswith('osm_') else "web"
                 }
             }), 200
 
@@ -674,6 +678,7 @@ def add_mechanic_review(mechanic_id):
 
 
 @mechanics_bp.route('/api/mechanics', methods=['POST'])
+@jwt_required()
 def create_mechanic():
     """
     Cadastro público de oficina/mecânico (dono da oficina).

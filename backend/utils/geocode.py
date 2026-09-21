@@ -58,7 +58,7 @@ def reverse_geocode_uf(lat, lng, cache=True):
             if len(code) == 2 and code.isalpha():
                 uf = code
     except Exception as e:
-        logger.warning("Reverse geocode falhou (%.2f, %.2f): %s", lat, lng, e)
+        pass
 
     if uf and cache:
         try:
