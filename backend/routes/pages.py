@@ -610,8 +610,31 @@ def get_vehicle_reference_images(cursor, user_id, vehicle_id):
         return []
     foto = row.get("foto_base64")
     if foto and str(foto).strip():
-        return [foto]
+        return [_foto_to_data_url(str(foto).strip()) or str(foto).strip()]
     return []
+
+
+def _foto_to_data_url(foto):
+    """Converte foto armazenada (data URI ou base64 puro) em data URI para a API de visão."""
+    if not foto:
+        return None
+    if foto.startswith("data:"):
+        return foto
+    try:
+        amostra = base64.b64decode(foto[:64])
+    except Exception:
+        return None
+    if amostra[:3] == b"\xff\xd8\xff":
+        mime = "image/jpeg"
+    elif amostra[:4] == b"\x89PNG":
+        mime = "image/png"
+    elif amostra[:3] == b"GIF":
+        mime = "image/gif"
+    elif amostra[:4] == b"RIFF" and len(amostra) >= 12 and amostra[8:12] == b"WEBP":
+        mime = "image/webp"
+    else:
+        mime = "image/jpeg"
+    return f"data:{mime};base64,{foto}"
 
 
 def seed_vehicle_photo_if_missing(cursor, conn, user_id, vehicle_id, image_b64):
@@ -628,6 +651,8 @@ def seed_vehicle_photo_if_missing(cursor, conn, user_id, vehicle_id, image_b64):
             (image_b64, vid, user_id),
         )
         conn.commit()
+        if cursor.rowcount:
+            _invalidate_dashboard_cache_for_user(user_id)
     except Exception as exc:
         logger.warning("Falha ao semear foto do veículo: %s", exc)
 
@@ -1312,7 +1337,7 @@ def get_user():
         cursor.execute("SELECT COUNT(DISTINCT session_id) AS total FROM chats WHERE user_id = %s", (user_id,))
         total = cursor.fetchone()
 
-        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem, fipe_valor, fipe_mes_referencia FROM veiculos WHERE user_id = %s", (user_id,))
+        cursor.execute("SELECT id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem, fipe_valor, fipe_mes_referencia, foto_base64 FROM veiculos WHERE user_id = %s", (user_id,))
         veiculos = cursor.fetchall()
 
         for v in veiculos:
@@ -1731,6 +1756,7 @@ def upload_veiculo_foto(v_id):
             if not foto:
                 cursor.execute("UPDATE veiculos SET foto_base64 = NULL WHERE id = %s AND user_id = %s", (v_id, user_id))
                 conn.commit()
+                _invalidate_dashboard_cache_for_user(user_id)
                 return jsonify(success=True, foto_base64=None), 200
 
             if isinstance(foto, str) and foto.startswith("data:"):
@@ -1743,11 +1769,13 @@ def upload_veiculo_foto(v_id):
                 amostra = base64.b64decode(foto[:64])
             except Exception:
                 return jsonify(error="Imagem inválida"), 400
-            if not (amostra[:4] in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe1", b"\x89PNG", b"\x47IF8") or amostra[:3] == b"GIF"):
-                return jsonify(error="Apenas imagens PNG/JPG/GIF são suportadas"), 400
+            is_webp = amostra[:4] == b"RIFF" and len(amostra) >= 12 and amostra[8:12] == b"WEBP"
+            if not (amostra[:4] in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe1", b"\x89PNG", b"\x47IF8") or amostra[:3] == b"GIF" or is_webp):
+                return jsonify(error="Apenas imagens PNG/JPG/GIF/WebP são suportadas"), 400
 
             cursor.execute("UPDATE veiculos SET foto_base64 = %s WHERE id = %s AND user_id = %s", (foto, v_id, user_id))
             conn.commit()
+            _invalidate_dashboard_cache_for_user(user_id)
             return jsonify(success=True, foto_base64=foto), 200
     except Exception as e:
         logger.error(f"Erro ao salvar foto do veiculo: {e}")
@@ -3157,8 +3185,15 @@ def chat():
                     )
                 )
                 chat_id = cursor.lastrowid
-                if vehicle_id and img_b64:
-                    seed_vehicle_photo_if_missing(cursor, conn, user_id, vehicle_id, img_b64)
+                if vehicle_id and user_id:
+                    seed_b64 = img_b64
+                    if not seed_b64 and attachment and attachment.get("kind") == "image":
+                        seed_b64 = (
+                            "data:" + attachment["mime_type"] + ";base64,"
+                            + base64.b64encode(attachment["data"]).decode("ascii")
+                        )
+                    if seed_b64:
+                        seed_vehicle_photo_if_missing(cursor, conn, user_id, vehicle_id, seed_b64)
 
         response_payload = dict(
             response=resposta,

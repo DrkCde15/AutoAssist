@@ -33,6 +33,17 @@
     return "R$ " + Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
   }
 
+  function fotoSrc(foto) {
+    if (!foto) return "";
+    if (foto.indexOf("data:") === 0) return foto;
+    var mime = "image/jpeg";
+    if (foto.indexOf("iVBOR") === 0) mime = "image/png";
+    else if (foto.indexOf("R0lGOD") === 0) mime = "image/gif";
+    else if (foto.indexOf("UklGR") === 0) mime = "image/webp";
+    else if (foto.indexOf("/9j/") === 0) mime = "image/jpeg";
+    return "data:" + mime + ";base64," + foto;
+  }
+
   function renderLoading() {
     mainEl.innerHTML =
       '<div class="min-h-screen flex items-center justify-center bg-primary pt-16">' +
@@ -209,21 +220,30 @@
     for (var i = 0; i < veiculos.length; i++) {
       var v = veiculos[i];
       var tipoLabel = { carro: "Carro", moto: "Moto", caminhao: "Caminhão", outro: "Outro" }[v.tipo] || v.tipo || "—";
+      var foto = v.foto_base64 ? fotoSrc(v.foto_base64) : "";
+      var iconHtml = foto
+        ? '<img src="' + foto + '" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover" />'
+        : '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>' +
+          '</div>';
       html +=
         '<div class="rounded-xl border border-border bg-secondary p-5 transition-all duration-200 hover:border-border-hover hover:shadow-lg hover:shadow-[0_8px_30px_-4px_rgba(91,141,239,0.06)] hover:-translate-y-0.5">' +
           '<div class="flex items-start justify-between">' +
             '<div class="flex items-center gap-3">' +
-              '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>' +
-              "</div>" +
+              iconHtml +
               '<div>' +
                 '<h3 class="text-sm font-semibold text-primary">' + escapeHTML(v.marca) + " " + escapeHTML(v.modelo) + "</h3>" +
                 '<p class="text-xs text-muted">' + tipoLabel + " · " + (v.ano_fabricacao || "—") + "</p>" +
               "</div>" +
             "</div>" +
-            '<button class="btn-delete-veiculo text-muted hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10" data-id="' + v.id + '" title="Excluir veículo">' +
-              '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>' +
-            "</button>" +
+            '<div class="flex items-center gap-1">' +
+              '<button class="btn-upload-foto text-muted hover:text-accent transition-colors p-1 rounded-lg" data-id="' + v.id + '" title="Alterar foto do veículo">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>' +
+              "</button>" +
+              '<button class="btn-delete-veiculo text-muted hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10" data-id="' + v.id + '" title="Excluir veículo">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2" aria-hidden="true"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>' +
+              "</button>" +
+            "</div>" +
           "</div>" +
           '<div class="mt-4 grid grid-cols-3 gap-3 text-center">' +
             '<div>' +
@@ -238,11 +258,9 @@
               '<p class="text-xs text-muted">Valor FIPE</p>' +
               '<p class="text-sm font-medium text-primary">' + formatCurrency(v.fipe_valor) + "</p>" +
             "</div>" +
-          "</div>" +
+            "</div>" +
       "</div>";
-    var retryBtn = mainEl.querySelector("button");
-    if (retryBtn) retryBtn.addEventListener("click", function () { window.location.reload(); });
-  }
+    }
     container.innerHTML = html;
 
     container.querySelectorAll(".btn-delete-veiculo").forEach(function (btn) {
@@ -252,6 +270,55 @@
           deleteVeiculo(id);
         }
       });
+    });
+
+    container.querySelectorAll(".btn-upload-foto").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        openFotoPicker(this.dataset.id);
+      });
+    });
+  }
+
+  var fotoTargetId = null;
+
+  function openFotoPicker(id) {
+    fotoTargetId = id;
+    var input = document.getElementById("veiculo-foto-input");
+    if (input) input.click();
+  }
+
+  function ensureFotoInput() {
+    if (document.getElementById("veiculo-foto-input")) return;
+    var input = document.createElement("input");
+    input.type = "file";
+    input.id = "veiculo-foto-input";
+    input.accept = "image/png,image/jpeg,image/gif,image/webp";
+    input.className = "hidden";
+    document.body.appendChild(input);
+    input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      if (!file || !fotoTargetId) return;
+      if (file.size > 8 * 1024 * 1024) {
+        toast("Imagem muito grande. Máximo 8 MB.", "error");
+        input.value = "";
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        uploadVeiculoFoto(fotoTargetId, ev.target.result)
+          .then(function () {
+            toast("Foto do veículo atualizada!", "success");
+            loadVeiculos();
+          })
+          .catch(function (err) {
+            toast(err.message || "Erro ao enviar foto.", "error");
+          })
+          .finally(function () {
+            input.value = "";
+            fotoTargetId = null;
+          });
+      };
+      reader.readAsDataURL(file);
     });
   }
 
@@ -289,6 +356,7 @@
   }
 
   function loadVeiculos() {
+    ensureFotoInput();
     window.api
       .get("/api/veiculos")
       .then(function (res) {
@@ -435,6 +503,7 @@
       .then(function (user) {
         renderProfile(user);
         bindEvents();
+        ensureFotoInput();
         renderVeiculos(user.veiculos || []);
       })
       .catch(function (err) {

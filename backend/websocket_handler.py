@@ -165,14 +165,22 @@ def chat_websocket(ws):
                     attachment=attachment,
                     reference_images=reference_images,
                 )
-                if vehicle_id and image_b64:
-                    try:
-                        from routes.database import get_db
-                        from routes.pages import seed_vehicle_photo_if_missing
-                        with get_db() as (cur, conn):
-                            seed_vehicle_photo_if_missing(cur, conn, user_id, vehicle_id, image_b64)
-                    except Exception:
-                        pass
+                if vehicle_id and user_id:
+                    seed_b64 = image_b64
+                    if not seed_b64 and attachment and attachment.get("kind") == "image":
+                        import base64 as _b64mod
+                        seed_b64 = (
+                            "data:" + attachment["mime_type"] + ";base64,"
+                            + _b64mod.b64encode(attachment["data"]).decode("ascii")
+                        )
+                    if seed_b64:
+                        try:
+                            from routes.database import get_db
+                            from routes.pages import seed_vehicle_photo_if_missing
+                            with get_db() as (cur, conn):
+                                seed_vehicle_photo_if_missing(cur, conn, user_id, vehicle_id, seed_b64)
+                        except Exception:
+                            pass
             else:
                 response = gerar_resposta(message, user_id or 0, user_data=user_data)
 

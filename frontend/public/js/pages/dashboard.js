@@ -43,6 +43,17 @@
     return Number(km).toLocaleString("pt-BR") + " km";
   }
 
+  function fotoSrc(foto) {
+    if (!foto) return "";
+    if (foto.indexOf("data:") === 0) return foto;
+    var mime = "image/jpeg";
+    if (foto.indexOf("iVBOR") === 0) mime = "image/png";
+    else if (foto.indexOf("R0lGOD") === 0) mime = "image/gif";
+    else if (foto.indexOf("UklGR") === 0) mime = "image/webp";
+    else if (foto.indexOf("/9j/") === 0) mime = "image/jpeg";
+    return "data:" + mime + ";base64," + foto;
+  }
+
   function healthBadge(score) {
     var color, bg;
     if (score >= 80) {
@@ -135,13 +146,17 @@
 
     var manutencoes = stats.manutencoes_realizadas || 0;
     var ultimaData = stats.data_ultima_manutencao || "---";
+    var foto = v.foto_base64 ? fotoSrc(v.foto_base64) : "";
 
     return '<div class="group fade-in-up rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-accent/40 hover:shadow-lg hover:shadow-[0_8px_30px_-4px_rgba(91,141,239,0.08)] hover:-translate-y-0.5">' +
       '<!-- Header -->' +
       '<div class="mb-4 flex items-start justify-between">' +
-        '<div class="min-w-0 flex-1">' +
-          '<h3 class="truncate text-base font-semibold text-primary">' + vehicleName + '</h3>' +
-          '<p class="mt-0.5 text-xs text-muted">' + (year ? year + ' • ' : '') + formatKm(v.quilometragem) + '</p>' +
+        '<div class="flex min-w-0 flex-1 items-center gap-3">' +
+          (foto ? '<img src="' + foto + '" alt="" class="h-12 w-12 shrink-0 rounded-lg object-cover border border-border" />' : '') +
+          '<div class="min-w-0 flex-1">' +
+            '<h3 class="truncate text-base font-semibold text-primary">' + vehicleName + '</h3>' +
+            '<p class="mt-0.5 text-xs text-muted">' + (year ? year + ' • ' : '') + formatKm(v.quilometragem) + '</p>' +
+          '</div>' +
         '</div>' +
         healthBadge(healthScore) +
       '</div>' +
