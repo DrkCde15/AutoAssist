@@ -1,0 +1,67 @@
+/* P3: estilos extraídos de <style>/style="" inline + nav.js.
+   Carregado via <link> (permitido por style-src 'self'). */
+
+/* --- 404.html --- */
+.err-404-title {
+  font-size: clamp(5rem, 20vw, 13rem);
+  line-height: 1;
+}
+
+/* --- anotacoes.html --- */
+.section-header-left {
+  text-align: left;
+  margin-bottom: 0;
+}
+
+/* --- index.html scanline --- */
+.scanline {
+  top: 30%;
+  animation: scan 4s ease-in-out infinite;
+}
+
+/* --- nav.js: frosted glass navbar + mobile drawer (antes injetado via <style>) --- */
+header {
+  background: rgba(12, 12, 20, 0.45) !important;
+  backdrop-filter: blur(16px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  header { background: rgba(12, 12, 20, 0.92) !important; }
+}
+[data-mobile-drawer] {
+  background-color: var(--color-primary, #0c0c14) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  width: 85vw !important;
+  max-width: 18rem !important;
+}
+[data-mobile-backdrop] {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+[data-mobile-drawer] a[data-auth-link] {
+  animation: drawerFadeIn 0.2s ease-out both;
+}
+@keyframes drawerFadeIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (min-width: 380px) {
+  [data-mobile-drawer] { width: 75vw !important; }
+}
+@media (min-width: 480px) {
+  [data-mobile-drawer] { width: 70vw !important; }
+}
+header nav img[alt="AutoAssist"] {
+  height: 3rem;
+}
+@media (min-width: 768px) {
+  header nav img[alt="AutoAssist"] { height: 5.5rem; }
+}
+
+/* --- mod_passport.js spinner (antes via body.innerHTML <style>) --- */
+@keyframes mp-spin {
+  to { transform: rotate(360deg); }
+}
+.mp-spinner {
+  animation: mp-spin 0.8s linear infinite;
+}

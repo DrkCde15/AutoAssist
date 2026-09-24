@@ -5,53 +5,15 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", function () {
-    // --- Inject drawer + frosted glass navbar styles ---
-    var style = document.createElement("style");
-    style.textContent = [
-      /* Frosted glass navbar */
-      'header {',
-      '  background: rgba(12, 12, 20, 0.45) !important;',
-      '  backdrop-filter: blur(16px) saturate(1.4) !important;',
-      '  -webkit-backdrop-filter: blur(16px) saturate(1.4) !important;',
-      '  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;',
-      '}',
-      '@supports not (backdrop-filter: blur(1px)) {',
-      '  header { background: rgba(12, 12, 20, 0.92) !important; }',
-      '}',
-      /* Drawer */
-      '[data-mobile-drawer] {',
-      '  background-color: var(--color-primary, #0c0c14) !important;',
-      '  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;',
-      '}',
-      '[data-mobile-backdrop] {',
-      '  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;',
-      '}',
-      '[data-mobile-drawer] a[data-auth-link] {',
-      '  animation: drawerFadeIn 0.2s ease-out both;',
-      '}',
-      '@keyframes drawerFadeIn {',
-      '  from { opacity: 0; transform: translateX(8px); }',
-      '  to { opacity: 1; transform: translateX(0); }',
-      '}',
-      '[data-mobile-drawer] {',
-      '  width: 85vw !important;',
-      '  max-width: 18rem !important;',
-      '}',
-      '@media (min-width: 380px) {',
-      '  [data-mobile-drawer] { width: 75vw !important; }',
-      '}',
-      '@media (min-width: 480px) {',
-      '  [data-mobile-drawer] { width: 70vw !important; }',
-      '}',
-      /* Logo sizing */
-      'header nav img[alt="AutoAssist"] {',
-      '  height: 3rem;',
-      '}',
-      '@media (min-width: 768px) {',
-      '  header nav img[alt="AutoAssist"] { height: 5.5rem; }',
-      '}'
-    ].join("\n");
-    document.head.appendChild(style);
+    // P3: estilos movidos para css/inline-extracted.css (CSP-friendly).
+    // Carrega via <link> em vez de injetar <style> (bloqueado sem 'unsafe-inline').
+    if (!document.querySelector('link[data-inline-extracted]')) {
+      var link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "/static/css/inline-extracted.css";
+      link.setAttribute("data-inline-extracted", "true");
+      document.head.appendChild(link);
+    }
 
     var hamburger = document.querySelector("[data-hamburger]");
     var drawer = document.querySelector("[data-mobile-drawer]");

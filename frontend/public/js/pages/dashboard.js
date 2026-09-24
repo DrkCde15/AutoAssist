@@ -43,9 +43,17 @@
     return Number(km).toLocaleString("pt-BR") + " km";
   }
 
-  function fotoSrc(foto) {
+  function fotoSrc(v) {
+    // P2: prefere foto_url/storage externo; fallback foto_base64 legado.
+    if (!v) return "";
+    if (typeof v === "object") {
+      if (v.foto_url) return v.foto_url;
+      v = v.foto_base64;
+    }
+    var foto = v;
     if (!foto) return "";
     if (foto.indexOf("data:") === 0) return foto;
+    if (foto.indexOf("/") === 0 || foto.indexOf("http") === 0) return foto;
     var mime = "image/jpeg";
     if (foto.indexOf("iVBOR") === 0) mime = "image/png";
     else if (foto.indexOf("R0lGOD") === 0) mime = "image/gif";
@@ -146,7 +154,7 @@
 
     var manutencoes = stats.manutencoes_realizadas || 0;
     var ultimaData = stats.data_ultima_manutencao || "---";
-    var foto = v.foto_base64 ? fotoSrc(v.foto_base64) : "";
+    var foto = fotoSrc(v);
 
     return '<div class="group fade-in-up rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-accent/40 hover:shadow-lg hover:shadow-[0_8px_30px_-4px_rgba(91,141,239,0.08)] hover:-translate-y-0.5">' +
       '<!-- Header -->' +

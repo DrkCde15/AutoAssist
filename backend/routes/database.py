@@ -87,6 +87,10 @@ TABLES_SQL = {
         ano_compra INT,
         quilometragem INT,
         foto_base64 MEDIUMTEXT NULL,
+        foto_url VARCHAR(500) NULL,
+        foto_storage_key VARCHAR(500) NULL,
+        foto_mime VARCHAR(50) NULL,
+        foto_storage VARCHAR(20) NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )""",
@@ -454,7 +458,12 @@ def init_db():
             ("fipe_updated_at", "DATETIME NULL"),
             ("modificacoes", "TEXT NULL"),
             ("fipe_ajustada", "VARCHAR(50) NULL"),
-            ("foto_base64", "MEDIUMTEXT NULL")
+            ("foto_base64", "MEDIUMTEXT NULL"),
+            # P2: storage externo de fotos (dual-read com foto_base64 legado)
+            ("foto_url", "VARCHAR(500) NULL"),
+            ("foto_storage_key", "VARCHAR(500) NULL"),
+            ("foto_mime", "VARCHAR(50) NULL"),
+            ("foto_storage", "VARCHAR(20) NULL"),
         ]
         for col, dtype in veiculos_columns:
             if col not in existing_veiculos_columns:

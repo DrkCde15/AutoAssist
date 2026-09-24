@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_PRIMARY_MODEL = "groq/compound-mini"
 DEFAULT_UTILITY_MODEL = "openai/gpt-oss-20b"
-DEFAULT_VISION_MODEL = "qwen/qwen3.6-27b"
+DEFAULT_VISION_MODEL = "qwen/qwen3.8-27b"
 DEFAULT_FALLBACK_MODELS = ("groq/compound",)
 DEFAULT_UTILITY_FALLBACK_MODELS = ("groq/compound",)
 DEFAULT_VISION_FALLBACK_MODELS = ()
@@ -169,6 +169,7 @@ def chat_completion(
                     messages,
                     response_format=response_format,
                     temperature=temperature,
+                    log_context=log_context,
                 )
             except GroqHTTPError as error:
                 last_error = error
@@ -191,7 +192,7 @@ def chat_completion(
     raise last_error or GroqAPIError(f"{log_context} falhou sem modelos configurados.")
 
 
-def _request_chat_completion(settings, model_name, messages, *, response_format=None, temperature=None):
+def _request_chat_completion(settings, model_name, messages, *, response_format=None, temperature=None, log_context="Groq"):
     payload = {
         "model": model_name,
         "messages": messages,
@@ -211,9 +212,19 @@ def _request_chat_completion(settings, model_name, messages, *, response_format=
     )
 
     if response.status_code >= 400:
+        try:
+            from services.groq_metrics import record as _record_metric
+            _record_metric(log_context, model_name, None, error=True)
+        except Exception:
+            pass
         raise GroqHTTPError(response.status_code, _response_error_message(response))
 
     data = response.json()
+    try:
+        from services.groq_metrics import record as _record_metric
+        _record_metric(log_context, model_name, data.get("usage") if isinstance(data, dict) else None)
+    except Exception:
+        pass
     choices = data.get("choices") or []
     if not choices:
         raise GroqAPIError("Resposta Groq sem choices.")

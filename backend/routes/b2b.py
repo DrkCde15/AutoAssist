@@ -190,7 +190,21 @@ def b2b_diagnosis():
 
 
     data = request.get_json(silent=True) or {}
-    image_b64 = (data.get("image") or data.get("image_b64") or "").strip()
+    # P1: validação tipada (pydantic) — mantém chaves legadas image/image_b64
+    try:
+        from schemas.b2b import B2BDiagnosisInput as _B2BInput
+        parsed = _B2BInput.model_validate(data)
+        image_b64 = parsed.resolved_image()
+        pergunta = parsed.pergunta
+        formato = parsed.formato
+    except Exception as _ve:
+        from pydantic import ValidationError as _VE
+        if isinstance(_ve, _VE):
+            log_usage(client["id"], "/api/b2b/diagnosis", 400)
+            return jsonify(error="Payload inválido.", details=str(_ve)[:500]), 400
+        image_b64 = (data.get("image") or data.get("image_b64") or "").strip()
+        pergunta = (data.get("pergunta") or "").strip() or None
+        formato = (data.get("formato") or "json").strip().lower()
     if not image_b64:
         log_usage(client["id"], "/api/b2b/diagnosis", 400)
         return jsonify(error="Campo 'image' (base64) e obrigatorio."), 400
@@ -198,8 +212,9 @@ def b2b_diagnosis():
         log_usage(client["id"], "/api/b2b/diagnosis", 413)
         return jsonify(error="Imagem muito grande (max 15MB em base64)."), 413
 
-    pergunta = (data.get("pergunta") or "").strip() or None
-    formato = (data.get("formato") or "json").strip().lower()
+    if pergunta is not None and len(pergunta) > 2000:
+        log_usage(client["id"], "/api/b2b/diagnosis", 400)
+        return jsonify(error="Campo 'pergunta' muito longo (max 2000)."), 400
 
     try:
         laudo = analisar_imagem(image_b64, pergunta)
@@ -257,15 +272,25 @@ def create_api_key():
         return jsonify(error="Acesso negado."), 403
 
     data = request.get_json(silent=True) or {}
-    nome = (data.get("nome") or "").strip()[:120]
+    try:
+        from schemas.b2b import B2BCreateKeyInput as _KeyInput
+        parsed = _KeyInput.model_validate(data)
+        nome = parsed.nome.strip()[:120]
+        rate_limit = parsed.rate_limit_per_min
+    except Exception as _ve:
+        from pydantic import ValidationError as _VE
+        if isinstance(_ve, _VE):
+            return jsonify(error="Payload inválido.", details=str(_ve)[:500]), 400
+        nome = (data.get("nome") or "").strip()[:120]
+        if not nome:
+            return jsonify(error="Campo 'nome' do cliente e obrigatorio."), 400
+        rate_limit = data.get("rate_limit_per_min")
+        try:
+            rate_limit = max(1, min(int(rate_limit), 600))
+        except (TypeError, ValueError):
+            rate_limit = FALLBACK_LIMIT
     if not nome:
         return jsonify(error="Campo 'nome' do cliente e obrigatorio."), 400
-
-    rate_limit = data.get("rate_limit_per_min")
-    try:
-        rate_limit = max(1, min(int(rate_limit), 600))
-    except (TypeError, ValueError):
-        rate_limit = FALLBACK_LIMIT
 
     raw_key = f"aa_{secrets.token_urlsafe(32)}"
     key_hash = _hash_api_key(raw_key)

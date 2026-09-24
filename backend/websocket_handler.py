@@ -112,6 +112,16 @@ def chat_websocket(ws):
             if raw is None:
                 break
             data = json.loads(raw)
+            # P2: rate-limit por usuário/guest no WS (20/min)
+            try:
+                from utils.rate_limit import ws_chat_allowed
+                _rl_uid = user_id
+                _rl_guest = guest_id or data.get("guest_id")
+                if not ws_chat_allowed(_rl_uid, _rl_guest):
+                    ws.send(json.dumps({"error": "Limite de mensagens excedido. Aguarde um minuto."}))
+                    continue
+            except Exception:
+                pass
             message = data.get("message", "").strip()
             attachment_raw = data.get("attachment")
             image_b64 = data.get("image")

@@ -1,0 +1,464 @@
+openapi: 3.0.3
+info:
+  title: AutoAssist IA API
+  version: 1.0.0
+  description: API do AutoAssist - Ecossistema automotivo com IA. Consulte os endpoints
+    para chat, manutenção preditiva, FIPE, pagamentos e mais.
+servers:
+- url: http://localhost:5001
+  description: Desenvolvimento
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CadastroInput:
+      type: object
+      required:
+      - nome
+      - email
+      - password
+      properties:
+        nome:
+          type: string
+          example: João Silva
+        email:
+          type: string
+          format: email
+          example: joao@email.com
+        password:
+          type: string
+          minLength: 6
+          example: senha123
+        veiculos:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeiculoInput'
+    LoginInput:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    ChatInput:
+      type: object
+      required:
+      - message
+      properties:
+        message:
+          type: string
+          maxLength: 4000
+          example: Qual o óleo ideal para meu carro?
+        session_id:
+          type: string
+          maxLength: 50
+        vehicle_id:
+          type: integer
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+        image:
+          type: string
+          description: DataURL ou base64 puro (max ~11MB binário)
+        attachment:
+          type: object
+        client_history:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+    ChatAttachmentInput:
+      type: object
+      required:
+      - name
+      - data
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        type:
+          type: string
+        data:
+          type: string
+          description: base64 puro ou DataURL
+    VeiculoInput:
+      type: object
+      properties:
+        marca:
+          type: string
+        modelo:
+          type: string
+        ano_fabricacao:
+          type: integer
+        tipo:
+          type: string
+          enum:
+          - carro
+          - moto
+          - caminhao
+        quilometragem:
+          type: integer
+    WaitlistInput:
+      type: object
+      required:
+      - email
+      properties:
+        nome:
+          type: string
+          example: Ana Silva
+        email:
+          type: string
+          format: email
+          example: ana@email.com
+        lead_magnet:
+          type: string
+          example: waitlist
+        utm_source:
+          type: string
+        utm_medium:
+          type: string
+        utm_campaign:
+          type: string
+        initial_referrer:
+          type: string
+        referred_by:
+          type: string
+          example: A1B2C3D4
+    B2BDiagnosisInput:
+      type: object
+      required:
+      - image
+      properties:
+        image:
+          type: string
+          description: base64 puro ou DataURL (max 15MB em base64)
+        image_b64:
+          type: string
+        pergunta:
+          type: string
+          maxLength: 2000
+        formato:
+          type: string
+          enum:
+          - json
+          - pdf
+          default: json
+    B2BCreateKeyInput:
+      type: object
+      required:
+      - nome
+      properties:
+        nome:
+          type: string
+          maxLength: 120
+        rate_limit_per_min:
+          type: integer
+          minimum: 1
+          maximum: 600
+          default: 30
+        plan:
+          type: string
+          enum:
+          - trial
+          - pro_1k
+          - pro_5k
+          - pro_20k
+    GroqUsageMetrics:
+      type: object
+      properties:
+        endpoint:
+          type: string
+        model:
+          type: string
+        requests:
+          type: integer
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        errors:
+          type: integer
+security:
+- bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: Health check do servidor
+      tags:
+      - Sistema
+      responses:
+        '200':
+          description: Servidor saudavel
+        '503':
+          description: Servidor degradado
+  /api/cadastro:
+    post:
+      summary: Cadastro de usuario
+      tags:
+      - Autenticacao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CadastroInput'
+      responses:
+        '201':
+          description: Conta criada
+        '409':
+          description: Email ja cadastrado
+  /api/login:
+    post:
+      summary: Login do usuario
+      tags:
+      - Autenticacao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Login bem-sucedido
+        '401':
+          description: Credenciais invalidas
+  /api/chat:
+    post:
+      summary: Enviar mensagem para o NOG AI
+      tags:
+      - Chat
+      security:
+      - bearerAuth: []
+      - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatInput'
+      responses:
+        '200':
+          description: Resposta da IA
+        '400':
+          description: Erro na requisicao
+        '403':
+          description: Limite do plano gratuito atingido
+        '429':
+          description: Rate limit por usuário/IP excedido
+  /api/voice:
+    post:
+      summary: Chat por voz (áudio -> texto -> NOG)
+      tags:
+      - Chat
+      responses:
+        '200':
+          description: Resposta da IA
+  /api/user:
+    get:
+      summary: Dados do usuario logado
+      tags:
+      - Usuario
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do usuario
+    put:
+      summary: Atualizar dados do usuario
+      tags:
+      - Usuario
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Usuario atualizado
+  /api/veiculos:
+    get:
+      summary: Listar veiculos do usuario
+      tags:
+      - Veiculos
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de veiculos
+    post:
+      summary: Adicionar veiculo
+      tags:
+      - Veiculos
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Veiculo adicionado
+  /api/veiculos/{id}/foto:
+    post:
+      summary: Upload da foto do veículo (JSON base64 legado ou multipart)
+      tags:
+      - Veiculos
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Foto salva (retorna foto_url + foto_base64 legado quando aplicável)
+    get:
+      summary: Serve a foto do veículo (redirect S3 ou arquivo local)
+      tags:
+      - Veiculos
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Imagem
+        '302':
+          description: Redirect para storage externo
+  /api/dashboard:
+    get:
+      summary: Dashboard preditivo do veiculo
+      tags:
+      - Dashboard
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do dashboard
+  /api/maintenance/history:
+    get:
+      summary: Listar historico de manutencao
+      tags:
+      - Manutencao
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Historico de manutencao
+    post:
+      summary: Registrar manutencao via NLP
+      tags:
+      - Manutencao
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Manutencao registrada
+  /api/pay/preference:
+    post:
+      summary: Criar preferencia de pagamento Premium
+      tags:
+      - Pagamentos
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Checkout gerado
+  /api/pay/webhook/cakto:
+    post:
+      summary: Webhook da Cakto (pagamentos)
+      tags:
+      - Pagamentos
+      responses:
+        '200':
+          description: Webhook processado
+  /api/feedback:
+    post:
+      summary: Enviar feedback
+      tags:
+      - Feedback
+      responses:
+        '201':
+          description: Feedback registrado
+  /api/analytics/events:
+    post:
+      summary: Registrar evento de analytics
+      tags:
+      - Analytics
+      responses:
+        '200':
+          description: Evento registrado
+  /api/waitlist:
+    post:
+      summary: Capturar lead não-logado (lista de espera / topo de funil)
+      tags:
+      - Marketing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaitlistInput'
+      responses:
+        '201':
+          description: Lead registrado
+        '400':
+          description: E-mail inválido
+  /api/admin/leads:
+    get:
+      summary: Listar leads e métricas de conversão (admin)
+      tags:
+      - Marketing
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de leads
+        '403':
+          description: Acesso restrito
+  /api/admin/groq-metrics:
+    get:
+      summary: Métricas de uso/custo Groq por endpoint (admin)
+      tags:
+      - Sistema
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Contadores por endpoint/modelo
+  /api/b2b/diagnosis:
+    post:
+      summary: Diagnóstico B2B por foto
+      tags:
+      - B2B
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/B2BDiagnosisInput'
+      responses:
+        '200':
+          description: Laudo gerado
+        '401':
+          description: API key inválida
+        '429':
+          description: Rate limit / cota excedida
+  /api/docs:
+    get:
+      summary: Documentacao OpenAPI/Swagger
+      tags:
+      - Sistema
+      responses:
+        '200':
+          description: Especificacao OpenAPI

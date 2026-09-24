@@ -72,7 +72,7 @@ app.register_blueprint(training_bp, url_prefix="/api")
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 _startup_log("Importando rotas...")
-from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db, config_bp
+from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db, config_bp, groq_admin_bp
 from routes.mechanics import mechanics_bp
 from routes.events import events_bp
 from routes.notifications import notifications_bp
@@ -126,23 +126,35 @@ def _env_ws_origin() -> str | None:
         return "ws://" + url[len("http://"):]
     return None
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+_ALLOW_UNSAFE_EVAL = _env_flag("CSP_ALLOW_UNSAFE_EVAL", default=False)
+_script_src = ["'self'"]
+if _ALLOW_UNSAFE_EVAL:
+    _script_src.append("'unsafe-eval'")
+_script_src += [
+    "https://cdnjs.cloudflare.com",
+    "https://cdn.jsdelivr.net",
+    "https://unpkg.com",
+    "https://challenges.cloudflare.com",
+]
 csp = {
     'default-src': "'self'",
-    # script-src: todos os scripts inline dos HTML foram extraídos para arquivos
-    # externos (static/js/*.js). Nonce dinâmico é injetado para o Swagger UI.
-    'script-src': [
-        "'self'",
-        "'unsafe-eval'",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.jsdelivr.net",
-        "https://unpkg.com",
-        "https://challenges.cloudflare.com",
-    ],
+    # P3: 'unsafe-eval' removido por padrão (nenhum eval/new Function no frontend).
+    # Ative só em emergência via CSP_ALLOW_UNSAFE_EVAL=1.
+    # Scripts inline dos HTML foram extraídos para arquivos externos; nonce dinâmico no Swagger UI.
+    'script-src': _script_src,
     # script-src-attr: necessário para o widget Turnstile (cs.js) que usa
     # event handlers inline (onclick, etc). Não enfraquece script-src.
     'script-src-attr': ["'unsafe-inline'"],
-    # style-src: mantém 'unsafe-inline' por praticidade — 193 atributos style=""
-    # e 35 blocos <style> nos HTML estáticos não são viáveis de extrair agora.
+    # style-src: <style> nos HTML estáticos extraídos para css/inline-extracted.css (P3).
+    # 'unsafe-inline' mantido por compat com estilos dinâmicos via JS (nav.js drawer,
+    # notifications.js, mod_passport.js) + Tailwind utility. Remoção total quebraria UI.
     'style-src': [
         "'self'",
         "https://cdnjs.cloudflare.com",
@@ -152,6 +164,11 @@ csp = {
         "https://challenges.cloudflare.com",
         "'unsafe-inline'"
     ],
+    'object-src': ["'none'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'self'"],
+    'upgrade-insecure-requests': [],
     'font-src': [
         "'self'",
         "https://cdnjs.cloudflare.com",
@@ -354,13 +371,6 @@ def ensure_cors_headers(response):
     return response
 
 
-def _env_flag(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
 @app.cli.command("init-db")
 def init_db_command():
     """Inicializa/atualiza o schema do banco fora do ciclo de request."""
@@ -411,214 +421,24 @@ def health():
     status_code = 200 if checks["status"] == "healthy" else 503
     return jsonify(checks), status_code
 
-# Documentacao da API (Swagger/OpenAPI)
-SWAGGER_SPEC = {
-    "openapi": "3.0.3",
-    "info": {
-        "title": "AutoAssist IA API",
-        "version": "1.0.0",
-        "description": "API do AutoAssist - Ecossistema automotivo com IA. Consulte os endpoints para chat, manutenção preditiva, FIPE, pagamentos e mais.",
-    },
-    "servers": [
-        {"url": _env_frontend_origin() or "http://localhost:5001", "description": "Producao"},
-        {"url": "http://localhost:5001", "description": "Desenvolvimento"},
-    ],
-    "components": {
-        "securitySchemes": {
-            "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"},
+# Documentacao da API (Swagger/OpenAPI) — P1: fonte canônica em backend/openapi.yaml
+def _swagger_spec():
+    try:
+        from openapi_loader import load_spec
+        return load_spec(_env_frontend_origin() or "http://localhost:5001")
+    except Exception:
+        return {
+            "openapi": "3.0.3",
+            "info": {"title": "AutoAssist IA API", "version": "1.0.0"},
+            "paths": {},
         }
-    },
-    "security": [{"bearerAuth": []}],
-    "paths": {
-        "/health": {
-            "get": {
-                "summary": "Health check do servidor",
-                "tags": ["Sistema"],
-                "responses": {"200": {"description": "Servidor saudavel"}, "503": {"description": "Servidor degradado"}},
-            }
-        },
-        "/api/cadastro": {
-            "post": {
-                "summary": "Cadastro de usuario",
-                "tags": ["Autenticacao"],
-                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CadastroInput"}}}},
-                "responses": {"201": {"description": "Conta criada"}, "409": {"description": "Email ja cadastrado"}},
-            }
-        },
-        "/api/login": {
-            "post": {
-                "summary": "Login do usuario",
-                "tags": ["Autenticacao"],
-                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LoginInput"}}}},
-                "responses": {"200": {"description": "Login bem-sucedido"}, "401": {"description": "Credenciais invalidas"}},
-            }
-        },
-        "/api/chat": {
-            "post": {
-                "summary": "Enviar mensagem para o NOG AI",
-                "tags": ["Chat"],
-                "security": [{"bearerAuth": []}, {}],
-                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatInput"}}}},
-                "responses": {"200": {"description": "Resposta da IA"}, "400": {"description": "Erro na requisicao"}},
-            }
-        },
-        "/api/user": {
-            "get": {
-                "summary": "Dados do usuario logado",
-                "tags": ["Usuario"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"200": {"description": "Dados do usuario"}},
-            },
-            "put": {
-                "summary": "Atualizar dados do usuario",
-                "tags": ["Usuario"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"200": {"description": "Usuario atualizado"}},
-            },
-        },
-        "/api/veiculos": {
-            "get": {
-                "summary": "Listar veiculos do usuario",
-                "tags": ["Veiculos"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"200": {"description": "Lista de veiculos"}},
-            },
-            "post": {
-                "summary": "Adicionar veiculo",
-                "tags": ["Veiculos"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"201": {"description": "Veiculo adicionado"}},
-            },
-        },
-        "/api/dashboard": {
-            "get": {
-                "summary": "Dashboard preditivo do veiculo",
-                "tags": ["Dashboard"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"200": {"description": "Dados do dashboard"}},
-            }
-        },
-        "/api/maintenance/history": {
-            "get": {
-                "summary": "Listar historico de manutencao",
-                "tags": ["Manutencao"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"200": {"description": "Historico de manutencao"}},
-            },
-            "post": {
-                "summary": "Registrar manutencao via NLP",
-                "tags": ["Manutencao"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"201": {"description": "Manutencao registrada"}},
-            },
-        },
-        "/api/pay/preference": {
-            "post": {
-                "summary": "Criar preferencia de pagamento Premium",
-                "tags": ["Pagamentos"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"201": {"description": "Checkout gerado"}},
-            }
-        },
-        "/api/pay/webhook/cakto": {
-            "post": {
-                "summary": "Webhook da Cakto (pagamentos)",
-                "tags": ["Pagamentos"],
-                "responses": {"200": {"description": "Webhook processado"}},
-            }
-        },
-        "/api/feedback": {
-            "post": {
-                "summary": "Enviar feedback",
-                "tags": ["Feedback"],
-                "responses": {"201": {"description": "Feedback registrado"}},
-            }
-        },
-        "/api/analytics/events": {
-            "post": {
-                "summary": "Registrar evento de analytics",
-                "tags": ["Analytics"],
-                "responses": {"200": {"description": "Evento registrado"}},
-            }
-        },
-        "/api/waitlist": {
-            "post": {
-                "summary": "Capturar lead não-logado (lista de espera / topo de funil)",
-                "tags": ["Marketing"],
-                "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WaitlistInput"}}}},
-                "responses": {"201": {"description": "Lead registrado"}, "400": {"description": "E-mail inválido"}},
-            }
-        },
-        "/api/admin/leads": {
-            "get": {
-                "summary": "Listar leads e métricas de conversão (admin)",
-                "tags": ["Marketing"],
-                "security": [{"bearerAuth": []}],
-                "responses": {"200": {"description": "Lista de leads"}, "403": {"description": "Acesso restrito"}},
-            }
-        },
-        "/api/docs": {
-            "get": {
-                "summary": "Documentacao OpenAPI/Swagger",
-                "tags": ["Sistema"],
-                "responses": {"200": {"description": "Especificacao OpenAPI"}},
-            }
-        },
-    },
-    "schemas": {
-        "CadastroInput": {
-            "type": "object",
-            "required": ["nome", "email", "password"],
-            "properties": {
-                "nome": {"type": "string", "example": "João Silva"},
-                "email": {"type": "string", "format": "email", "example": "joao@email.com"},
-                "password": {"type": "string", "minLength": 6, "example": "senha123"},
-                "veiculos": {"type": "array", "items": {"$ref": "#/components/schemas/VeiculoInput"}},
-            },
-        },
-        "LoginInput": {
-            "type": "object",
-            "required": ["email", "password"],
-            "properties": {
-                "email": {"type": "string", "format": "email"},
-                "password": {"type": "string"},
-            },
-        },
-        "ChatInput": {
-            "type": "object",
-            "required": ["message"],
-            "properties": {
-                "message": {"type": "string", "example": "Qual o óleo ideal para meu carro?"},
-                "session_id": {"type": "string"},
-                "attachment": {"type": "object"},
-            },
-        },
-        "VeiculoInput": {
-            "type": "object",
-            "properties": {
-                "marca": {"type": "string"},
-                "modelo": {"type": "string"},
-                "ano_fabricacao": {"type": "integer"},
-                "tipo": {"type": "string", "enum": ["carro", "moto", "caminhao"]},
-                "quilometragem": {"type": "integer"},
-            },
-        },
-        "WaitlistInput": {
-            "type": "object",
-            "required": ["email"],
-            "properties": {
-                "nome": {"type": "string", "example": "Ana Silva"},
-                "email": {"type": "string", "format": "email", "example": "ana@email.com"},
-                "lead_magnet": {"type": "string", "example": "waitlist"},
-                "utm_source": {"type": "string"},
-                "utm_medium": {"type": "string"},
-                "utm_campaign": {"type": "string"},
-                "initial_referrer": {"type": "string"},
-                "referred_by": {"type": "string", "example": "A1B2C3D4"},
-            },
-        },
-    },
-}
+
+
+def _get_swagger_spec():
+    return _swagger_spec()
+
+
+SWAGGER_SPEC = _swagger_spec()
 def _docs_access_check():
     """Em produção exige usuário admin; em dev/teste a documentação é livre."""
     if not is_production:
@@ -641,7 +461,7 @@ def api_docs():
     blocked = _docs_access_check()
     if blocked is not None:
         return blocked
-    return jsonify(SWAGGER_SPEC)
+    return jsonify(_get_swagger_spec())
 
 
 @app.route("/api/swagger-ui")
@@ -702,6 +522,7 @@ app.register_blueprint(config_bp)
 app.register_blueprint(b2b_bp)
 app.register_blueprint(marketing_bp)
 app.register_blueprint(notes_bp)
+app.register_blueprint(groq_admin_bp)
 
 # Gera VAPID keys se nao existirem
 if not os.getenv("VAPID_PRIVATE_KEY") or not os.getenv("VAPID_PUBLIC_KEY"):

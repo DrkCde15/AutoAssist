@@ -33,9 +33,17 @@
     return "R$ " + Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
   }
 
-  function fotoSrc(foto) {
+  function fotoSrc(v) {
+    // P2: prefere foto_url/storage externo; fallback foto_base64 legado.
+    if (!v) return "";
+    if (typeof v === "object") {
+      if (v.foto_url) return v.foto_url;
+      return fotoSrc(v.foto_base64);
+    }
+    var foto = v;
     if (!foto) return "";
     if (foto.indexOf("data:") === 0) return foto;
+    if (foto.indexOf("/") === 0 || foto.indexOf("http") === 0) return foto;
     var mime = "image/jpeg";
     if (foto.indexOf("iVBOR") === 0) mime = "image/png";
     else if (foto.indexOf("R0lGOD") === 0) mime = "image/gif";
@@ -220,7 +228,7 @@
     for (var i = 0; i < veiculos.length; i++) {
       var v = veiculos[i];
       var tipoLabel = { carro: "Carro", moto: "Moto", caminhao: "Caminhão", outro: "Outro" }[v.tipo] || v.tipo || "—";
-      var foto = v.foto_base64 ? fotoSrc(v.foto_base64) : "";
+      var foto = fotoSrc(v);
       var iconHtml = foto
         ? '<img src="' + foto + '" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover" />'
         : '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">' +
