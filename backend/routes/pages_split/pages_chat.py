@@ -4,6 +4,39 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from services.web_scraping import WebScraper
+    from utils.async_task import _predictor
+    import base64
+    from datetime import datetime
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    from routes.database import get_mysql_history
+    from routes.analytics import has_prior_event
+    import hashlib
+    import io
+    import json
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    from extensions import limiter
+    import mimetypes
+    import os
+    import re
+    from routes.analytics import record_analytics_event
+    from flask import request
+    import speech_recognition as sr
+    from datetime import timezone
+    from utils.turnstile import turnstile_or_auth
+    import unicodedata
+    from flask_jwt_extended import verify_jwt_in_request
+    from .pages_maintenance import fetch_user_maintenance_alerts
+    from .pages_users import get_user_by_id, invalid_session_response
+    from .pages_vehicles import get_vehicle_reference_images, seed_vehicle_photo_if_missing
+    from ..pages import (ALLOWED_ATTACHMENT_EXTENSIONS, BINARY_ATTACHMENT_TYPES, DEFAULT_CHAT_HISTORY_LIMIT, 
+    FREE_MONTHLY_CHAT_LIMIT, GENERIC_CHAT_TOKENS, GUEST_CHAT_LIMIT, IMAGE_ATTACHMENT_TYPES, MAX_ATTACHMENT_BYTES, MAX_CHAT_HISTORY_LIMIT,
+    MAX_FILENAME_LENGTH, MAX_IMAGE_DIMENSIONS, TEXT_ATTACHMENT_LIMIT, TEXT_ATTACHMENT_TYPES, logger, pages_bp)
+
 def _emit_usage_events(*, user_id, anonymous_id, is_raio):
     """Emite eventos de uso do funil (NOG / Raio-X) de forma idempotente.
 
@@ -1098,6 +1131,60 @@ def chat():
         return jsonify(error="Erro interno"), 500
 
 
+def _ffmpeg_exe():
+    """Binário ffmpeg estático (imageio-ffmpeg) ou None se indisponível."""
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+def _decode_upload_to_wav(audio_file):
+    """Decodifica o upload (webm/opus do navegador) para WAV 16kHz mono.
+
+    Usa o binário estático do imageio-ffmpeg via subprocess — funciona com
+    ou sem ffmpeg/ffprobe do sistema (o Render tem; o dev local não).
+    """
+    exe = _ffmpeg_exe()
+    if exe is None:
+        # Fallback legado: pydub com ffmpeg do sistema (raro ter).
+        from pydub import AudioSegment
+        audio_segment = AudioSegment.from_file(audio_file)
+        wav_io = io.BytesIO()
+        audio_segment.export(wav_io, format="wav")
+        wav_io.seek(0)
+        return wav_io
+    import subprocess
+    import tempfile
+    data = audio_file.read()
+    if not data:
+        raise ValueError("Áudio vazio.")
+    with tempfile.NamedTemporaryFile(suffix=".in", delete=False) as tmp_in:
+        tmp_in.write(data)
+        in_path = tmp_in.name
+    out_fd, out_path = tempfile.mkstemp(suffix=".wav")
+    os.close(out_fd)
+    try:
+        proc = subprocess.run(
+            [exe, "-y", "-v", "error", "-i", in_path,
+             "-f", "wav", "-ac", "1", "-ar", "16000", out_path],
+            capture_output=True, timeout=60,
+        )
+        if proc.returncode != 0:
+            raise ValueError("Formato de áudio não suportado ou arquivo corrompido.")
+        with open(out_path, "rb") as fh:
+            wav_io = io.BytesIO(fh.read())
+        wav_io.seek(0)
+        return wav_io
+    finally:
+        for p in (in_path, out_path):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+
+
 @pages_bp.route("/api/voice", methods=["POST"])
 @turnstile_or_auth(action="chat")
 def handle_voice():
@@ -1124,11 +1211,9 @@ def handle_voice():
         client_history = []
 
     try:
-        # Converter o audio recebido para wav usando pydub (formato detectado automaticamente)
-        audio_segment = AudioSegment.from_file(audio_file)
-        wav_io = io.BytesIO()
-        audio_segment.export(wav_io, format="wav")
-        wav_io.seek(0)
+        # Converte o upload para WAV 16kHz mono (decodificação própria, sem
+        # depender de ffmpeg/ffprobe do sistema — ver _decode_upload_to_wav).
+        wav_io = _decode_upload_to_wav(audio_file)
 
         # Reconhecimento de fala
         recognizer = sr.Recognizer()
@@ -1241,6 +1326,8 @@ def handle_voice():
 
     except sr.UnknownValueError:
         return jsonify(error="Não entendi o que foi falado. Pode repetir?"), 400
+    except ValueError as exc:
+        return jsonify(error=str(exc) or "Arquivo de áudio inválido."), 400
     except sr.RequestError as e:
         logger.error(f"Erro de serviço SR: {e}")
         return jsonify(error="Erro no serviço de voz."), 500

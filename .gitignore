@@ -61,6 +61,8 @@ frontend/public/_next/
 
 .openclaude-profile.json
 *.pem
+# --- Runtime uploads (recriado sozinho; ver VEHICLE_PHOTO_DIR) ---
+backend/storage/
 secure_reports/
 
 # --- Agent skills (installed locally, not part of repo) ---

@@ -4,6 +4,22 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from flask import current_app
+    from datetime import datetime
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    import os
+    import re
+    from flask import request
+    from flask import send_from_directory
+    import uuid
+    from .pages_users import get_user_by_id, invalid_session_response
+    from ..pages import _FORBIDDEN_PATTERNS, _REFUSAL_PATTERNS, _SUGESTAO_PADRAO, logger, pages_bp
+
 @pages_bp.route("/api/onboarding/revisao", methods=["POST"])
 @jwt_required(optional=True)
 def onboarding_sugestao_revisao():

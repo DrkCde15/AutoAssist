@@ -1,7 +1,7 @@
 # AutoAssist
 
 Diagnóstico automotivo com IA, Tabela FIPE, histórico de manutenção e muito mais.
-Entenda seu carro antes de gastar dinheiro.
+Diagnóstico inteligente para o seu carro.
 
 ## Sobre
 

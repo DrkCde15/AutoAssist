@@ -15,24 +15,24 @@ com imports explícitos + lazy imports nos pontos de ciclo, e então
 eliminar o ``exec``. Até lá, este loader é a cola — ver
 ``_load_split_modules()``.
 """
-import base64
-import hashlib
-import html
-import io
-import json
+import base64  # noqa: F401 (usado pelos splits via exec)
+import hashlib  # noqa: F401 (usado pelos splits via exec)
+import html  # noqa: F401 (usado pelos splits via exec)
+import io  # noqa: F401 (usado pelos splits via exec)
+import json  # noqa: F401 (usado pelos splits via exec)
 import logging
-import mimetypes
+import mimetypes  # noqa: F401 (usado pelos splits via exec)
 import os
-import re
+import re  # noqa: F401 (usado pelos splits via exec)
 import threading
-import unicodedata
-import uuid
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from functools import lru_cache
-from time import monotonic
+import unicodedata  # noqa: F401 (usado pelos splits via exec)
+import uuid  # noqa: F401 (usado pelos splits via exec)
+from datetime import date, datetime, timedelta, timezone  # noqa: F401 (usado pelos splits via exec)
+from decimal import Decimal  # noqa: F401 (usado pelos splits via exec)
+from functools import lru_cache  # noqa: F401 (usado pelos splits via exec)
+from time import monotonic  # noqa: F401 (usado pelos splits via exec)
 
-from flask import (
+from flask import (  # noqa: F401 (usado pelos splits via exec)
     Blueprint,
     current_app,
     jsonify,
@@ -40,36 +40,35 @@ from flask import (
     send_file,
     send_from_directory,
 )
-from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
-from pydub import AudioSegment
-import speech_recognition as sr
+from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request  # noqa: F401 (usado pelos splits via exec)
+import speech_recognition as sr  # noqa: F401 (usado pelos splits via exec)
 
-from extensions import limiter
-from services.maintenance_service import (
+from extensions import limiter  # noqa: F401 (usado pelos splits via exec)
+from services.maintenance_service import (  # noqa: F401 (usado pelos splits via exec)
     _status_from_remaining,
     apply_manual_overrides,
     parse_maintenance_entry,
     serialize_maintenance_row,
 )
-from services.nogai import (
+from services.nogai import (  # noqa: F401 (usado pelos splits via exec)
     _invalidate_maintenance_context,
     _invalidate_user_ai_cache,
     prever_intervalo_manutencao,
 )
-from services.web_scraping import WebScraper
-from utils.async_task import _predictor
-from utils.email import enviar_email
-from utils.turnstile import turnstile_or_auth
+from services.web_scraping import WebScraper  # noqa: F401 (usado pelos splits via exec)
+from utils.async_task import _predictor  # noqa: F401 (usado pelos splits via exec)
+from utils.email import enviar_email  # noqa: F401 (usado pelos splits via exec)
+from utils.turnstile import turnstile_or_auth  # noqa: F401 (usado pelos splits via exec)
 
-from .analytics import has_prior_event, record_analytics_event
-from .database import (
+from .analytics import has_prior_event, record_analytics_event  # noqa: F401 (usado pelos splits via exec)
+from .database import (  # noqa: F401 (usado pelos splits via exec)
     get_db,
     get_mysql_history,
     get_trial_days_remaining,
     is_trial_expired,
 )
-from .notifications import create_notification
-from .push import send_push_notification
+from .notifications import create_notification  # noqa: F401 (usado pelos splits via exec)
+from .push import send_push_notification  # noqa: F401 (usado pelos splits via exec)
 
 pages_bp = Blueprint('pages', __name__)
 logger = logging.getLogger(__name__)
@@ -212,7 +211,7 @@ def get_split_status():
 
 # Re-exports explícitos: o que testes e websocket_handler importam deste módulo.
 # (Os nomes vêm dos splits via exec; a lista abaixo documenta o contrato.)
-__all__ = [
+__all__ = [  # noqa: F821 (nomes injetados pelos splits via exec)
     "pages_bp",
     "logger",
     "get_split_status",

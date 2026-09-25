@@ -4,6 +4,21 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from decimal import Decimal
+    import base64
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    import json
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    from flask import request
+    from .pages_maintenance import _enqueue_alert_email, _invalidate_dashboard_cache_for_user, send_maintenance_alert_email_for_user
+    from .pages_modpassport import _calcular_detalhe
+    from .pages_users import get_user_by_id
+    from ..pages import CRITICAL_MAINTENANCE_STATUSES, FIPE_AJUSTADA_DISCLAIMER, logger, pages_bp
+
 def _enrich_veiculo_foto(v):
     """P2: garante foto_url/foto_mime no payload mesmo em bancos antigos."""
     try:

@@ -4,6 +4,33 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from datetime import date
+    from utils.async_task import _predictor
+    from services.maintenance_service import _status_from_remaining
+    from services.maintenance_service import apply_manual_overrides
+    from routes.notifications import create_notification
+    from datetime import datetime
+    from utils.email import enviar_email
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    import html
+    import json
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    from functools import lru_cache
+    from time import monotonic
+    import os
+    from services.maintenance_service import parse_maintenance_entry
+    from services.nogai import prever_intervalo_manutencao
+    from flask import request
+    from routes.push import send_push_notification
+    from services.maintenance_service import serialize_maintenance_row
+    from datetime import timedelta
+    from .pages_users import ensure_maintenance_access, ensure_premium_user, get_dashboard_url, get_user_by_id, invalid_session_response
+    from ..pages import ACTIONABLE_MAINTENANCE_STATUSES, CRITICAL_MAINTENANCE_STATUSES, MAINTENANCE_DISPATCH_LOCK_NAME, _maintenance_dispatch_thread_lock, logger, pages_bp
+
 @lru_cache(maxsize=1)
 def _load_maintenance_helpers():
     from services.maintenance_service import (

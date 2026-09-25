@@ -4,6 +4,20 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from decimal import Decimal
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    from routes.database import get_trial_days_remaining
+    from routes.database import is_trial_expired
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    from flask import request
+    from .pages_chat import serialize_datetime_field
+    from .pages_vehicles import _enrich_veiculo_foto
+    from ..pages import FREE_MAINTENANCE_LIMIT, INVALID_SESSION_ERROR, PREMIUM_ONLY_ERROR, logger, pages_bp
+
 def get_dashboard_url() -> str:
     # Return URL to the legacy HTML dashboard page
     base = request.host_url.rstrip('/')

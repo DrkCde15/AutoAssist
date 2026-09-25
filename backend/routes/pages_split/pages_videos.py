@@ -4,6 +4,17 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    import json
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    from flask import request
+    from .pages_users import ensure_premium_user, get_user_by_id
+    from ..pages import logger, pages_bp
+
 @pages_bp.route("/api/videos", methods=["GET"])
 @jwt_required()
 def get_videos():

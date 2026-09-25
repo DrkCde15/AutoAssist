@@ -43,7 +43,10 @@
     var foto = v;
     if (!foto) return "";
     if (foto.indexOf("data:") === 0) return foto;
-    if (foto.indexOf("/") === 0 || foto.indexOf("http") === 0) return foto;
+    // P2: URL do storage externo (absoluta) ou endpoint interno /api/...
+    // NOTA: JPEG em base64 começa com "/9j/" — nunca tratar "/" genérico como URL.
+    if (foto.indexOf("http://") === 0 || foto.indexOf("https://") === 0) return foto;
+    if (foto.indexOf("/api/") === 0) return foto;
     var mime = "image/jpeg";
     if (foto.indexOf("iVBOR") === 0) mime = "image/png";
     else if (foto.indexOf("R0lGOD") === 0) mime = "image/gif";

@@ -4,6 +4,23 @@ Carregado via exec() em routes/pages.py compartilhando os mesmos globals
 (imports, pages_bp, constantes, logger). Não importar diretamente.
 """
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:  # noqa: F401 — nomes providos em runtime pelos globals de routes/pages.py (exec)
+    from decimal import Decimal
+    from datetime import datetime
+    from routes.database import get_db
+    from flask_jwt_extended import get_jwt_identity
+    import io
+    import json
+    from flask import jsonify
+    from flask_jwt_extended import jwt_required
+    import re
+    from flask import request
+    from flask import send_file
+    import uuid
+    from .pages_maintenance import _invalidate_dashboard_cache_for_user
+    from ..pages import FIPE_AJUSTADA_DISCLAIMER, _MOD_FIPE_PCT, _MOD_FIPE_PCT_MAX, logger, pages_bp
+
 def _parse_fipe_valor(valor):
     """Extrai valor numerico (float) de uma string FIPE ('R$ 45.000,00')."""
     if valor is None:

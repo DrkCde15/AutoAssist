@@ -12,7 +12,7 @@ services:
     plan: starter
     region: virginia
     rootDir: backend
-    buildCommand: bash build.sh
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app -c gunicorn.conf.py --bind 0.0.0.0:$PORT
     healthCheckPath: /health
     envVars:
