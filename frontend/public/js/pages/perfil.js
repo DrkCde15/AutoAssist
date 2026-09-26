@@ -152,6 +152,44 @@
 
       "</div>" +
 
+      /* ── Segurança: 2FA (senha secundária) ── */
+      '<div class="mt-8 rounded-xl border border-border bg-secondary p-6">' +
+        '<h2 class="text-sm font-semibold text-primary mb-1">Verificação em duas etapas</h2>' +
+        '<p class="text-xs text-muted mb-4" id="tfa-status">Carregando status...</p>' +
+        '<form id="form-tfa-enable" class="hidden space-y-4">' +
+          '<div class="grid gap-4 sm:grid-cols-2">' +
+            '<div>' +
+              '<label for="tfa-pass" class="block text-xs font-medium text-muted mb-1">Senha secundária (mín. 6 caracteres, diferente da principal)</label>' +
+              '<input id="tfa-pass" type="password" autocomplete="new-password" class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />' +
+            "</div>" +
+            '<div>' +
+              '<label for="tfa-pass2" class="block text-xs font-medium text-muted mb-1">Confirmar senha secundária</label>' +
+              '<input id="tfa-pass2" type="password" autocomplete="new-password" class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />' +
+            "</div>" +
+          "</div>" +
+          '<button type="submit" id="btn-tfa-enable" class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover">Ativar 2FA</button>' +
+        "</form>" +
+        '<form id="form-tfa-disable" class="hidden space-y-4">' +
+          '<div>' +
+            '<label for="tfa-cur" class="block text-xs font-medium text-muted mb-1">Senha secundária atual</label>' +
+            '<input id="tfa-cur" type="password" autocomplete="current-password" class="w-full rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />' +
+          "</div>" +
+          '<button type="submit" id="btn-tfa-disable" class="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10">Desativar 2FA</button>' +
+        "</form>" +
+        '<p id="tfa-msg" class="hidden mt-3 text-xs"></p>' +
+      "</div>" +
+
+      /* ── Programa de indicação ── */
+      '<div class="mt-8 rounded-xl border border-accent/30 bg-accent/5 p-6">' +
+        '<h2 class="text-sm font-semibold text-primary mb-1">Convide e ganhe Premium</h2>' +
+        '<p class="text-xs text-muted mb-4">Compartilhe seu link: cada amigo que assinar o Premium com ele te dá <strong class="text-primary">1 mês grátis</strong>.</p>' +
+        '<div id="referral-box" class="flex flex-col gap-3 sm:flex-row">' +
+          '<input id="referral-link" type="text" readonly value="Carregando..." class="flex-1 rounded-lg border border-border bg-primary px-3 py-2 text-sm text-primary focus:border-accent focus:outline-none" />' +
+          '<button type="button" id="btn-copiar-convite" class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover">Copiar link</button>' +
+        "</div>" +
+        '<p id="referral-code" class="mt-2 text-xs text-muted"></p>' +
+      "</div>" +
+
       /* ── Veículos ── */
       '<div class="mt-8">' +
         '<div class="flex items-center justify-between mb-4">' +
@@ -461,6 +499,7 @@
         e.target.reset();
         document.getElementById("form-veiculo-wrapper").classList.add("hidden");
         loadVeiculos();
+        fetchOnboardingSugestao(payload);
       })
       .catch(function (err) {
         toast(err.message || "Erro ao adicionar veículo.", "error");
@@ -499,6 +538,143 @@
         auth.logout();
       });
     }
+
+    loadReferral();
+    renderTfa(window.__perfilUser || null);
+  }
+
+  function renderTfa(user) {
+    var status = document.getElementById("tfa-status");
+    var fEnable = document.getElementById("form-tfa-enable");
+    var fDisable = document.getElementById("form-tfa-disable");
+    if (!status || !fEnable || !fDisable) return;
+    var enabled = !!(user && user.is_two_factor_enabled);
+    status.textContent = enabled
+      ? "Ativada — o login exige a senha secundária."
+      : "Desativada — ative para exigir uma senha secundária no login.";
+    fEnable.classList.toggle("hidden", enabled);
+    fDisable.classList.toggle("hidden", !enabled);
+  }
+
+  function tfaMessage(text, ok) {
+    var el = document.getElementById("tfa-msg");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "mt-3 text-xs " + (ok ? "text-emerald-400" : "text-red-400");
+    el.classList.remove("hidden");
+  }
+
+  function bindTfaForms() {
+    var fEnable = document.getElementById("form-tfa-enable");
+    if (fEnable && !fEnable.dataset.bound) {
+      fEnable.dataset.bound = "1";
+      fEnable.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var p1 = document.getElementById("tfa-pass").value;
+        var p2 = document.getElementById("tfa-pass2").value;
+        tfaMessage("", true);
+        document.getElementById("tfa-msg").classList.add("hidden");
+        window.api
+          .post("/api/auth/2fa/confirm", { password: p1, confirm_password: p2 })
+          .then(function () {
+            tfaMessage("2FA ativado com sucesso.", true);
+            return window.api.get("/api/user");
+          })
+          .then(function (user) {
+            window.__perfilUser = user;
+            renderTfa(user);
+          })
+          .catch(function (err) {
+            tfaMessage((err && err.message) || "Não foi possível ativar.", false);
+          });
+      });
+    }
+    var fDisable = document.getElementById("form-tfa-disable");
+    if (fDisable && !fDisable.dataset.bound) {
+      fDisable.dataset.bound = "1";
+      fDisable.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var cur = document.getElementById("tfa-cur").value;
+        window.api
+          .post("/api/auth/2fa/disable", { password: cur })
+          .then(function () {
+            tfaMessage("2FA desativado.", true);
+            return window.api.get("/api/user");
+          })
+          .then(function (user) {
+            window.__perfilUser = user;
+            renderTfa(user);
+          })
+          .catch(function (err) {
+            tfaMessage((err && err.message) || "Não foi possível desativar.", false);
+          });
+      });
+    }
+  }
+
+  // Onboarding: sugestão de revisão da IA ao adicionar o primeiro veículo
+  function fetchOnboardingSugestao(payload) {
+    var box = document.getElementById("onboarding-sugestao");
+    window.api
+      .post("/api/onboarding/revisao", {
+        marca: payload.marca,
+        modelo: payload.modelo,
+        ano_fabricacao: payload.ano_fabricacao,
+        quilometragem: payload.quilometragem,
+      })
+      .then(function (res) {
+        if (!res || !res.sugestao) return;
+        if (!box) {
+          var grid = document.getElementById("veiculos-list");
+          if (!grid || !grid.parentNode) return;
+          box = document.createElement("div");
+          box.id = "onboarding-sugestao";
+          box.className = "mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5";
+          grid.parentNode.insertBefore(box, grid);
+        }
+        box.innerHTML =
+          '<h3 class="text-sm font-semibold text-primary mb-2">Revisão sugerida pela NOG</h3>' +
+          '<p class="text-sm text-secondary">' + escapeHTML(res.sugestao) + "</p>";
+      })
+      .catch(function () { /* sugestão é opcional: ignora */ });
+  }
+
+  function loadReferral() {    var input = document.getElementById("referral-link");
+    var codeEl = document.getElementById("referral-code");
+    var btn = document.getElementById("btn-copiar-convite");
+    if (!input) return;
+    window.api
+      .get("/api/referral")
+      .then(function (res) {
+        input.value = res.referral_link || "";
+        if (codeEl && res.referral_code) {
+          codeEl.textContent = "Seu código: " + res.referral_code;
+        }
+      })
+      .catch(function () {
+        input.value = "";
+        input.placeholder = "Indisponível no momento";
+      });
+    if (btn) {
+      btn.addEventListener("click", function () {
+        var link = input.value;
+        if (!link) return;
+        function done() {
+          btn.textContent = "Copiado!";
+          toast("Link de convite copiado!", "success");
+          setTimeout(function () { btn.textContent = "Copiar link"; }, 2000);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(done, function () {
+            input.select();
+            try { document.execCommand("copy"); done(); } catch (e) { /* sem clipboard */ }
+          });
+        } else {
+          input.select();
+          try { document.execCommand("copy"); done(); } catch (e) { /* sem clipboard */ }
+        }
+      });
+    }
   }
 
   function init() {
@@ -512,8 +688,10 @@
     window.api
       .get("/api/user")
       .then(function (user) {
+        window.__perfilUser = user;
         renderProfile(user);
         bindEvents();
+        bindTfaForms();
         ensureFotoInput();
         renderVeiculos(user.veiculos || []);
       })

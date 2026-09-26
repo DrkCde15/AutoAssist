@@ -175,12 +175,12 @@ AutoAssist/
 Crie um arquivo `.env` na pasta `backend/` com:
 
 ```env
-# Groq (IA)
+# Groq (IA) — modelos vigentes (compound desligado pela Groq em 21/09/2026)
 API_GROQ=sua_chave_aqui
-GROQ_PRIMARY_MODEL=groq/compound-mini
+GROQ_PRIMARY_MODEL=openai/gpt-oss-120b
 GROQ_UTILITY_MODEL=openai/gpt-oss-20b
-GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
-GROQ_FALLBACK_MODELS=groq/compound
+GROQ_VISION_MODEL=qwen/qwen3.8-27b
+GROQ_FALLBACK_MODELS=openai/gpt-oss-20b
 
 # Busca web de eventos (fallback de baixa confiança)
 # Scrapling/Bing nao exige chave. Brave Search API eleva a qualidade se configurada:

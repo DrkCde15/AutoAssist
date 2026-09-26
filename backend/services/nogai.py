@@ -322,8 +322,8 @@ def get_fipe_value(tipo, marca_nome, modelo_nome, ano):
         return None
 
 
-DEFAULT_TEXT_MODEL = "groq/compound-mini"
-DEFAULT_FALLBACK_MODELS = ("groq/compound",)
+DEFAULT_TEXT_MODEL = "openai/gpt-oss-120b"
+DEFAULT_FALLBACK_MODELS = ("openai/gpt-oss-20b",)
 
 
 def _read_int_env(name, default, minimum=0):
@@ -353,7 +353,7 @@ def _read_bool_env(name, default=False):
 
 GROQ_FALLBACK_ON_QUOTA = _read_bool_env("GROQ_FALLBACK_ON_QUOTA", default=True)
 GROQ_QUOTA_MESSAGE = (
-    "O NOG atingiu o limite de sua API no momento. Tente novamente em alguns minutos. Agradecemos sua compreensão!"
+    "O NOG está com movimento alto agora. Tente de novo em alguns minutinhos!"
 )
 GROQ_TEMPORARY_UNAVAILABLE_MESSAGE = (
     "O NOG está com alta demanda no momento. Tente novamente em alguns minutos."

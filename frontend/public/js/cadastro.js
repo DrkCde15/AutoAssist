@@ -31,6 +31,17 @@
     submitBtn.disabled = false;
   });
 
+  // Programa de indicação: captura ?ref= e exibe banner
+  var referralCode = null;
+  try {
+    referralCode = new URLSearchParams(window.location.search).get("ref");
+    if (referralCode) {
+      referralCode = referralCode.trim().substring(0, 20) || null;
+      var banner = document.getElementById("referral-banner");
+      if (banner) banner.classList.remove("hidden");
+    }
+  } catch (e) { referralCode = null; }
+
   document.getElementById('signupForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     errorDiv.classList.add('hidden');
@@ -66,7 +77,8 @@
         confirm_email: confirmEmail,
         password: password,
         confirm_password: password2,
-        turnstile_token: token
+        turnstile_token: token,
+        referred_by: referralCode
       });
       var params = new URLSearchParams(window.location.search);
       var plan = params.get("plan");

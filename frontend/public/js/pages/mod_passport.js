@@ -45,7 +45,39 @@
   }
 
   function toast(msg, type) {
-    if (window.components && window.components.toast) window.components.toast(msg, type);
+    if (window.showToast) {
+      window.showToast(msg, type);
+    } else if (window.components && window.components.toast) {
+      window.components.toast(msg, type);
+    }
+  }
+
+  // Copia texto com fallback p/ contextos sem Clipboard API (HTTP não-localhost)
+  function copyTextToClipboard(text, onOk, onFallback) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onOk, function () {
+        fallbackCopy(text) ? onOk() : onFallback();
+      });
+      return;
+    }
+    fallbackCopy(text) ? onOk() : onFallback();
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch (e) {
+      return false;
+    }
   }
 
   // ── Modal ──
@@ -263,11 +295,11 @@
     window.api.post("/api/veiculos/" + vehicleId + "/mod-passport/share")
       .then(function (data) {
         if (data.share_url) {
-          navigator.clipboard.writeText(data.share_url).then(function () {
-            toast("Link copiado para a area de transferencia!", "success");
-          }).catch(function () {
-            toast("Link gerado: " + data.share_url, "success");
-          });
+          copyTextToClipboard(
+            data.share_url,
+            function () { toast("Link copiado para a área de transferência!", "success"); },
+            function () { toast("Link gerado: " + data.share_url, "success"); }
+          );
         }
       })
       .catch(function (err) {
@@ -284,9 +316,26 @@
 
     window.api.post("/api/veiculos/" + vehicleId + "/mod-passport/share")
       .then(function (data) {
-        if (data.share_token) {
-          window.open("/api/public/mod-passport/" + data.share_token + "/pdf", "_blank");
-        }
+        if (!data.share_token) throw new Error("sem token");
+        // Fetch + blob em vez de window.open (bloqueado por popup-blocker
+        // quando chamado fora do gesto direto do usuário).
+        return fetch("/api/public/mod-passport/" + encodeURIComponent(data.share_token) + "/pdf", {
+          credentials: "include",
+        }).then(function (res) {
+          if (!res.ok) throw new Error("falha no download");
+          return res.blob();
+        });
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "mod-passport-" + vehicleId + ".pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+        toast("PDF baixado com sucesso.", "success");
       })
       .catch(function (err) {
         toast(err.message || "Erro ao gerar PDF.", "error");

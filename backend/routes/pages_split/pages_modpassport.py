@@ -298,7 +298,7 @@ def share_mod_passport(v_id):
                 pass
             _invalidate_dashboard_cache_for_user(user_id)
         base = request.host_url.rstrip("/")
-        url = "{}/api/public/mod-passport/{}".format(base, token)
+        url = "{}/mod-passport.html?token={}".format(base, token)
         return jsonify(success=True, share_token=token, share_url=url), 200
     except Exception as e:
         logger.error("Erro compartilhar mod passport: %s", e, exc_info=True)

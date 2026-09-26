@@ -9,13 +9,22 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
-DEFAULT_PRIMARY_MODEL = "groq/compound-mini"
+DEFAULT_PRIMARY_MODEL = "openai/gpt-oss-120b"
 DEFAULT_UTILITY_MODEL = "openai/gpt-oss-20b"
 DEFAULT_VISION_MODEL = "qwen/qwen3.8-27b"
-DEFAULT_FALLBACK_MODELS = ("groq/compound",)
-DEFAULT_UTILITY_FALLBACK_MODELS = ("groq/compound",)
+DEFAULT_FALLBACK_MODELS = ("openai/gpt-oss-20b",)
+DEFAULT_UTILITY_FALLBACK_MODELS = ("openai/gpt-oss-20b",)
 DEFAULT_VISION_FALLBACK_MODELS = ()
-TEXT_ONLY_MODELS = {"groq/compound", "groq/compound-mini"}
+TEXT_ONLY_MODELS = {
+    # Modelos só-texto: nunca usar para visão (força o fallback de visão).
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-safeguard-20b",
+    # Legados descontinuados (Groq desligou em 21/09/2026); mantidos aqui
+    # para o caso de virem via env antiga — nunca serão chamados.
+    "groq/compound",
+    "groq/compound-mini",
+}
 RETRYABLE_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504}
 _warned_text_only_vision_models = set()
 

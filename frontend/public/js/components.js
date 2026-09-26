@@ -47,34 +47,52 @@
     });
   });
 
-  // ── Toast notification ──
+  // ── Toast notification (estilos 100% inline: o styles.css compilado
+  // não contém as utilities dinâmicas, então classes Tailwind aqui quebravam)
   window.showToast = function (message, type) {
     type = type || "info";
-    var config = {
-      info: { bg: "bg-accent text-white", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>' },
-      success: { bg: "bg-green-600 text-white", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' },
-      error: { bg: "bg-red-600 text-white", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>' },
-      warning: { bg: "bg-amber-500 text-black", icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>' }
+    var bg = {
+      info: "#3b82f6",
+      success: "#16a34a",
+      error: "#dc2626",
+      warning: "#f59e0b",
+    }[type] || "#3b82f6";
+    var icons = {
+      info: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+      success: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      error: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>',
+      warning: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>',
     };
-    var c = config[type] || config.info;
     var toast = document.createElement("div");
-    toast.className =
-      "fixed bottom-4 right-4 z-[9999] flex items-center gap-2.5 rounded-lg border-l-4 border-white/20 px-4 py-3 text-sm font-medium shadow-lg transition-all duration-300 translate-y-2 opacity-0 " +
-      c.bg;
-    toast.innerHTML = '<span class="shrink-0">' + c.icon + '</span><span>' + message + '</span>';
+    toast.setAttribute("role", "status");
+    toast.style.cssText =
+      "position:fixed;bottom:1rem;right:1rem;z-index:20000;display:flex;align-items:center;gap:0.625rem;" +
+      "max-width:min(92vw,24rem);padding:0.75rem 1rem;border-radius:0.5rem;border-left:4px solid rgba(255,255,255,0.35);" +
+      "background:" + bg + ";color:#fff;font-size:0.875rem;font-weight:500;" +
+      "box-shadow:0 10px 25px rgba(0,0,0,0.45);opacity:0;transform:translateY(0.5rem);" +
+      "transition:opacity 0.3s ease,transform 0.3s ease;";
+    var iconWrap = document.createElement("span");
+    iconWrap.style.cssText = "flex-shrink:0;display:flex;";
+    iconWrap.innerHTML = icons[type] || icons.info;
+    var text = document.createElement("span");
+    text.textContent = message;
+    toast.appendChild(iconWrap);
+    toast.appendChild(text);
     document.body.appendChild(toast);
 
     requestAnimationFrame(function () {
-      toast.classList.remove("translate-y-2", "opacity-0");
-      toast.classList.add("translate-y-0", "opacity-100");
+      requestAnimationFrame(function () {
+        toast.style.opacity = "1";
+        toast.style.transform = "translateY(0)";
+      });
     });
 
     setTimeout(function () {
-      toast.classList.remove("translate-y-0", "opacity-100");
-      toast.classList.add("translate-y-2", "opacity-0");
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(0.5rem)";
       setTimeout(function () {
-        toast.remove();
-      }, 300);
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 320);
     }, 3000);
   };
 

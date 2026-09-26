@@ -611,6 +611,7 @@
       var sid = state.activeSessionId;
       if (!state.localMessages[sid]) state.localMessages[sid] = [];
       state.localMessages[sid].push(userMsg);
+      persistGuestCache();
       if (!state.localConversationMeta[sid]) {
         state.localConversationMeta[sid] = {
           session_id: sid,
@@ -1022,7 +1023,20 @@
     }
   }
 
-  // ── Download chat report ──
+  // ── System message (avisos centralizados; faltava: cliques morriam em ReferenceError)
+  function addSystemMessage(text) {
+    if (!messagesEl) return;
+    var wrap = document.createElement("div");
+    wrap.className = "flex justify-center my-2";
+    var bubble = document.createElement("div");
+    bubble.className = "rounded-full border border-border bg-card px-4 py-1.5 text-xs text-muted";
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    messagesEl.appendChild(wrap);
+    scrollToBottom(true);
+  }
+
+  // ── Download chat report: PDF do backend (logado) ou .txt local (visitante)
   function downloadChatReport() {
     var messages = state.messages || [];
     if (messages.length === 0) {
@@ -1049,8 +1063,48 @@
     }
 
     lines.push("--- FIM DO LAUDO ---");
+    var text = lines.join("\n");
 
-    var blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    if (!isLoggedIn()) {
+      downloadTxt(text);
+      return;
+    }
+    addSystemMessage("Gerando PDF do laudo...");
+    window.api
+      .post("/api/report", { text: text })
+      .then(function (data) {
+        if (!data || !data.url) throw new Error("sem url");
+        // Baixa via fetch autenticado (header JWT) em vez de <a href> direto,
+        // que dependeria do cookie JWT — ausente em alguns fluxos de login.
+        var token = null;
+        try { token = localStorage.getItem("autoassist_access_token"); } catch (e) {}
+        var headers = {};
+        if (token) headers["Authorization"] = "Bearer " + token;
+        return fetch(data.url, { headers: headers, credentials: "include" }).then(function (res) {
+          if (!res.ok) throw new Error("falha no download");
+          return res.blob();
+        });
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "laudo-conversa-" + new Date().toISOString().slice(0, 10) + ".pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+        addSystemMessage("Laudo em PDF gerado.");
+      })
+      .catch(function () {
+        // Backend indisponível: fallback para .txt local
+        downloadTxt(text);
+        addSystemMessage("PDF indisponível — baixado em texto.");
+      });
+  }
+
+  function downloadTxt(text) {
+    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
@@ -1267,6 +1321,7 @@
     var sid = state.activeSessionId;
     if (!state.localMessages[sid]) state.localMessages[sid] = [];
     state.localMessages[sid].push(userMsg);
+    persistGuestCache();
 
     // Update local conversation meta
     if (!state.localConversationMeta[sid]) {
@@ -1367,6 +1422,8 @@
         if (sid) {
           if (!state.localMessages[sid]) state.localMessages[sid] = [];
           state.localMessages[sid].push(aiMsg);
+          persistGuestCache();
+            persistGuestCache();
           if (state.localConversationMeta[sid]) {
             state.localConversationMeta[sid].count = state.localMessages[sid].length;
             state.localConversationMeta[sid].updated_at = aiMsg.timestamp;
@@ -1767,11 +1824,66 @@
     return !!(auth && auth.isAuthenticated && auth.isAuthenticated());
   }
 
+  // ── Guest cache (sincroniza conversa de visitante após o login) ──
+  var GUEST_CACHE_KEY = "autoassist_guest_cache";
+
+  function persistGuestCache() {
+    if (isLoggedIn()) return;
+    try {
+      localStorage.setItem(GUEST_CACHE_KEY, JSON.stringify({
+        messages: state.localMessages || {},
+        meta: state.localConversationMeta || {},
+      }));
+    } catch (e) { /* storage cheio/indisponível: ignora */ }
+  }
+
+  function loadGuestCache() {
+    var raw = null;
+    try { raw = localStorage.getItem(GUEST_CACHE_KEY); } catch (e) { return false; }
+    if (!raw) return false;
+    try {
+      var cache = JSON.parse(raw);
+      state.localMessages = cache.messages || {};
+      state.localConversationMeta = cache.meta || {};
+      return Object.keys(state.localMessages).length > 0;
+    } catch (e) { return false; }
+  }
+
+  function clearGuestCache() {
+    try { localStorage.removeItem(GUEST_CACHE_KEY); } catch (e) {}
+    state.localMessages = {};
+    state.localConversationMeta = {};
+  }
+
+  function syncGuestCache() {
+    if (!isLoggedIn()) return;
+    var chats = [];
+    Object.keys(state.localMessages || {}).forEach(function (sid) {
+      (state.localMessages[sid] || []).forEach(function (m) {
+        if (!m || !m.content) return;
+        chats.push({
+          session_id: sid,
+          mensagem_usuario: m.role === "user" ? m.content : "",
+          resposta_ia: m.role === "assistant" ? m.content : "",
+          created_at: m.timestamp || new Date().toISOString(),
+        });
+      });
+    });
+    if (!chats.length) { clearGuestCache(); return; }
+    window.api
+      .post("/api/chat/sync_guest", { chats: chats })
+      .then(function () { clearGuestCache(); })
+      .catch(function () { /* tenta de novo no próximo carregamento */ });
+  }
+
   // ── Init ──
   document.addEventListener("DOMContentLoaded", function () {
     buildUI();
     bindEvents();
     renderEmptyState();
+
+    loadGuestCache();
+    if (isLoggedIn()) syncGuestCache();
 
     fetchVehicles().then(function () {
       if (isLoggedIn()) {

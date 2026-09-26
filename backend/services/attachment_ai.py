@@ -109,7 +109,7 @@ def normalize_pdf_text(text: str) -> str:
 def build_pdf_prompt(filename: str, text: str, pergunta: str | None = None, was_truncated: bool = False) -> str:
     question = (pergunta or "").strip() or "Analise o PDF e destaque os pontos automotivos relevantes."
     truncated_notice = (
-        "\n\nObservação: o texto foi recortado para caber no limite da API. Foque no trecho disponível."
+        "\n\nObservação: o texto foi recortado por ser muito longo. Foque no trecho disponível."
         if was_truncated else ""
     )
     return (
