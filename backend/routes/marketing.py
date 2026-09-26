@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import limiter
 from utils.email import enviar_email
-from .database import get_db, is_valid_email_domain
+from .database import get_db, insert_get_id, is_valid_email_domain
 from .analytics import record_analytics_event
 
 marketing_bp = Blueprint("marketing", __name__)
@@ -157,7 +157,8 @@ def capture_lead():
                     pass
                 return jsonify(success=True, already_lead=True, message="E-mail já registrado. Em breve falaremos com você!"), 200
 
-            cursor.execute(
+            lead_id = insert_get_id(
+                cursor,
                 """
                 INSERT INTO leads (
                     nome, email, anonymous_id, utm_source, utm_medium, utm_campaign,
@@ -169,7 +170,6 @@ def capture_lead():
                     utm_term, utm_content, initial_referrer, referred_by, lead_magnet,
                 ),
             )
-            lead_id = cursor.lastrowid
 
         # Evento de analytics (topo de funil) para o relatório de aquisição.
         try:

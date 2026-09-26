@@ -675,7 +675,8 @@ def register_maintenance_history():
             parser_metadata = dict(parsed.get("parser_metadata") or {})
             parser_metadata["auto_linked_vehicle"] = raw_vehicle_id is None and vehicle_id is not None
 
-            cursor.execute(
+            maintenance_id = insert_get_id(
+                cursor,
                 """
                 INSERT INTO maintenance_history (
                     user_id, vehicle_id, description, maintenance_type, maintenance_label,
@@ -701,7 +702,6 @@ def register_maintenance_history():
                     json.dumps(parser_metadata, ensure_ascii=False),
                 )
             )
-            maintenance_id = cursor.lastrowid
             # Gatilho imediato de e-mail + notificação in-app + push (só "Atencao")
             try:
                 user_row = get_user_by_id(cursor, user_id)

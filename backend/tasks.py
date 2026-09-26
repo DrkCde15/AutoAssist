@@ -66,3 +66,11 @@ def dispatch_events_notifications():
 def send_lead_welcome_email(lead_id):
     from routes.marketing import send_lead_welcome_email as _send
     _send(lead_id)
+
+def run_db_backup():
+    from services.db_backup import run_backup
+    try:
+        return run_backup()
+    except Exception as e:
+        logger.warning("Falha no backup do banco: %s", e)
+        raise

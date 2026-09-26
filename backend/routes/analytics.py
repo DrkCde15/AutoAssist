@@ -69,7 +69,8 @@ def _ensure_analytics_table(cursor):
     global _analytics_table_ready
     if _analytics_table_ready:
         return
-    cursor.execute(ANALYTICS_TABLE_SQL)
+    from .database import exec_ddl
+    exec_ddl(cursor, ANALYTICS_TABLE_SQL)
     _analytics_table_ready = True
 
 

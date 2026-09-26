@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from time import monotonic
 from oauthlib.oauth2 import WebApplicationClient
 from utils.turnstile import turnstile_required
-from .database import get_db, is_valid_email_domain, is_trial_expired, get_trial_days_remaining
+from .database import get_db, insert_get_id, is_valid_email_domain, is_trial_expired, get_trial_days_remaining
 from utils.email import enviar_email
 
 auth_bp = Blueprint('auth', __name__)
@@ -596,11 +596,10 @@ def google_callback():
                 """, (google_id, picture, email))
             else:
                 # Cria novo usuário sem senha (Login Social) e ativa e-mails por padrão
-                cursor.execute("""
-                    INSERT INTO users (nome, email, google_id, profile_pic, maintenance_email_enabled) 
+                new_user_id = insert_get_id(cursor, """
+                    INSERT INTO users (nome, email, google_id, profile_pic, maintenance_email_enabled)
                     VALUES (%s, %s, %s, %s, TRUE)
                 """, (nome, email, google_id, picture))
-                new_user_id = cursor.lastrowid
                 try:
                     from .analytics import record_analytics_event
                     anon_id = (request.args.get("anonymous_id") or "").strip() or None
@@ -747,7 +746,7 @@ def cadastro():
             client_ip = get_client_ip()
             referral_code = _generate_referral_code(cursor)
 
-            cursor.execute("""
+            user_id = insert_get_id(cursor, """
                 INSERT INTO users (
                     nome, email, password, possui_veiculo, maintenance_email_enabled,
                     referral_code, referred_by, signup_ip,
@@ -760,7 +759,6 @@ def cadastro():
                 anonymous_id, utm_source, utm_medium, utm_campaign,
                 utm_term, utm_content, initial_referrer,
             ))
-            user_id = cursor.lastrowid
 
             # P0.2: associa eventos anônimos pré-cadastro a este usuário
             # (anonymous_id -> user_id) sem apagar os eventos anteriores.
@@ -1137,12 +1135,11 @@ def forgot_password():
             token = secrets.token_urlsafe(32)
             expiracao = datetime.utcnow() + timedelta(minutes=15)
 
-            cursor.execute("""
+            reset_id = insert_get_id(cursor, """
                 INSERT INTO redefinicao_senha
                 (usuario_id, token, data_expiracao)
                 VALUES (%s,%s,%s)
             """, (user["id"], token, expiracao))
-            reset_id = cursor.lastrowid
 
             sent_ok = False
             err_msg = None

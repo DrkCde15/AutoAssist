@@ -33,9 +33,10 @@ def _load_user_data(user_id):
 
 def _save_chat(user_id, session_id, message, response, videos, links, topic):
     try:
-        from routes.database import get_db
+        from routes.database import get_db, insert_get_id
         with get_db() as (cur, conn):
-            cur.execute(
+            chat_id = insert_get_id(
+                cur,
                 """INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia,
                    created_at, videos, links, topic)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
@@ -43,7 +44,6 @@ def _save_chat(user_id, session_id, message, response, videos, links, topic):
                  json.dumps(videos), json.dumps(links), topic),
             )
             conn.commit()
-            chat_id = cur.lastrowid
         return chat_id
     except Exception as e:
         logger.warning("Erro ao salvar chat no WebSocket: %s", e, exc_info=True)

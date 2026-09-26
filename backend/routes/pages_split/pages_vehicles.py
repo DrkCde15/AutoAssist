@@ -50,11 +50,10 @@ def add_veiculo():
             ano_fab = int(ano_fab) if ano_fab else None
             ano_compra = int(ano_compra) if ano_compra else None
 
-            cursor.execute("""
+            v_id = insert_get_id(cursor, """
                 INSERT INTO veiculos (user_id, tipo, marca, modelo, ano_fabricacao, ano_compra, quilometragem)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (user_id, data.get("tipo"), data.get("marca"), data.get("modelo"), ano_fab, ano_compra, data.get("quilometragem")))
-            v_id = cursor.lastrowid
             cursor.execute("UPDATE users SET possui_veiculo = TRUE WHERE id = %s", (user_id,))
 
             # Popula o valor FIPE na criacao (assincrono via RQ, com fallback sincrono).

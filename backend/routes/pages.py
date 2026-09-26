@@ -62,10 +62,14 @@ from utils.turnstile import turnstile_or_auth  # noqa: F401 (usado pelos splits 
 
 from .analytics import has_prior_event, record_analytics_event  # noqa: F401 (usado pelos splits via exec)
 from .database import (  # noqa: F401 (usado pelos splits via exec)
+    exec_ddl,
     get_db,
     get_mysql_history,
     get_trial_days_remaining,
+    insert_get_id,
+    is_postgres,
     is_trial_expired,
+    month_start_sql,
 )
 from .notifications import create_notification  # noqa: F401 (usado pelos splits via exec)
 from .push import send_push_notification  # noqa: F401 (usado pelos splits via exec)

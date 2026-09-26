@@ -1277,9 +1277,28 @@ _EVENT_INSERT_SQL = (
     + ", ".join(["%s"] * len(_EVENT_COLUMNS)) + ")"
 )
 
-_EVENT_UPSERT_SQL = _EVENT_INSERT_SQL + " ON DUPLICATE KEY UPDATE " + ", ".join(
+_EVENT_UPSERT_SQL_MYSQL = _EVENT_INSERT_SQL + " ON DUPLICATE KEY UPDATE " + ", ".join(
     f"{c}=VALUES({c})" for c in _EVENT_COLUMNS if c != "id"
 )
+
+_EVENT_UPSERT_SQL_PG = _EVENT_INSERT_SQL + " ON CONFLICT (id) DO UPDATE SET " + ", ".join(
+    f"{c}=EXCLUDED.{c}" for c in _EVENT_COLUMNS if c != "id"
+)
+
+
+def _event_upsert_sql():
+    """ON DUPLICATE (MySQL) ou ON CONFLICT (Postgres/Neon)."""
+    try:
+        from routes.database import is_postgres
+        if is_postgres():
+            return _EVENT_UPSERT_SQL_PG
+    except Exception:
+        pass
+    return _EVENT_UPSERT_SQL_MYSQL
+
+
+# Alias legado (MySQL); prefira _event_upsert_sql().
+_EVENT_UPSERT_SQL = _EVENT_UPSERT_SQL_MYSQL
 
 
 def _event_db_row(ev):
@@ -1344,7 +1363,7 @@ def persist_events(events):
             inserted = len(to_insert)
         if to_update:
             cursor.executemany(
-                _EVENT_UPSERT_SQL,
+                _event_upsert_sql(),
                 [tuple(r[c] for c in _EVENT_COLUMNS) for r in to_update],
             )
             updated = len(to_update)

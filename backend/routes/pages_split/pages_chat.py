@@ -120,7 +120,7 @@ def hash_guest_id(guest_id):
 
 
 def ensure_guest_chat_usage_table(cursor):
-    cursor.execute("""
+    exec_ddl(cursor, """
         CREATE TABLE IF NOT EXISTS guest_chat_usage (
             guest_id_hash CHAR(64) PRIMARY KEY,
             message_count INT NOT NULL DEFAULT 0,
@@ -142,14 +142,25 @@ def reserve_guest_message(cursor, guest_id):
     if current_count >= GUEST_CHAT_LIMIT:
         return None
 
-    cursor.execute(
-        """
-        INSERT INTO guest_chat_usage (guest_id_hash, message_count)
-        VALUES (%s, 1)
-        ON DUPLICATE KEY UPDATE message_count = message_count + 1
-        """,
-        (guest_id_hash,)
-    )
+    if is_postgres():
+        cursor.execute(
+            """
+            INSERT INTO guest_chat_usage (guest_id_hash, message_count)
+            VALUES (%s, 1)
+            ON CONFLICT (guest_id_hash) DO UPDATE
+            SET message_count = guest_chat_usage.message_count + 1
+            """,
+            (guest_id_hash,)
+        )
+    else:
+        cursor.execute(
+            """
+            INSERT INTO guest_chat_usage (guest_id_hash, message_count)
+            VALUES (%s, 1)
+            ON DUPLICATE KEY UPDATE message_count = message_count + 1
+            """,
+            (guest_id_hash,)
+        )
     return max(0, GUEST_CHAT_LIMIT - current_count - 1)
 
 
@@ -691,8 +702,8 @@ def _is_effective_premium(user):
 def get_free_chat_usage_month(cursor, user_id):
     """Conta interações do usuário free no mês corrente (tabela chats)."""
     cursor.execute(
-        """SELECT COUNT(*) AS cnt FROM chats
-           WHERE user_id = %s AND created_at >= DATE_FORMAT(NOW(), '%%Y-%%m-01')""",
+        f"""SELECT COUNT(*) AS cnt FROM chats
+           WHERE user_id = %s AND created_at >= {month_start_sql()}""",
         (user_id,),
     )
     row = cursor.fetchone()
@@ -1080,7 +1091,8 @@ def chat():
         chat_id = None
         if user_id:
             with get_db() as (cursor, conn):
-                cursor.execute(
+                chat_id = insert_get_id(
+                    cursor,
                     """
                     INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -1096,7 +1108,6 @@ def chat():
                         json.dumps(attachments),
                     )
                 )
-                chat_id = cursor.lastrowid
                 if vehicle_id and user_id:
                     seed_b64 = img_b64
                     if not seed_b64 and attachment and attachment.get("kind") == "image":
@@ -1286,7 +1297,8 @@ def handle_voice():
         chat_id = None
         if user_id:
             with get_db() as (cursor, conn):
-                cursor.execute(
+                chat_id = insert_get_id(
+                    cursor,
                     """
                     INSERT INTO chats (user_id, session_id, mensagem_usuario, resposta_ia, videos, links, topic, attachments)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -1302,7 +1314,6 @@ def handle_voice():
                         json.dumps(attachments),
                     )
                 )
-                chat_id = cursor.lastrowid
 
         response_payload = dict(
             text=text,

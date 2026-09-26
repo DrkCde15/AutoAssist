@@ -66,9 +66,12 @@ backend/storage/
 secure_reports/
 
 # --- Agent skills (installed locally, not part of repo) ---
-.agents/skills/
+.agents/
 .claude/
 skills-lock.json
 
 mobile/
 set_permanent_premium.py
+.neon
+.env.local
+node_modules/

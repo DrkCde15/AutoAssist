@@ -19,7 +19,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from fpdf import FPDF
 
-from routes.database import get_db
+from routes.database import get_db, insert_get_id
 from services.vision_ai import analisar_imagem
 from services.cakto import CaktoService
 from utils.cache import get_redis_client
@@ -358,14 +358,14 @@ def _create_pending_b2b_key(user_id, plan, nome, cfg):
     key_hash = _hash_api_key(raw_key)
     try:
         with get_db() as (cursor, conn):
-            cursor.execute(
+            client_id = insert_get_id(
+                cursor,
                 """INSERT INTO api_clients
                    (user_id, nome, api_key_hash, api_key_prefix, rate_limit_per_min, plan, requests_limit, is_active)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, FALSE)""",
                 (user_id, nome, key_hash, _api_key_prefix(raw_key),
                  cfg["rate_limit_per_min"], plan, cfg["requests_limit"]),
             )
-            client_id = cursor.lastrowid
         return raw_key, client_id
     except Exception as exc:
         logger.error("Erro ao criar chave B2B pendente: %s", exc, exc_info=True)

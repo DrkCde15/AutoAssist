@@ -2,6 +2,7 @@
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
@@ -37,6 +38,8 @@ class SchemasTest(unittest.TestCase):
 
 
 class PhotoStorageTest(unittest.TestCase):
+    # Isola do .env real (pode apontar p/ S3/MinIO sem servidor no ar)
+    @patch.dict("os.environ", {"VEHICLE_PHOTO_BACKEND": "local"})
     def test_parse_and_local_roundtrip(self):
         import base64
         from services.vehicle_photo_storage import parse_data_url, get_storage

@@ -1,11 +1,9 @@
 import os
-import pymysql
 import logging
 import re
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
-from pymysql.cursors import DictCursor
 
 from dbutils.pooled_db import PooledDB
 
@@ -14,44 +12,91 @@ from dbutils.pooled_db import PooledDB
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '..', '.env'))
 
-# Configurações de Banco
-MYSQL_CONFIG = {
-    'host': os.getenv('DB_HOST', 'localhost').strip(),
-    'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER', '').strip(),
-    'password': os.getenv('DB_PASSWORD', '').strip(),
-    'database': os.getenv('DB_NAME', '').strip(),
-    'charset': 'utf8mb4',
-    'cursorclass': DictCursor,
-    'autocommit': True,
-    'connect_timeout': 10,
-}
+# ── Engine: mysql (default, Aiven/local) ou postgres (Neon) ──
+# Ativa PG via DATABASE_URL=postgresql://... (formato do Neon) ou DB_ENGINE=postgres.
+# Todo SQL do app usa placeholder %s (compatível com pymysql e psycopg).
+_DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
+DB_ENGINE = (os.getenv("DB_ENGINE") or "").strip().lower()
+if not DB_ENGINE:
+    DB_ENGINE = "postgres" if _DATABASE_URL.startswith(("postgres://", "postgresql://")) else "mysql"
 
-# SSL: suporta Aiven (certificado obrigatorio) e MySQL local (sem ssl).
-_ssl_ca = os.getenv('DB_SSL_CA', '').strip()
-_ssl_verify = os.getenv('DB_SSL_VERIFY', 'true').strip().lower() == 'true'
-if _ssl_ca:
-    MYSQL_CONFIG['ssl'] = {'ca': _ssl_ca, 'ssl_verify_cert': _ssl_verify}
-elif os.getenv('DB_SSL', 'false').strip().lower() == 'true' or \
-        os.getenv('DB_HOST', '').strip().endswith('aivencloud.com'):
-    MYSQL_CONFIG['ssl'] = {'ssl_verify_cert': _ssl_verify}
+
+def is_postgres() -> bool:
+    return DB_ENGINE == "postgres"
+
+
+if is_postgres():
+    try:
+        import psycopg  # noqa: F401 (driver PG)
+    except ImportError as exc:
+        raise RuntimeError("DB_ENGINE=postgres exige psycopg instalado.") from exc
+    _pg_conninfo = _DATABASE_URL or None
+    if _pg_conninfo is None:
+        # Monta conninfo a partir das peças DB_HOST/DB_USER/... (sslmode=require p/ Neon).
+        _pg_parts = [
+            f"host={os.getenv('DB_HOST', 'localhost').strip()}",
+            f"port={os.getenv('DB_PORT', '5432').strip()}",
+            f"dbname={os.getenv('DB_NAME', '').strip()}",
+            f"user={os.getenv('DB_USER', '').strip()}",
+            f"password={os.getenv('DB_PASSWORD', '').strip()}",
+            f"sslmode={os.getenv('DB_SSLMODE', 'require').strip()}",
+            f"connect_timeout={os.getenv('DB_CONNECT_TIMEOUT', '10').strip()}",
+        ]
+        _pg_conninfo = " ".join(_pg_parts)
+    pool = PooledDB(
+        creator=__import__("psycopg"),
+        mincached=int(os.getenv("DB_MIN_CACHED", "5")),
+        maxcached=int(os.getenv("DB_MAX_CACHED", "20")),
+        maxconnections=int(os.getenv("DB_MAX_CONNECTIONS", "50")),
+        blocking=True,
+        conninfo=_pg_conninfo,
+        autocommit=True,
+    )
 else:
-    MYSQL_CONFIG['ssl'] = {'ssl_disabled': True}
+    import pymysql
+    from pymysql.cursors import DictCursor
+    # Configurações de Banco
+    MYSQL_CONFIG = {
+        'host': os.getenv('DB_HOST', 'localhost').strip(),
+        'port': int(os.getenv('DB_PORT', 3306)),
+        'user': os.getenv('DB_USER', '').strip(),
+        'password': os.getenv('DB_PASSWORD', '').strip(),
+        'database': os.getenv('DB_NAME', '').strip(),
+        'charset': 'utf8mb4',
+        'cursorclass': DictCursor,
+        'autocommit': True,
+        'connect_timeout': 10,
+    }
 
-# Inicializa o Pool de Conexões
-pool = PooledDB(
-    creator=pymysql,
-    mincached=int(os.getenv("DB_MIN_CACHED", "5")),
-    maxcached=int(os.getenv("DB_MAX_CACHED", "20")),
-    maxconnections=int(os.getenv("DB_MAX_CONNECTIONS", "50")),
-    blocking=True,
-    **MYSQL_CONFIG
-)
+    # SSL: suporta Aiven (certificado obrigatorio) e MySQL local (sem ssl).
+    _ssl_ca = os.getenv('DB_SSL_CA', '').strip()
+    _ssl_verify = os.getenv('DB_SSL_VERIFY', 'true').strip().lower() == 'true'
+    if _ssl_ca:
+        MYSQL_CONFIG['ssl'] = {'ca': _ssl_ca, 'ssl_verify_cert': _ssl_verify}
+    elif os.getenv('DB_SSL', 'false').strip().lower() == 'true' or \
+            os.getenv('DB_HOST', '').strip().endswith('aivencloud.com'):
+        MYSQL_CONFIG['ssl'] = {'ssl_verify_cert': _ssl_verify}
+    else:
+        MYSQL_CONFIG['ssl'] = {'ssl_disabled': True}
+
+    # Inicializa o Pool de Conexões
+    pool = PooledDB(
+        creator=pymysql,
+        mincached=int(os.getenv("DB_MIN_CACHED", "5")),
+        maxcached=int(os.getenv("DB_MAX_CACHED", "20")),
+        maxconnections=int(os.getenv("DB_MAX_CONNECTIONS", "50")),
+        blocking=True,
+        **MYSQL_CONFIG
+    )
 
 @contextmanager
 def get_db():
     conn = pool.connection()
-    cursor = conn.cursor()
+    if is_postgres():
+        from psycopg.rows import dict_row
+        cursor = conn.cursor(row_factory=dict_row)
+    else:
+        cursor = conn.cursor()
     try:
         yield cursor, conn
     except Exception as e:
@@ -60,6 +105,110 @@ def get_db():
     finally:
         cursor.close()
         conn.close() # Retorna a conexão ao pool
+
+
+def insert_get_id(cursor, sql, params=(), id_column="id"):
+
+    """INSERT que retorna o id gerado nos dois engines.
+
+    Postgres não tem cursor.lastrowid: usa RETURNING + fetchone.
+    """
+    if is_postgres():
+        cursor.execute(sql.rstrip().rstrip(";") + f" RETURNING {id_column}", params)
+        row = cursor.fetchone()
+        if isinstance(row, dict):
+            return row[id_column]
+        return row[0]
+    cursor.execute(sql, params)
+    return cursor.lastrowid
+
+
+def month_start_sql():
+    """Primeiro dia do mês corrente nos dois engines (filtros 'do mês')."""
+    if is_postgres():
+        return "date_trunc('month', NOW())"
+    return "DATE_FORMAT(NOW(), '%Y-%m-01')"
+
+
+_PG_UNIQUE_KEY_RE = re.compile(r"UNIQUE\s+KEY\s+\w+\s*(\([^)]+\))", re.IGNORECASE)
+_PG_INDEX_RE = re.compile(r",?\s*INDEX\s+(\w+)\s*\(([^)]+)\)", re.IGNORECASE)
+
+
+def translate_ddl_to_pg(sql):
+    """Converte DDL MySQL do TABLES_SQL para Postgres. Retorna (table_sql, [index_sql])."""
+    table = ""
+    m = re.search(r"CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(\w+)", sql, re.IGNORECASE)
+    if m:
+        table = m.group(1)
+    s = sql
+    s = re.sub(r"\bBIGINT\s+AUTO_INCREMENT\s+PRIMARY\s+KEY",
+               "BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bINT\s+AUTO_INCREMENT\s+PRIMARY\s+KEY",
+               "INT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bMEDIUMTEXT\b", "TEXT", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bTINYINT\s*\(\d+\)", "SMALLINT", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bTINYINT\b", "SMALLINT", s, flags=re.IGNORECASE)
+    s = re.sub(r"\bDATETIME\b", "TIMESTAMP", s, flags=re.IGNORECASE)
+    s = re.sub(r"\s+ON\s+UPDATE\s+CURRENT_TIMESTAMP", "", s, flags=re.IGNORECASE)
+    s = _PG_UNIQUE_KEY_RE.sub(r"UNIQUE \1", s)
+    indexes = []
+    for im in _PG_INDEX_RE.finditer(s):
+        idx_name, cols = im.group(1), im.group(2)
+        if table:
+            indexes.append(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({cols})")
+    s = _PG_INDEX_RE.sub("", s)
+    s = re.sub(r",\s*\n\s*\)", "\n)", s)  # vírgula órfã antes do fecha-parêntese
+    return s, indexes
+
+
+def exec_ddl(cursor, sql):
+    """Executa DDL traduzindo para o engine ativo (tabela + índices inline)."""
+    if not is_postgres():
+        cursor.execute(sql)
+        return
+    table_sql, indexes = translate_ddl_to_pg(sql)
+    cursor.execute(table_sql)
+    for idx_sql in indexes:
+        try:
+            cursor.execute(idx_sql)
+        except Exception:
+            pass
+
+
+def _pg_dtype(dtype):
+    d = dtype
+    d = re.sub(r"\bMEDIUMTEXT\b", "TEXT", d, flags=re.IGNORECASE)
+    d = re.sub(r"\bTINYINT\s*\(\d+\)", "SMALLINT", d, flags=re.IGNORECASE)
+    d = re.sub(r"\bTINYINT\b", "SMALLINT", d, flags=re.IGNORECASE)
+    d = re.sub(r"\bDATETIME\b", "TIMESTAMP", d, flags=re.IGNORECASE)
+    d = re.sub(r"\s+ON\s+UPDATE\s+CURRENT_TIMESTAMP", "", d, flags=re.IGNORECASE)
+    return d
+
+
+def add_column_if_missing(cursor, table, col, dtype):
+    if is_postgres():
+        dtype = _pg_dtype(dtype)
+    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {dtype}")
+
+
+def existing_tables(cursor):
+    if is_postgres():
+        cursor.execute("SELECT tablename AS tb FROM pg_tables WHERE schemaname = 'public'")
+    else:
+        cursor.execute("SELECT TABLE_NAME AS tb FROM information_schema.tables WHERE table_schema = DATABASE()")
+    return {row["tb"] for row in cursor.fetchall()}
+
+
+def existing_columns(cursor, table):
+    if is_postgres():
+        cursor.execute(
+            "SELECT column_name AS col FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = %s",
+            (table,),
+        )
+        return {row["col"] for row in cursor.fetchall()}
+    cursor.execute(f"SHOW COLUMNS FROM {table}")
+    return {row['Field'] for row in cursor.fetchall()}
 
 TABLES_SQL = {
     "users": """CREATE TABLE IF NOT EXISTS users (
@@ -399,17 +548,15 @@ TABLES_SQL = {
 
 def init_db():
     with get_db() as (cursor, conn):
-        cursor.execute("SELECT TABLE_NAME AS tb FROM information_schema.tables WHERE table_schema = DATABASE()")
-        existing = {row["tb"] for row in cursor.fetchall()}
+        existing = existing_tables(cursor)
 
         for table_name, ddl in TABLES_SQL.items():
             if table_name not in existing:
                 logging.getLogger("database").info("Criando tabela %s...", table_name)
-                cursor.execute(ddl)
+                exec_ddl(cursor, ddl)
                 existing.add(table_name)
 
-        cursor.execute("SHOW COLUMNS FROM users")
-        existing_columns = {row['Field'] for row in cursor.fetchall()}
+        existing_columns_set = existing_columns(cursor, "users")
         
         columns = [
             ("possui_veiculo", "BOOLEAN DEFAULT FALSE"),
@@ -442,15 +589,14 @@ def init_db():
             ("initial_referrer", "VARCHAR(500) NULL")
         ]
         for col, dtype in columns:
-            if col not in existing_columns:
+            if col not in existing_columns_set:
                 try:
                     logging.getLogger("database").info("Adicionando coluna faltante %s em users...", col)
-                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
+                    add_column_if_missing(cursor, "users", col, dtype)
                 except Exception as e:
                     logging.getLogger("database").warning("Erro ao adicionar coluna %s: %s", col, e)
-        
-        cursor.execute("SHOW COLUMNS FROM veiculos")
-        existing_veiculos_columns = {row['Field'] for row in cursor.fetchall()}
+
+        existing_veiculos_columns = existing_columns(cursor, "veiculos")
         veiculos_columns = [
             ("quilometragem", "INT"),
             ("fipe_valor", "VARCHAR(50) NULL"),
@@ -468,7 +614,7 @@ def init_db():
         for col, dtype in veiculos_columns:
             if col not in existing_veiculos_columns:
                 try:
-                    cursor.execute(f"ALTER TABLE veiculos ADD COLUMN {col} {dtype}")
+                    add_column_if_missing(cursor, "veiculos", col, dtype)
                 except Exception:
                     pass
 
@@ -485,7 +631,11 @@ def init_db():
             logging.getLogger("database").warning("Aviso migracao veiculos: %s", e)
 
         try:
-            cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")
+            if is_postgres():
+                cursor.execute("ALTER TABLE users ALTER COLUMN password TYPE VARCHAR(255)")
+                cursor.execute("ALTER TABLE users ALTER COLUMN password DROP NOT NULL")
+            else:
+                cursor.execute("ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL")
         except Exception as e:
             logging.getLogger("database").warning("Erro ao modificar coluna password: %s", e)
 
@@ -517,7 +667,7 @@ def init_db():
         ]
         for col, dtype in reset_columns:
             try:
-                cursor.execute(f"ALTER TABLE redefinicao_senha ADD COLUMN {col} {dtype}")
+                add_column_if_missing(cursor, "redefinicao_senha", col, dtype)
             except Exception:
                 pass
         maintenance_columns = [
@@ -526,7 +676,7 @@ def init_db():
         ]
         for col, dtype in maintenance_columns:
             try:
-                cursor.execute(f"ALTER TABLE maintenance_history ADD COLUMN {col} {dtype}")
+                add_column_if_missing(cursor, "maintenance_history", col, dtype)
             except Exception:
                 pass
         try:
@@ -539,7 +689,7 @@ def init_db():
         ]
         for col, dtype in payments_columns:
             try:
-                cursor.execute(f"ALTER TABLE payments_orders ADD COLUMN {col} {dtype}")
+                add_column_if_missing(cursor, "payments_orders", col, dtype)
             except Exception:
                 pass
         api_clients_columns = [
@@ -550,7 +700,7 @@ def init_db():
         ]
         for col, dtype in api_clients_columns:
             try:
-                cursor.execute(f"ALTER TABLE api_clients ADD COLUMN {col} {dtype}")
+                add_column_if_missing(cursor, "api_clients", col, dtype)
             except Exception:
                 pass
         # Otimizações de Banco de Dados: Adicionando Índices para consultas frequentes
@@ -571,7 +721,10 @@ def init_db():
         ]
         for idx_query in indexes:
             try:
-                cursor.execute(idx_query)
+                if is_postgres():
+                    cursor.execute(idx_query.replace("CREATE INDEX ", "CREATE INDEX IF NOT EXISTS ", 1))
+                else:
+                    cursor.execute(idx_query)
             except Exception:
                 pass # Ignora se o índice já existir
 

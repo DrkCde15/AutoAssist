@@ -1,0 +1,25 @@
+name: Backup diario do banco (MySQL → S3/R2)
+
+on:
+  schedule:
+    # 04:30 UTC todos os dias (apos o treino ML das 03:00)
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar backup no backend
+        run: |
+          code=$(curl -sS -o /tmp/backup.json -w "%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/cron/db-backup" \
+            -H "X-Cron-Secret: ${{ secrets.BACKUP_CRON_SECRET }}")
+          cat /tmp/backup.json
+          echo "HTTP $code"
+          [ "$code" = "202" ]
+
+      - name: Conferir ultimo backup (admin)
+        run: |
+          # Requer usuario admin: usa JWT via login (opcional; falha nao bloqueia)
+          echo "Verifique em GET ${{ secrets.APP_URL }}/api/admin/backups"

@@ -10,7 +10,7 @@ import time
 import requests
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from routes.database import get_db
+from routes.database import get_db, insert_get_id, is_postgres
 from utils.cache import cache_get_json, cache_set_json
 from services.web_scraping import search_mechanics_serpapi
 
@@ -775,7 +775,7 @@ def upsert_mechanic(data):
                 mechanic_id
             ))
         else:
-            cursor.execute("""
+            mechanic_id = insert_get_id(cursor, """
                 INSERT INTO mechanics
                     (nome, endereco, cidade, estado, latitude, longitude, telefone,
                      website, descricao, especialidades, is_active, is_verified)
@@ -787,7 +787,6 @@ def upsert_mechanic(data):
                 data.get('descricao', ''),
                 json.dumps(data.get('especialidades', ['troca_oleo']))
             ))
-            mechanic_id = cursor.lastrowid
         return mechanic_id
 
 
@@ -813,10 +812,17 @@ def toggle_favorite(mechanic_id):
         mid = int(mechanic_id)
         with get_db() as (cursor, conn):
             if request.method == 'POST':
-                cursor.execute("""
-                    INSERT IGNORE INTO mechanic_favorites (user_id, mechanic_id)
-                    VALUES (%s, %s)
-                """, (user_id, mid))
+                if is_postgres():
+                    cursor.execute("""
+                        INSERT INTO mechanic_favorites (user_id, mechanic_id)
+                        VALUES (%s, %s)
+                        ON CONFLICT (user_id, mechanic_id) DO NOTHING
+                    """, (user_id, mid))
+                else:
+                    cursor.execute("""
+                        INSERT IGNORE INTO mechanic_favorites (user_id, mechanic_id)
+                        VALUES (%s, %s)
+                    """, (user_id, mid))
                 return jsonify({
                     "success": True,
                     "message": "Mecânico favoritado",

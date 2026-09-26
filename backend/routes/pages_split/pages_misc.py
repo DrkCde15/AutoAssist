@@ -97,12 +97,12 @@ def admin_burn_analytics():
         if not row or not row.get("is_admin"):
             return jsonify(error="Acesso restrito."), 403
         cursor.execute(
-            """
+            f"""
             SELECT u.id, u.nome, u.email, u.is_premium,
                    COUNT(c.id) AS msgs_mes,
                    MAX(c.created_at) AS ultima_interacao
             FROM users u
-            LEFT JOIN chats c ON c.user_id = u.id AND c.created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')
+            LEFT JOIN chats c ON c.user_id = u.id AND c.created_at >= {month_start_sql()}
             GROUP BY u.id
             ORDER BY msgs_mes DESC
             LIMIT 100

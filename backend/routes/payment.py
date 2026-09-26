@@ -1,6 +1,8 @@
+import calendar
 import logging
 import os
 import uuid
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -47,6 +49,14 @@ def get_service() -> CaktoService:
     if _svc is None:
         _svc = CaktoService()
     return _svc
+
+
+def _add_months(dt, months):
+    """Soma meses com clamp de fim de mês (portável MySQL/PG)."""
+    m = dt.month - 1 + months
+    year, month = dt.year + m // 12, m % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
 
 
 def _normalize_decimal(value):
@@ -97,12 +107,25 @@ def _set_premium_by_user_id(user_id: str, is_premium: bool, plan: str | None = N
             credit = int((cred_row or {}).get("referral_credit_months") or 0)
             if credit > 0:
                 cursor.execute(
+                    "SELECT premium_expires_at FROM users WHERE id = %s",
+                    (user_id,),
+                )
+                exp_row = cursor.fetchone()
+                base = (exp_row or {}).get("premium_expires_at") or datetime.now()
+                if isinstance(base, str):
+                    try:
+                        base = datetime.fromisoformat(base)
+                    except ValueError:
+                        base = datetime.now()
+                elif not isinstance(base, datetime):
+                    base = datetime.now()
+                cursor.execute(
                     """UPDATE users
                        SET is_premium = TRUE,
-                           premium_expires_at = DATE_ADD(COALESCE(premium_expires_at, NOW()), INTERVAL %s MONTH),
+                           premium_expires_at = %s,
                            referral_credit_months = 0
                        WHERE id = %s""",
-                    (credit, user_id),
+                    (_add_months(base, credit), user_id),
                 )
                 updated = 1
             else:

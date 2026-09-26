@@ -146,8 +146,23 @@ class S3Storage:
     def _s3(self):
         if self._client is None:
             import boto3
+            from botocore.config import Config
 
-            kwargs: dict = {"region_name": self.region}
+            # MinIO local só responde em path-style (http://localhost:9000/<bucket>).
+            # Auto-detecta endpoint local; force via S3_ADDRESSING_STYLE=path|virtual.
+            style = (os.getenv("S3_ADDRESSING_STYLE") or "auto").strip().lower()
+            ep = (self.endpoint or "").lower()
+            use_path = style == "path" or (
+                style == "auto" and bool(ep) and (
+                    "localhost" in ep or "127." in ep
+                    or "/192.168." in ep or "/10." in ep or "/172.1" in ep
+                )
+            )
+            config = Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "path" if use_path else "virtual"},
+            )
+            kwargs: dict = {"region_name": self.region, "config": config}
             if self.endpoint:
                 kwargs["endpoint_url"] = self.endpoint
             self._client = boto3.client("s3", **kwargs)

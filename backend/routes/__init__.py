@@ -9,3 +9,4 @@ from .database import init_db
 
 from .config import config_bp
 from .groq_admin import groq_admin_bp
+from .backup import backup_bp

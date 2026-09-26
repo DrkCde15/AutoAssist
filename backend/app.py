@@ -72,7 +72,7 @@ app.register_blueprint(training_bp, url_prefix="/api")
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 _startup_log("Importando rotas...")
-from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db, config_bp, groq_admin_bp
+from routes import auth_bp, analytics_bp, pages_bp, payment_bp, feedback_bp, notes_bp, gateway_bp, init_db, config_bp, groq_admin_bp, backup_bp
 from routes.mechanics import mechanics_bp
 from routes.events import events_bp
 from routes.notifications import notifications_bp
@@ -523,6 +523,7 @@ app.register_blueprint(b2b_bp)
 app.register_blueprint(marketing_bp)
 app.register_blueprint(notes_bp)
 app.register_blueprint(groq_admin_bp)
+app.register_blueprint(backup_bp)
 
 # Gera VAPID keys se nao existirem
 if not os.getenv("VAPID_PRIVATE_KEY") or not os.getenv("VAPID_PUBLIC_KEY"):
